@@ -10,6 +10,7 @@ Created on Thu Apr  7 16:06:25 2022
 # containing Potential Temperature & Salinity fields.
 # ======================================================================       
 import json
+import xarray
 import numpy as np
 import pandas as pd
 
@@ -213,3 +214,134 @@ def find_boundaries(lat, lon, set_domain):
     lon_min_index = int(lon_min)
     lon_max_index = int(lon_max)
     return lat_min_index, lat_max_index, lon_min_index, lon_max_index
+
+
+def extract_data_from_NetCDF_input_file(config_param):
+    """
+    Reads NetCDF input data, returns Potential Temperature & Salinity.
+
+    Arguments
+    ---------
+    config_param : 'dict'
+        A dictionary containing the configuration parameters grouped
+        through subdictionaries.
+        {'set_paths': 
+             {'indata_path': -path to input NetCDF data file-,
+              'input_file_name': -name of input NetCDF data file-},
+         'set_dimensions': 
+             {'latitude_name': -name of latitude in NetCDF file-,
+              'longitude_name': -name of longitude in NetCDF file-,
+              'depth_name': -name of depth in NetCDF file-, 
+              'time_name': -name of time in NetCDF file-}, 
+         'set_domain': 
+             {'latitude_min': -min value of latitude-, 
+              'latitude_max': -max value of latitude-,
+              'longitude_min': -min value of longitude-, 
+              'longitude_max': -max value of longitude-},
+         'set_time': 
+             {'time_date': -time at which data must be computed-},
+         'set_variables': 
+             {'temperature_name': -name of temperature in NetCDF file-,
+              'salinity_name': -name of salinity in NetCDF file-}
+         }
+         
+    Raises
+    ------
+    KeyError
+        if dictionary keys are not the expected ones.
+                           - OR -
+        if variables name in config. file does not match the ones in
+        NetCDF file.
+    FileNotFoundError
+        if NetCDF file name or path given is not found.
+        
+    Returns
+    -------
+    depth : 'xarray.core.variable.Variable'
+        depth array which has become of same dimension of
+        temperature and salinity (one time step)
+    temperature : 'xarray.core.variable.Variable'
+        temperature 3D array (one time step)
+    salinity : 'xarray.core.variable.Variable'
+        salinity 3D array (one time step)
+    The array dimensions are depth, latitude and longitude.
+    """
+    
+    # Define input file path from configuration parameters
+    set_paths = config_param['set_paths']
+    path_to_file = set_paths['indata_path']
+    file_name = set_paths['input_file_name']
+    
+    # Open input file and extrapolates dataset.
+    full_path = path_to_file + file_name
+    in_data = xarray.open_dataset(full_path)
+    
+    # Store lat, lon, time and depth DIMENSIONS.
+    set_dims = config_param['set_dimensions']
+    lat_dim = set_dims['lat_name']
+    lon_dim = set_dims['lon_name']
+    depth_dim = set_dims['depth_name']
+    time_dim = set_dims['time_name']
+
+    # Store lat, lon, time and depth variables from NetCDF input file.
+    set_vars = config_param['set_variables']
+    lat_name = set_vars['lat_var_name']
+    lon_name = set_vars['lon_var_name']
+    depth_name = set_vars['depth_var_name']
+    time_name = set_vars['time_var_name']
+    latitude = in_data.variables[lat_name].values
+    longitude = in_data.variables[lon_name].values
+    depth = in_data.variables[depth_name].values
+    time = in_data.variables[time_name].values
+    
+    # Call external function for setting the domain boundaries.
+    set_domain = config_param['set_domain']
+    lat_min, lat_max, lon_min, lon_max = find_boundaries(latitude, 
+                                                         longitude,
+                                                         set_domain)
+    # Call external function for looking for the time period wanted.
+    set_time =  config_param['set_time']
+    time_date = set_time['time_date']
+    time_step = find_time_step(time, time_date)
+    
+    #-------------------------------------------------------------------
+    # Store temperature and salinity, taking only the time step and the
+    # domain area needed by the user.
+    #-------------------------------------------------------------------
+    temp_name = set_vars['temperature_name']
+    sal_name = set_vars['salinity_name']
+    # Transpose temperature and salinity arrays for rearranging indeces.
+    transposed_temp = in_data.variables[temp_name].transpose(time_dim, 
+                                                             depth_dim,
+                                                             lat_dim, 
+                                                             lon_dim, 
+                                                             ...        )
+    transposed_sal = in_data.variables[sal_name].transpose(time_dim, 
+                                                           depth_dim,
+                                                           lat_dim,
+                                                           lon_dim, 
+                                                           ...        )
+    # Store temperature and salinity values for the desired time instant.
+    temperature = transposed_temp[time_step, :, 
+                                  lat_min:lat_max+1, lon_min:lon_max+1]
+    salinity = transposed_sal[time_step, :, 
+                              lat_min:lat_max+1, lon_min:lon_max+1]
+    
+    #-------------------------------------------------------------------
+    # Store depth as an array with dimensions as temp and sal.
+    #-------------------------------------------------------------------
+    # Compute lengths
+    lat_length = lat_max + 1 - lat_min
+    lon_length = lon_max + 1 - lon_min
+    depth_length = len(depth)
+    # Create empty array.
+    depth_3D = np.empty((depth_length, lat_length, lon_length))
+    # Fill empty array.
+    for i in range(depth_length):
+        depth_3D[i,:,:] = np.tile(depth[i], (lat_length, lon_length)) 
+    # Create xarray.
+    depth_xarray =  xarray.Variable(temperature.dims, depth_3D)
+         
+    in_data.close()
+    # Return temperature and salinity arrays
+    return depth_xarray, temperature, salinity
