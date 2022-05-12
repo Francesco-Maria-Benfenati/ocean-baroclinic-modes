@@ -1,0 +1,120 @@
+{"project_name": "Computing the ocean baroclinic modes of motion",
+ "sections": [
+   {"title":"set_paths",
+      "items": [
+         {  "name":"input_file_name",
+            "value":"20210131_AZORES.nc",
+            "type":"string",
+            "description":"name of the input NetCDF data file."
+          },
+         {  "name":"indata_path",
+            "value":"/mnt/d/Physics/SubMesoscale_Ocean/SOFTWARE_Rossby_Radius/Datasets/",
+            "value_on_windows":"D:\\Physics\\SubMesoscale_Ocean\\SOFTWARE_Rossby_Radius\\Datasets\\",
+            "type":"string",
+            "description":"path leading to the input NetCDF data file. If on WINDOWS, please substitute backslash with \\"
+          }
+      ]
+   },
+   {"title":"set_variables",
+      "items":[
+         {  "name":"temperature_name",
+            "value":"thetao",
+            "type":"string",
+            "description":"name of TEMPERATURE variable within NetCDF input file."
+          },
+         {  "name":"salinity_name",
+            "value":"so",
+            "type":"string",
+            "description":"name of SALINITY variable within NetCDF input file."
+          },
+         {  "name":"lat_var_name",
+            "value":"latitude",
+            "type":"string",
+            "description":"name of LATITUDE variable within NetCDF input file."
+          },
+         {  "name":"lon_var_name",
+            "value":"longitude",
+            "type":"string",
+            "description":"name of LONGITUDE variable within NetCDF input file."
+          },
+         {  "name":"depth_var_name",
+            "value":"depth",
+            "type":"string",
+            "description":"name of DEPTH variable within NetCDF input file."
+          },
+         {  "name":"time_var_name",
+            "value":"time",
+            "type":"string",
+            "description":"name of TIME variable within NetCDF input file."
+              }
+      ]
+   },
+   {"title":"set_dimensions",
+      "items":[
+         {  "name":"lat_name",
+            "value":"latitude",
+            "type":"string",
+            "description":"name of LATITUDE dimension within NetCDF input file."
+           },
+          { "name":"lon_name",
+            "value":"longitude",
+            "type":"string",
+            "description":"name of LONGITUDE dimension within NetCDF input file."
+           },
+          { "name":"depth_name",
+            "value":"depth",
+            "type":"string",
+            "description":"name of DEPTH dimension within NetCDF input file."
+           },
+          { "name":"time_name",
+            "value":"time",
+            "type":"string",
+            "description":"name of TIME dimension within NetCDF input file."
+           }
+      ]
+   },
+   {"title":"set_domain",
+      "items":[
+         {  "name":"lat_min",
+            "value":"35",
+            "type":"float",
+            "description":"value of minimum latitude in °N (°S are negative)"
+          },
+         {  "name":"lat_max",
+            "value":"40.0",
+            "type":"float",
+            "description":"value of maximum latitude in °N (°S are negative)"
+          },
+         {  "name":"lon_min",
+            "value":"-30.0",
+            "type":"float",
+            "description":"value of minimum longitude in °E (°W are negative)"
+          },
+         {  "name":"lon_max",
+            "value":"-25.0",
+            "type":"float",
+            "description":"value of maximum longitude in °E (°W are negative)"
+          },
+         {  "name":"lat_step",
+            "value":"0.03",
+            "type":"float",
+            "description":"value of latitude step (to find the extremant values)."
+          },
+         {  "name":"lon_step",
+            "value":"0.03",
+            "type":"float",
+            "description":"value of longitude step (to find the extremant values)."
+           }
+      ]
+   },
+  { "title":"set_time",
+      "items": [
+         {  "name": "time_date",
+             "value":"2021-01-31 12:00:00",
+             "type":"string",
+             "description":"time instant at which the computation should be done."
+          }
+      ]
+   }
+ ]
+}
