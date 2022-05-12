@@ -492,3 +492,4 @@ def test_NetCDF_correct_output_dims_when_different_dataset():
                   }
     output_vars = read.extract_data_from_NetCDF_input_file(config_dict)
     assert [var.dims == ('deptht', 'y', 'x') for var in output_vars]
+    
