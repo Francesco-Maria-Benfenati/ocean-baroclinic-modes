@@ -229,21 +229,27 @@ def extract_data_from_NetCDF_input_file(config_param):
              {'indata_path': -path to input NetCDF data file-,
               'input_file_name': -name of input NetCDF data file-},
          'set_dimensions': 
-             {'latitude_name': -name of latitude in NetCDF file-,
-              'longitude_name': -name of longitude in NetCDF file-,
-              'depth_name': -name of depth in NetCDF file-, 
-              'time_name': -name of time in NetCDF file-}, 
+             {'lat_name': -name of latitude DIM in NetCDF file-,
+              'lon_name': -name of longitude DIM in NetCDF file-,
+              'depth_name': -name of depth DIM in NetCDF file-, 
+              'time_name': -name of time DIM in NetCDF file-}, 
          'set_domain': 
-             {'latitude_min': -min value of latitude-, 
-              'latitude_max': -max value of latitude-,
-              'longitude_min': -min value of longitude-, 
-              'longitude_max': -max value of longitude-},
+             {'lat_min': -min value of latitude-, 
+              'lat_max': -max value of latitude-,
+              'lon_min': -min value of longitude-, 
+              'lon_max': -max value of longitude-,
+              'lat_step': - latitude grid step-,
+              'lon_step': - longitude grid step- },
          'set_time': 
              {'starting_time': -averaging time period beginning-,
               'ending_time': -averaging time period ending-},
          'set_variables': 
              {'temperature_name': -name of temperature in NetCDF file-,
-              'salinity_name': -name of salinity in NetCDF file-}
+              'salinity_name': -name of salinity in NetCDF file-,
+              'lat_var_name': -name of latitude VAR in NetCDF file-,
+               'lon__var_name': -name of longitude VAR in NetCDF file-,
+               'depth_var_name': -name of depth VAR in NetCDF file-, 
+               'time_var_name': -name of time VAR in NetCDF file-}
          }
          
     Raises
