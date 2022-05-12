@@ -3,7 +3,7 @@
    {"title":"set_paths",
       "items": [
          {  "name":"input_file_name",
-            "value":"20210131_AZORES.nc",
+            "value":"azores_Jan2021.nc",
             "type":"string",
             "description":"name of the input NetCDF data file."
           },
@@ -109,10 +109,17 @@
    },
   { "title":"set_time",
       "items": [
-         {  "name": "time_date",
-             "value":"2021-01-31 12:00:00",
-             "type":"string",
-             "description":"time instant at which the computation should be done."
+         {  "name": "starting_time",
+            "value":"2021-01-01 12:00:00",
+            "type":"string",
+            "description":"starting value of time period during which temp and sal averages must be computed.",
+            "note":"set starting_time = ending_time if only one time step is considered."
+          },
+         {  "name": "ending_time",
+            "value":"2021-01-31 12:00:00",
+            "type":"string",
+            "description":"ending value of time period during which temp and sal averages must be computed.",
+            "note":"set ending_time = starting_time if only one time step is considered."
           }
       ]
    }

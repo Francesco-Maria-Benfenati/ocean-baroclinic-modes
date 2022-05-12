@@ -186,7 +186,7 @@ def test_find_boundaries_precision():
 # are of type 'xarray.core.variable.Variable'.
 def test_NetCDF_output_type():
     config_dict = {'set_paths': 
-                       {'input_file_name': '20210131_AZORES.nc', 
+                       {'input_file_name': 'azores_Jan2021.nc', 
 'indata_path':
          '/mnt/d/Physics/SubMesoscale_Ocean/SOFTWARE_Rossby_Radius/Datasets/'},
                    'set_variables': 
@@ -209,7 +209,8 @@ def test_NetCDF_output_type():
                         'lat_step': 0.0, 
                         'lon_step': 0.0}, 
                    'set_time': 
-                       {'time_date': '2021-01-31 12:00:00'}                   
+                       {'starting_time': '2021-01-01 12:00:00',
+                        'ending_time': '2021-01-31 12:00:00'}                   
                    }
     output_vars = read.extract_data_from_NetCDF_input_file(config_dict)
     trial_data = np.arange(0,10)
@@ -223,7 +224,7 @@ def test_NetCDF_output_type():
 # are of of correct dimensions.
 def test_NetCDF_output_dims():
     config_dict = {'set_paths': 
-                       {'input_file_name': '20210131_AZORES.nc', 
+                       {'input_file_name': 'azores_Jan2021.nc', 
 'indata_path':
          '/mnt/d/Physics/SubMesoscale_Ocean/SOFTWARE_Rossby_Radius/Datasets/'},
                    'set_variables': 
@@ -246,7 +247,8 @@ def test_NetCDF_output_dims():
                         'lat_step': 0.0, 
                         'lon_step': 0.0}, 
                    'set_time': 
-                       {'time_date': '2021-01-31 12:00:00'}                   
+                       {'starting_time': '2021-01-01 12:00:00',
+                        'ending_time': '2021-01-31 12:00:00'}                    
                    }
     output_vars = read.extract_data_from_NetCDF_input_file(config_dict)
     assert [var.dims == ('depth', 'latitude', 
@@ -257,7 +259,7 @@ def test_NetCDF_output_dims():
 # within the function do not correspond to the ones in JSON file.
 def test_NetCDF_incoherent_keys():
     config_dict = {'set_paths': 
-                      {'input_file_name': '20210131_AZORES.nc', 
+                      {'input_file_name': 'azores_Jan2021.nc', 
 'indata_path':
          '/mnt/d/Physics/SubMesoscale_Ocean/SOFTWARE_Rossby_Radius/Datasets/'},
                    'set_variables': 
@@ -280,7 +282,8 @@ def test_NetCDF_incoherent_keys():
                        'lat_step': 0.0, 
                        'lon_step': 0.0}, 
                    'set_time': 
-                      {'time_date': '2021-01-31 12:00:00'}                   
+                      {'starting_time': '2021-01-01 12:00:00',
+                       'ending_time': '2021-01-31 12:00:00'}                      
                    }
     try:
         read.extract_data_from_NetCDF_input_file(config_dict)
@@ -295,7 +298,7 @@ def test_NetCDF_incoherent_keys():
 # in JSON file.
 def test_NetCDF_wrong_variables_name():
     config_dict = {'set_paths': 
-                      {'input_file_name': '20210131_AZORES.nc', 
+                      {'input_file_name': 'azores_Jan2021.nc', 
 'indata_path':
          '/mnt/d/Physics/SubMesoscale_Ocean/SOFTWARE_Rossby_Radius/Datasets/'},
                   'set_variables': 
@@ -318,7 +321,8 @@ def test_NetCDF_wrong_variables_name():
                        'lat_step': 0.0, 
                        'lon_step': 0.0}, 
                   'set_time': 
-                      {'time_date': '2021-01-31 12:00:00'}                   
+                      {'starting_time': '2021-01-01 12:00:00',
+                       'ending_time': '2021-01-31 12:00:00'}                     
                   }
     try:
         read.extract_data_from_NetCDF_input_file(config_dict)
@@ -332,6 +336,44 @@ def test_NetCDF_wrong_variables_name():
 # dimensions name within NetCDF file does not correspond to the ones 
 # in JSON file.
 def test_NetCDF_wrong_depth_name():
+    config_dict = {'set_paths': 
+                      {'input_file_name': 'azores_Jan2021.nc', 
+'indata_path':
+         '/mnt/d/Physics/SubMesoscale_Ocean/SOFTWARE_Rossby_Radius/Datasets/'},
+                   'set_variables': 
+                       {'temperature_name': 'thetao', 
+                        'salinity_name': 'so',
+                        'lat_var_name': 'latitude', 
+                        'lon_var_name': 'longitude', 
+                        'depth_var_name': 'depth', 
+                        'time_var_name': 'time'}, 
+                   'set_dimensions': 
+                       {'lat_name': 'latitude', 
+                        'lon_name': 'longitude', 
+                        'depth_name': 'WRONG_DIMENSION_NAME', 
+                        'time_name': 'time'},
+                   'set_domain': 
+                      {'lat_min': 35.0, 
+                       'lat_max': 40.0, 
+                       'lon_min': -30.0, 
+                       'lon_max': -25.0,
+                       'lat_step': 0.0, 
+                       'lon_step': 0.0}, 
+                   'set_time': 
+                      {'starting_time': '2021-01-01 12:00:00',
+                       'ending_time': '2021-01-31 12:00:00'}                      
+                   }
+    try:
+        read.extract_data_from_NetCDF_input_file(config_dict)
+    except ValueError:
+        assert True
+    else: 
+        assert False
+
+
+# Test if extract_data_from_NetCDF_input_file() works well when starting
+# and ending time are the same (i.e. one time step given).
+def test_NetCDF_one_tstep_given():
     config_dict = {'set_paths': 
                       {'input_file_name': '20210131_AZORES.nc', 
 'indata_path':
@@ -356,18 +398,19 @@ def test_NetCDF_wrong_depth_name():
                        'lat_step': 0.0, 
                        'lon_step': 0.0}, 
                    'set_time': 
-                      {'time_date': '2021-01-31 12:00:00'}                   
+                      {'starting_time': '2021-01-31 12:00:00',
+                       'ending_time': '2021-01-31 12:00:00'}                      
                    }
     try:
         read.extract_data_from_NetCDF_input_file(config_dict)
-    except ValueError:
+    except Exception:
         assert True
     else: 
         assert False
         
 
 # Test if extract_data_from_NetCDF_input_file() output type is correct
-# when handling different datasets.
+# when handling different datasets (one time step given).
 def test_NetCDF_correct_output_type_when_different_dataset():
     config_dict = {'set_paths': 
                       {'input_file_name':'SURF_1h_20200702_20200706_grid_T.nc', 
@@ -395,7 +438,8 @@ def test_NetCDF_correct_output_type_when_different_dataset():
                        'lat_step': 0.01,
                        'lon_step': 0.01},
                   'set_time': 
-                      {'time_date': '2020-07-02T18:30:00.000000000'}                   
+                      {'starting_time': '2020-07-02T18:30:00.000000000',
+                       'ending_time': '2020-07-02T18:30:00.000000000'}                   
                   }
     output_vars = read.extract_data_from_NetCDF_input_file(config_dict)
     trial_data = np.arange(0,10)
@@ -410,6 +454,7 @@ def test_NetCDF_correct_output_type_when_different_dataset():
 # 1) additional dimensions are given (more than time, depth, lat, lon)
 # 2) input dimension are in a different order.
 # 3) latitude and longitude are 2D arrays.
+# 4) one time step given.
 # This may happen with different input datasets.
 # NOTE: 
 #      Here more than one property is tested at the same time. 
@@ -442,7 +487,8 @@ def test_NetCDF_correct_output_dims_when_different_dataset():
                        'lat_step': 0.01,
                        'lon_step': 0.01},
                   'set_time': 
-                      {'time_date': '2020-07-02T18:30:00.000000000'}                   
+                      {'starting_time': '2020-07-02T18:30:00.000000000',
+                       'ending_time': '2020-07-02T18:30:00.000000000'}            
                   }
     output_vars = read.extract_data_from_NetCDF_input_file(config_dict)
     assert [var.dims == ('deptht', 'y', 'x') for var in output_vars]

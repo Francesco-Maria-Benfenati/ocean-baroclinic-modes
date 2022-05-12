@@ -239,7 +239,8 @@ def extract_data_from_NetCDF_input_file(config_param):
               'longitude_min': -min value of longitude-, 
               'longitude_max': -max value of longitude-},
          'set_time': 
-             {'time_date': -time at which data must be computed-},
+             {'starting_time': -averaging time period beginning-,
+              'ending_time': -averaging time period ending-},
          'set_variables': 
              {'temperature_name': -name of temperature in NetCDF file-,
               'salinity_name': -name of salinity in NetCDF file-}
@@ -260,10 +261,10 @@ def extract_data_from_NetCDF_input_file(config_param):
     depth : 'xarray.core.variable.Variable'
         depth array which has become of same dimension of
         temperature and salinity (one time step)
-    temperature : 'xarray.core.variable.Variable'
-        temperature 3D array (one time step)
-    salinity : 'xarray.core.variable.Variable'
-        salinity 3D array (one time step)
+    mean_temperature : 'xarray.core.variable.Variable'
+        time-averaged temperature 3D array (one time step)
+    mean_salinity : 'xarray.core.variable.Variable'
+        time-averaged salinity 3D array (one time step)
     The array dimensions are depth, latitude and longitude.
     """
     
@@ -301,8 +302,10 @@ def extract_data_from_NetCDF_input_file(config_param):
                                                          set_domain)
     # Call external function for looking for the time period wanted.
     set_time =  config_param['set_time']
-    time_date = set_time['time_date']
-    time_step = find_time_step(time, time_date)
+    start_time = set_time['starting_time']
+    end_time = set_time['ending_time']
+    start_tstep = find_time_step(time, start_time)
+    end_tstep = find_time_step(time, end_time)
     
     #-------------------------------------------------------------------
     # Store temperature and salinity, taking only the time step and the
@@ -321,14 +324,19 @@ def extract_data_from_NetCDF_input_file(config_param):
                                                            lat_dim,
                                                            lon_dim, 
                                                            ...        )
-    # Store temperature and salinity values for the desired time instant.
-    temperature = transposed_temp[time_step, :, 
+    # Store temperature and salinity values for the desired time period.
+    temperature = transposed_temp[start_tstep:end_tstep+1, :, 
                                   lat_min:lat_max+1, lon_min:lon_max+1]
-    salinity = transposed_sal[time_step, :, 
+    salinity = transposed_sal[start_tstep:end_tstep+1, :, 
                               lat_min:lat_max+1, lon_min:lon_max+1]
+    
+    # Average temp and sal in time.
+    mean_temperature = np.mean(temperature, axis = 0)
+    mean_salinity = np.mean(salinity, axis = 0)
     
     #-------------------------------------------------------------------
     # Store depth as an array with dimensions as temp and sal.
+    # (This will be useful for computing potential density)
     #-------------------------------------------------------------------
     # Compute lengths
     lat_length = lat_max + 1 - lat_min
@@ -340,8 +348,8 @@ def extract_data_from_NetCDF_input_file(config_param):
     for i in range(depth_length):
         depth_3D[i,:,:] = np.tile(depth[i], (lat_length, lon_length)) 
     # Create xarray.
-    depth_xarray =  xarray.Variable(temperature.dims, depth_3D)
+    depth_xarray =  xarray.Variable(mean_temperature.dims, depth_3D)
          
     in_data.close()
-    # Return temperature and salinity arrays
-    return depth_xarray, temperature, salinity
+    # Return temperature and salinity arrays (averaged in time)
+    return depth_xarray, mean_temperature, mean_salinity
