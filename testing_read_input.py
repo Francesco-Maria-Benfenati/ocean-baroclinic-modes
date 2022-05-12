@@ -8,6 +8,8 @@ Created on Thu Apr  7 16:13:54 2022
 # THIS FILE INCLUDES PART OF THE TESTS FOR FUNCTIONS IMPLEMENTED
 # IN COMPUTING THE BAROCLINIC ROSSBY RADIUS ...
 # ======================================================================
+import numpy as np
+import pandas as pd
 
 #=======================================================================
 # Testing functions for reading input config and data files.
@@ -84,3 +86,43 @@ def test_JSON_incoherent_keys():
         assert True
     else: 
         assert False
+        
+        
+#-----------------------------------------------------------------------
+#                       Testing find_time_step()
+#-----------------------------------------------------------------------
+# Test if function find_time_step() gives err when time array is empty.
+def test_find_time_when_empty_array():
+    time = pd.to_datetime([])
+    user_time = '2021-01-05 12:00:00'
+    try: 
+        read.find_time_step(time, user_time)
+    except ValueError:
+        assert True
+    else:
+        assert False
+        
+        
+# Test if function find_time_step() gives err when no value is found.
+def test_find_time_no_value_found():
+    time = np.array(['2025-12-31 12:00:00'], dtype='datetime64')
+    user_time = '2021-01-05 12:00:00'
+    try: 
+        read.find_time_step(time, user_time)
+    except ValueError:
+        assert True
+    else:
+        assert False
+    
+ 
+# Test if function find_time_step() gives error when the same time
+# value is found more than once.
+def test_find_time_with_repeated_values():
+    time = np.array(['2021-01-05 12:00:00', 
+                     '2021-01-05 12:00:00' ], dtype='datetime64')
+    user_time = '2021-01-05 12:00:00'
+    try: 
+        read.find_time_step(time, user_time)
+    except ValueError:
+        assert True
+    else: assert False

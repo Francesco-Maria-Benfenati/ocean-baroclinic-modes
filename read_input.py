@@ -10,6 +10,8 @@ Created on Thu Apr  7 16:06:25 2022
 # containing Potential Temperature & Salinity fields.
 # ======================================================================       
 import json
+import numpy as np
+import pandas as pd
 
 
 def read_JSON_config_file( file_name,
@@ -96,3 +98,45 @@ def read_JSON_config_file( file_name,
     
     # Return dictionary containing configuration parameters.          
     return config_param
+
+
+def find_time_step(time, user_time):
+    """
+    Find the index corresponding to the time step wanted by the user.
+
+    Arguments
+    ---------
+    time : <class 'numpy.ndarray'>
+        time array
+    user_time : 'str'
+        user time instant expressed as a string
+
+    Raises
+    ------
+    ValueError
+        if the wanted time step has not been found within the array.
+       - or -
+        if more than one index are found corresponding to the 
+        wanted time date.
+
+    Returns
+    -------
+    time_step : 'int'
+        index corresponding to the time date looked for.
+    """
+
+    # Convert user time into pandas datetime.
+    time_date = pd.to_datetime(user_time, errors='raise')
+    # # Find index corresponding to user time date.
+    time_index = np.where(time == time_date)[0]
+    # Check if index has been found or if more than one has been found.
+    if time_index.size == 0 : 
+        raise ValueError(
+            'Time step wanted has not been found within the dataset.')
+    elif time_index.size > 1:
+        raise ValueError(
+             'There are more time steps with the same values:\
+                 indeces array:', time_index)
+    # Store index as int and return it.
+    time_step = int(time_index)
+    return time_step
