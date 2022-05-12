@@ -126,3 +126,51 @@ def test_find_time_with_repeated_values():
     except ValueError:
         assert True
     else: assert False
+    
+    
+#-----------------------------------------------------------------------
+#                       Testing find_boundaries()
+#-----------------------------------------------------------------------
+
+
+# Test if find_boundaries() gives error when arrays are empty.
+def test_find_boundaries_when_empty_array():
+    lat = np.array([])
+    lon = np.array([])
+    set_domain = {'lat_min' : 30.0, 'lat_max' : 50.,
+                  'lon_min' : -38,  'lon_max' : -18,
+                  'lat_step': 0.5,  'lon_step': 0.5 }
+    try:
+        read.find_boundaries(lat, lon, set_domain)
+    except ValueError:
+        assert True
+    else: assert False
+    
+    
+# Test if find_boundaries() gives error when no value is found.
+def test_find_boundaries_no_value_found():
+    lat = np.array([20.0, 100.0])
+    lon = np.array([-57.0, -122])
+    set_domain = {'lat_min' : 30.0, 'lat_max' : 50.,
+                  'lon_min' : -38,  'lon_max' : -18,
+                  'lat_step': 0.5,  'lon_step': 0.5 }
+    try:
+        read.find_boundaries(lat, lon, set_domain)
+    except ValueError:
+        assert True
+    else: assert False
+
+
+# Test if find_boundaries() gives error if values are not 
+# exactly the same.
+def test_find_boundaries_precision():
+    lat = np.array([30.1, 50.2], dtype = float)
+    lon = np.array([-18.01, -38.005,], dtype = float)
+    set_domain = {'lat_min' : 30.0, 'lat_max' : 50.,
+                  'lon_min' : -38,  'lon_max' : -18,
+                  'lat_step': 0.0,  'lon_step': 0.0 }
+    try:
+        read.find_boundaries(lat, lon, set_domain)
+    except ValueError:
+        assert True
+    else: assert False

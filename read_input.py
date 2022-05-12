@@ -140,3 +140,76 @@ def find_time_step(time, user_time):
     # Store index as int and return it.
     time_step = int(time_index)
     return time_step
+
+
+def find_boundaries(lat, lon, set_domain):
+    """
+    Find the indeces corresponding to lat and lon boundary values.
+
+    Arguments
+    ---------
+    lat : <class 'numpy.ndarray'>
+        latitude array.
+    lon : <class 'numpy.ndarray'>
+        longitude array.
+    set_domain : <class 'dict'>
+        dictionary containing, in this order,
+        lat_min, lat_max, lon_min and lon_max values.
+
+    Raises
+    ------
+    ValueError
+        if extremants values do not correspond to values within the
+        lat and lon arrays.
+
+    Returns
+    -------
+    lat_min_index, lat_max_index, lon_min_index, lon_max_index : 'int'
+        indeces corresponding to lat and lon extremants, 
+        as set by the user.
+    """
+    
+    # Flatten lat and lon arrays
+    flat_lat = np.unique(lat)
+    flat_lon = np.unique(lon)
+    # Create array containing user lat & lon extremant values.
+    domain_values = [val for val in set_domain.values()]
+    lat_step = domain_values[4]
+    lon_step = domain_values[5]
+    # Find indeces corresponding to extremant values.
+    # lat_min = np.where(flat_lat == domain_values[0])[0]
+    # lat_max = np.where(flat_lat == domain_values[1])[0]
+    # lon_min = np.where(flat_lon == domain_values[2])[0]
+    # lon_max = np.where(flat_lon == domain_values[3])[0]
+    where_lat_min = np.logical_and(
+                                   flat_lat >= domain_values[0] - lat_step,
+                                   flat_lat <= domain_values[0] + lat_step )
+    lat_min = np.where(where_lat_min)[0]
+    where_lat_max = np.logical_and(
+                                   flat_lat >= domain_values[1] - lat_step,
+                                   flat_lat <= domain_values[1] + lat_step )
+    lat_max = np.where(where_lat_max)[0]
+    where_lon_min = np.logical_and(
+                                   flat_lon >= domain_values[2] - lon_step,
+                                   flat_lon <= domain_values[2] + lon_step )
+    lon_min = np.where(where_lon_min)[0]
+    where_lon_max = np.logical_and(
+                                   flat_lon >= domain_values[3] - lon_step,
+                                   flat_lon <= domain_values[3] + lon_step )
+    lon_max = np.where(where_lon_max)[0]
+    
+    # Check if indeces have been found.
+    extremes_indeces = [lat_min, lat_max, lon_min, lon_max] 
+    for ndarray in extremes_indeces:
+        if ndarray.size == 0 : 
+            raise ValueError(
+                'Extremants values for latitude and longitude\
+                 do not correspond to values within the arrays.\
+                 They may be inaccurate or out of range')
+                
+    # Store indeces as int.
+    lat_min_index = int(lat_min)
+    lat_max_index = int(lat_max)
+    lon_min_index = int(lon_min)
+    lon_max_index = int(lon_max)
+    return lat_min_index, lat_max_index, lon_min_index, lon_max_index
