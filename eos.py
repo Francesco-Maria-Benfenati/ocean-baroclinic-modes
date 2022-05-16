@@ -210,8 +210,8 @@ def compute_BruntVaisala_freq_sq(z, density):
         raise ValueError('depth must be 1D')
         
     len_z = len(z)
-    # Defining value of gravitational acceleration.   # dopo reinserire i nan
-    g = 9.81
+    # Defining value of gravitational acceleration.
+    g = 9.806
     # Create empty array for squared Brunt-Vaisala frequency, N^2.
     N2 = np.empty(len_z)
     
