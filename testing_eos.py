@@ -362,5 +362,6 @@ def test_compute_BVsq_values_NOT_adjacent_to_NaNs():
       trial_dim = ('depth')
       trial_dens = xarray.Variable(trial_dim, density)
       output_N2 = compute_BVsq(depth, trial_dens)[0]
-      trial_NaN_arr = [np.nan, np.nan, np.nan, 2.4525, np.nan, np.nan]
-      assert np.array_equal(output_N2.values, trial_NaN_arr, equal_nan=True)
+      where_NaNs = np.where(np.isnan(output_N2.values))[0]
+      expected_indeces = np.array([0, 1, 2, 4, 5])
+      assert np.array_equal(where_NaNs, expected_indeces)
