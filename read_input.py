@@ -71,7 +71,7 @@ def read_JSON_config_file( file_name,
     # Print project title from JSON file to log file.
     project_title = user_dict['project_name']
     print('===========================================================')
-    print(' * ', project_title, ' * ')
+    print('| * ', project_title, ' * ')
     print('===========================================================')
     
     # Create empty dictionary for configuration parameters.
