@@ -79,21 +79,25 @@
             "value":"35",
             "type":"float",
             "description":"value of minimum latitude in °N (°S are negative)"
+            "note":"set lat_min = lat_max if punctual profile is considered."
           },
          {  "name":"lat_max",
             "value":"40.0",
             "type":"float",
             "description":"value of maximum latitude in °N (°S are negative)"
+            "note":"set lat_max = lat_min if punctual profile is considered."
           },
          {  "name":"lon_min",
             "value":"-30.0",
             "type":"float",
             "description":"value of minimum longitude in °E (°W are negative)"
+            "note":"set lon_min = lon_max if punctual profile is considered."
           },
          {  "name":"lon_max",
             "value":"-25.0",
             "type":"float",
             "description":"value of maximum longitude in °E (°W are negative)"
+            "note":"set lon_max = lon_min if punctual profile is considered."
           },
          {  "name":"lat_step",
             "value":"0.03",

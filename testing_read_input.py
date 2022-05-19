@@ -409,6 +409,44 @@ def test_NetCDF_one_tstep_given():
         assert False
         
 
+# Test if extract_data_from_NetCDF_input_file() works well when min
+# and max latitude/longitude are the same (i.e. punctual profiles).
+def test_NetCDF_punctual_profiles_wanted():
+    config_dict = {'set_paths': 
+                      {'input_file_name': 'azores_Jan2021.nc.nc', 
+'indata_path':
+         '/mnt/d/Physics/SubMesoscale_Ocean/SOFTWARE_Rossby_Radius/Datasets/'},
+                   'set_variables': 
+                       {'temperature_name': 'thetao', 
+                        'salinity_name': 'so',
+                        'lat_var_name': 'latitude', 
+                        'lon_var_name': 'longitude', 
+                        'depth_var_name': 'depth', 
+                        'time_var_name': 'time'}, 
+                   'set_dimensions': 
+                       {'lat_name': 'latitude', 
+                        'lon_name': 'longitude', 
+                        'depth_name': 'WRONG_DIMENSION_NAME', 
+                        'time_name': 'time'},
+                   'set_domain': 
+                      {'lat_min': 35.0, 
+                       'lat_max': 35.0, 
+                       'lon_min': -25.0, 
+                       'lon_max': -25.0,
+                       'lat_step': 0.0, 
+                       'lon_step': 0.0}, 
+                   'set_time': 
+                      {'starting_time': '2021-01-01 12:00:00',
+                       'ending_time': '2021-01-31 12:00:00'}                      
+                   }
+    try:
+        read.extract_data_from_NetCDF_input_file(config_dict)
+    except Exception:
+        assert True
+    else: 
+        assert False
+        
+        
 # Test if extract_data_from_NetCDF_input_file() output type is correct
 # when handling different datasets (one time step given).
 def test_NetCDF_correct_output_type_when_different_dataset():
