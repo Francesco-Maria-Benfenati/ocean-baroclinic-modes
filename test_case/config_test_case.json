@@ -3,7 +3,7 @@
    {"title":"set_paths",
       "items": [
         {  "name":"experiment_name",
-           "value":"AZORES_JAN21",
+           "value":"Azores_JAN21",
            "type":"string",
            "description":"experiment name characterizing output products name."
          },
@@ -18,8 +18,8 @@
             "description":"name of the input NetCDF data file."
           },
          {  "name":"indata_path",
-            "value":"/mnt/d/Physics/SubMesoscale_Ocean/SOFTWARE_Rossby_Radius/Datasets/",
-            "value_on_windows":"D:\\Physics\\SubMesoscale_Ocean\\SOFTWARE_Rossby_Radius\\Datasets\\",
+            "value":"test_case/dataset_azores/",
+            "value_on_windows":"test_case\\dataset_azores\\",
             "type":"string",
             "description":"path leading to the input NetCDF data file. If on WINDOWS, please substitute backslash with \\"
           }

@@ -22,7 +22,7 @@ period_name = 'Jan2021'
 #                               DEFINE REGIONS OF INTEREST.
 # ----------------------------------------------------------------------
 azores = {
-  'name': 'AZORES',
+  'name': 'azores',
   'lon_min': '-38',
   'lon_max': '-18',
   'lat_min': '30',
