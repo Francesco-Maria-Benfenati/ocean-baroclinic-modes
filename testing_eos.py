@@ -276,7 +276,7 @@ def test_compute_BVsq_when_lenDepth_is_greater_than_lenDens(arr_end):
       trial_dens = xarray.Variable(trial_dim, density)
       try:
           compute_BVsq(depth, trial_dens)
-      except IndexError:
+      except ValueError:
           assert True
       else:
           assert False
@@ -340,28 +340,17 @@ def test_compute_BVsq_when_empty_depth():
           assert True
       else:
           assert False  
-          
-          
-# Test if in compute_BVsq() values adjacent to NaNs are turned 
-# into NaNs, too,  because of the algorithm.
-def test_compute_BVsq_values_adjacent_to_NaNs():
-      depth = np.arange(1, 7)
-      density = [1, np.nan, 3, np.nan, 5, np.nan]
-      trial_dim = ('depth')
-      trial_dens = xarray.Variable(trial_dim, density)
-      output_N2 = compute_BVsq(depth, trial_dens)[0]
-      trial_NaN_arr = np.full(6, np.nan)
-      assert np.array_equal(output_N2.values, trial_NaN_arr, equal_nan=True)
+    
       
-      
-# Test if in compute_BVsq() values NOT adjacent to NaNs are NOT turned 
-# into NaNs, due to the algorithm.
+# Test if in compute_BVsq() values which are NaNs becomes values due
+# to interpolation.
 def test_compute_BVsq_values_NOT_adjacent_to_NaNs():
       depth = np.arange(1, 7)
       density = [1, np.nan, 3, 4, 5, np.nan]
       trial_dim = ('depth')
       trial_dens = xarray.Variable(trial_dim, density)
       output_N2 = compute_BVsq(depth, trial_dens)[0]
+      print(output_N2)
       where_NaNs = np.where(np.isnan(output_N2.values))[0]
-      expected_indeces = np.array([0, 1, 2, 4, 5])
+      expected_indeces = np.array([])
       assert np.array_equal(where_NaNs, expected_indeces)

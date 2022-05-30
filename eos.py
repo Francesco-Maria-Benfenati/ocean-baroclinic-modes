@@ -16,7 +16,7 @@ Created on Fri Apr 22 10:25:22 2022
 # ======================================================================
 import xarray
 import numpy as np
-
+from scipy import interpolate
 
 def compute_density(z, temp, S):
     """
@@ -177,7 +177,7 @@ def compute_BruntVaisala_freq_sq(z, density):
         if input density is not of type 'xarray.core.variable.Variable'
         - or - if z is not of type 'numpy.ndarray'
     IndexError
-        if input density has length smaller than z along depth direction
+        if input arrays are empty
 
     Returns
     -------
@@ -190,7 +190,7 @@ def compute_BruntVaisala_freq_sq(z, density):
     (1999) 'Le cause dinamiche della stratificazione verticale nel
     mediterraneo'
 
-    N = (- g/rho_s * ∂rho_s/∂z)^1/2  with g = 9.81 m/s^2,
+    N = (- g/rho_0 * ∂rho_s/∂z)^1/2  with g = 9.806 m/s^2,
 
     where rho_s is the density mean vertical profile,
     depending only on z.
@@ -212,10 +212,13 @@ def compute_BruntVaisala_freq_sq(z, density):
 
     len_z = len(z)
     # Defining value of gravitational acceleration.
-    g = 9.806
+    g = 9.806 # (m/s^2)
+    # Defining value of reference density rho_0.
+    rho_0 = 1025 #(kg/m^3)
     # Create empty array for squared Brunt-Vaisala frequency, N^2.
     N2 = np.empty(len_z)
-
+    
+    
     # Compute density mean vertical profile, ignoring NaNs.
     # Mean axis is set depending on input density number of dimensions.
     if len(density.dims) == 1: # 1D density
@@ -226,21 +229,31 @@ def compute_BruntVaisala_freq_sq(z, density):
         mean_dens = np.nanmean(density, axis=(1,2))# 3D density
 
     # Check if density has same length as z along depth direction.
-    if len(mean_dens) > len_z:
+    if len(mean_dens) != len_z:
         raise ValueError('legth mismatch along depth direction.')
 
+    # Linear Interpolation along z axis (only if depth length is > 2).
+    if len_z > 2:
+        where_nan_dens = np.where(np.isnan(mean_dens))
+        dens_nan_excl = np.delete(mean_dens, where_nan_dens, None)
+        depth_nan_excl = np.delete(z, where_nan_dens, None)
+        
+        f = interpolate.interp1d(depth_nan_excl, dens_nan_excl, 
+                                  fill_value='extrapolate', kind='linear')
+        mean_dens = f(z)
+    
     # Compute  N^2 for the surface level (forward finite difference).
-    N2[0] = ( (- g/mean_dens[0])
+    N2[0] = ( (- g/rho_0)
              *(mean_dens[1] - mean_dens[0])/(z[1] - z[0]) )
-    # Compute  N^2 for the surface level (backward finite difference).
-    N2[-1] = ( (- g/mean_dens[-1])
-              *(mean_dens[-2] - mean_dens[-1])/(z[-2] - z[-1]) )
+    # Compute  N^2 for the surface level (forward finite difference).
+    N2[-1] = ( (- g/rho_0)
+              *(mean_dens[-1] - mean_dens[-2])/(z[-1] - z[-2]) )
 
     if len_z > 2:
         # Compute  N^2 for the surface level (centered finite difference).
         # Do it only if len
         for i in range(1, len_z-1):
-             N2[i] = ( (- g/mean_dens[i])
+             N2[i] = ( (- g/rho_0)
                       *(mean_dens[i+1] - mean_dens[i-1])
                       /(z[i+1] - z[i-1]) )
 
