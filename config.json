@@ -1,4 +1,4 @@
-{"project_name": "Computing the ocean baroclinic modes of motion",
+{"project_name": "Computing ocean baroclinic modes of motion",
  "sections": [
    {"title":"set_paths",
       "items": [
@@ -124,7 +124,9 @@
             "type":"string",
             "description":"ending value of time period during which temp and sal averages must be computed.",
             "note":"set ending_time = starting_time if only one time step is considered."
-          },
+          }
+      ]
+   },
   { "title": "set_modes",
       "items": [
          {   "name": "n_modes",
