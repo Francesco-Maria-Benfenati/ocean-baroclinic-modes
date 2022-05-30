@@ -78,25 +78,25 @@
          {  "name":"lat_min",
             "value":"35",
             "type":"float",
-            "description":"value of minimum latitude in °N (°S are negative)"
+            "description":"value of minimum latitude in °N (°S are negative)",
             "note":"set lat_min = lat_max if punctual profile is considered."
           },
          {  "name":"lat_max",
             "value":"40.0",
             "type":"float",
-            "description":"value of maximum latitude in °N (°S are negative)"
+            "description":"value of maximum latitude in °N (°S are negative)",
             "note":"set lat_max = lat_min if punctual profile is considered."
           },
          {  "name":"lon_min",
             "value":"-30.0",
             "type":"float",
-            "description":"value of minimum longitude in °E (°W are negative)"
+            "description":"value of minimum longitude in °E (°W are negative)",
             "note":"set lon_min = lon_max if punctual profile is considered."
           },
          {  "name":"lon_max",
             "value":"-25.0",
             "type":"float",
-            "description":"value of maximum longitude in °E (°W are negative)"
+            "description":"value of maximum longitude in °E (°W are negative)",
             "note":"set lon_max = lon_min if punctual profile is considered."
           },
          {  "name":"lat_step",
@@ -124,6 +124,13 @@
             "type":"string",
             "description":"ending value of time period during which temp and sal averages must be computed.",
             "note":"set ending_time = starting_time if only one time step is considered."
+          },
+  { "title": "set_modes",
+      "items": [
+         {   "name": "n_modes",
+             "value": "3",
+             "type": "int",
+             "description": "number of vertical baroclinic modes of motion to be computed."
           }
       ]
    }
