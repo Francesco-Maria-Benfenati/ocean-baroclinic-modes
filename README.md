@@ -82,7 +82,7 @@ The project is divided into blocks, each one with a different function:
 - The main file [main.py](https://github.com/Francesco-Maria-Benfenati/ocean-baroclinic-modes-1.0/blob/main/main.py) recalls the so far mentioned functions, in order to compute the $R_n$ and $\Phi_n$ profiles. Furthermore, the output data are written to a NetCDF file and plotted. Output products are saved in a directiory within the same one as the input dataset.
 - The [requirements](https://github.com/Francesco-Maria-Benfenati/ocean-baroclinic-modes-1.0/blob/main/pkgs_required.txt) file contains libraries and packages to be installed for running the main file. See the ["Get Started"](#get-started) section for how to install them.
 - In folder ["test_case"](https://github.com/Francesco-Maria-Benfenati/ocean-baroclinic-modes-1.0/tree/main/test_case) a test case is provided to the user as a Get Started! material (see below [section](#get-started)).
-- Lastly, a brief [PDF presentation]() is provided, recapping part of the contents in the above sections. Moreover, numerical results are shown in comparison to the analytical ones obtained by LaCasce (2012) [^2] in case of constant or exponential Brunt-Vaisala frequency profiles.
+- Lastly, a brief [PDF presentation](https://github.com/Francesco-Maria-Benfenati/ocean-baroclinic-modes-1.0/blob/main/introducing_OBM-1.0.pdf) is provided, recapping part of the contents in the above sections. Moreover, numerical results are shown in comparison to the analytical ones obtained by LaCasce (2012) [^2] in case of constant or exponential Brunt-Vaisala frequency profiles.
 
 ## User Interface
 The project is designed for the user to get the results following only a few steps:
