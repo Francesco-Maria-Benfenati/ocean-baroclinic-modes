@@ -58,8 +58,11 @@ The numerical method implemented here aims to find the eigenvalues  and eigenvec
 1. The Brunt-Vaisala frequency is linearly interpolated on a new equally spaced  depth grid (1 m grid step).
 2. The Brunt-Vaisala frequency values are scaled (so that they go from 0 to 1), in order for the algorithm to work at its best. Then, problem parameter S (depth-dependent) is computed as in eq. [(2)](https://latex.codecogs.com/gif.image?\dpi{100}S(z)=\frac{N^2(z)H^2}{f_0^2L^2}\quad,).
 3. The *left* finite difference matrix  corresponding to operator $\frac{d^2}{dz^2}$ and the *right* diagonal matrix related to *S* are computed. 
-4. The eigenvalues **discretized problem** 
-![equation](https://latex.codecogs.com/gif.image?\dpi{110}\frac{1}{12dz^{2}}\begin{bmatrix}0&0&\0&0&0&0&\dots&0\\\12&-24&12&0&\dots&0&\dots&0\\\\-1&16&-30&16&-1&0&\dots&0\\\0&-1&16&-30&16&\dots&\dots&0\\\\\vdots&\ddots&\ddots&\ddots&\ddots&\dots&\dots&\vdots\\\0&\dots&\dots&0&0&12&-24&12&space;\\\0&\dots&0&0&0&0&0&0\end{bmatrix}\begin{bmatrix}w_0\\\w_1\\\w_2\\\\\vdots\\\\\vdots\\\w_{n-1}\\\w_n\end{bmatrix}=-\lambda\begin{bmatrix}S_0&0&0&0&\dots&\dots&0\\\0&S_1&0&0&\dots&\dots&0\\\0&0&S_2&0&\dots&\dots&0\\\0&0&0&S_3&\dots&\dots&0\\\\\vdots&\ddots&\ddots&\ddots&\ddots&\ddots&\vdots\\\0&\dots&\dots&\dots&0&S_{n-1}&0\\\0&\dots&\dots&\dots&0&0&S_n\end{bmatrix}\begin{bmatrix}w_0\\\w_1\\\w_2\\\\\vdots\\\\\vdots\\\w_{n-1}\\\w_n\end{bmatrix})is solved, where *n* is the number of points along depth axis, *dz* is the scaled grid step. Boundary Conditions are implemented setting the first and last lines of the finite difference matrix (L.H.S.) equal to 0.
+The eigenvalues **discretized problem** is solved:
+
+![equation](https://latex.codecogs.com/gif.image?\dpi{110}\frac{1}{12dz^{2}}\begin{bmatrix}0&0&\0&0&0&0&\dots&0\\\12&-24&12&0&\dots&0&\dots&0\\\\-1&16&-30&16&-1&0&\dots&0\\\0&-1&16&-30&16&\dots&\dots&0\\\\\vdots&\ddots&\ddots&\ddots&\ddots&\dots&\dots&\vdots\\\0&\dots&\dots&0&0&12&-24&12&space;\\\0&\dots&0&0&0&0&0&0\end{bmatrix}\begin{bmatrix}w_0\\\w_1\\\w_2\\\\\vdots\\\\\vdots\\\w_{n-1}\\\w_n\end{bmatrix}=-\lambda\begin{bmatrix}S_0&0&0&0&\dots&\dots&0\\\0&S_1&0&0&\dots&\dots&0\\\0&0&S_2&0&\dots&\dots&0\\\0&0&0&S_3&\dots&\dots&0\\\\\vdots&\ddots&\ddots&\ddots&\ddots&\ddots&\vdots\\\0&\dots&\dots&\dots&0&S_{n-1}&0\\\0&\dots&\dots&\dots&0&0&S_n\end{bmatrix}\begin{bmatrix}w_0\\\w_1\\\w_2\\\\\vdots\\\\\vdots\\\w_{n-1}\\\w_n\end{bmatrix})
+
+where *n* is the number of points along depth axis, *dz* is the scaled grid step. Boundary Conditions are implemented setting the first and last lines of the finite difference matrix (L.H.S.) equal to 0.
 
 4. Eigenvectors are found integrating eq. [(7)](https://latex.codecogs.com/gif.image?\dpi{110}\frac{d^2w}{dz^2}=-\lambda{S}{w}\quad\Big\(B.C.\quad{w=0}\quad{at}\quad{z=0,1}\Big\)) through *Numerov's* numerical method
 ![equation](https://latex.codecogs.com/gif.image?\dpi{110}w_{n&plus;1}=\left(\frac{2-\frac{10\Delta{t^2}}{12}\lambda{S_n}}{1+\frac{\Delta{t^2}}{12}{\lambda}S_{n&plus;1}}\right)w_n-\left(\frac{1+\frac{\Delta{t^2}}{12}{\lambda}S_{n-1}}{1+&space;\frac{\Delta{t^2}}{12}{\lambda}S_{n&plus;1}}&space;\right)w_{n-1})
@@ -183,12 +186,12 @@ Coherently with the [configuration file](https://github.com/Francesco-Maria-Benf
 	python download_test_case_dataset.py
 	```
 >**IMPORTANT**: YOUR USERNAME AND PASSWORD WILL NOT BE SAVED!
-5. For running the software you may just get into the software directory again and run the main script.
+4. For running the software you may just get into the software directory again and run the main script.
 	```
 	cd ..
 	python main.py test_case/config_test_case.json
 	```
-6. Lastly, the **output products** will be within your dataset directory, in a sub-directory named as your experiment. Here, you will find the output file and the plots of the variables vertical profile. You can esplore the output file using *ncdump* utility.
+5. Lastly, the **output products** will be within your dataset directory, in a sub-directory named as your experiment. Here, you will find the output file and the plots of the variables vertical profile. You can esplore the output file using *ncdump* utility.
 	```
 	cd test_case/dataset_azores/Azores_JAN21
 	ncdump -h Azores_JAN21_output.nc
