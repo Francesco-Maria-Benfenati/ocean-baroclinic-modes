@@ -1,4 +1,5 @@
 {"project_name": "ocean baroclinic modes of motion",
+ "version": "1.0",
  "sections": [
    {"title":"set_paths",
       "items": [

@@ -1,4 +1,5 @@
-﻿# ocean-baroclinic-modes
+﻿# [ocean-baroclinic-modes-1.0](https://github.com/Francesco-Maria-Benfenati/ocean-baroclinic-modes-1.0)
+
 This project is for computing the *baroclinic vertical structure function* and the *baroclinic Rossby radius* for  each mode of motion, in an ocean region of interest to the user.
 
 ## Baroclinic Modes [^1]
@@ -177,7 +178,6 @@ Coherently with the [configuration file](https://github.com/Francesco-Maria-Benf
 
 2. Now, a TEST CASE is provided to you for a better understanding of how to use the software. Before proceeding, you need to create a *CMEMS account*. You may find an easy way [here](https://resources.marine.copernicus.eu/registration-form).
 3.  Get into the *test_case* directory and download your *test_case dataset* through the appropriate script. This may take a while. Your CMEMS username and password will be asked to you.
->
 	```
 	cd test_case
 	python download_test_case_dataset.py
