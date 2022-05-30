@@ -10,7 +10,9 @@ Created on Thu Apr  7 16:10:28 2022
 # ======================================================================
 import sys
 import subprocess 
+import xarray
 import numpy as np
+import matplotlib.pyplot as plt
 from netCDF4 import Dataset
 
 from OBM import eos
@@ -149,6 +151,7 @@ new_depth_var = out_file.createVariable('equally_spaced_depth_grid',
 new_depth_var[:] = np.linspace(0, len(R[:,0])-1, len(R[:,0]))
 new_depth_var.valid_min = 0
 new_depth_var.valid_max = len(R[:,0])-1
+new_depth_var.grid_step = '1m'
 new_depth_var.unit_long = "meters"
 new_depth_var.units = 'm'
 new_depth_var.long_name = "depth below sea level" 
@@ -220,3 +223,73 @@ out_file.lon_max = config_parameters['set_domain']['lon_max']
 
 # Close output file.
 out_file.close()
+
+# ======================================================================
+#               *  SAVE PLOTS WITHIN THE OUTPUT DIRECTORY  *
+# ======================================================================
+# Open output data file and store variables.
+data_to_plot = xarray.open_dataset(output_path + output_name)
+depth = data_to_plot.variables['depth']
+new_depth = data_to_plot.variables['equally_spaced_depth_grid']
+time = data_to_plot.variables['time']
+variables_to_plot = [data_to_plot.variables['mean_density'], 
+                     data_to_plot.variables['BVfreq'],
+                     data_to_plot.variables['R'],
+                     data_to_plot.variables['phi']          ]
+# Modify rossby radius modes so that barotropic mode legend
+# is not shown.
+data_to_plot.variables['R'].attrs['modes'][0] = '_nolegend_'
+# Change rossby radius title plot.
+data_to_plot.variables['R'].attrs[
+                      'long_name'] = 'baroclinic Rossby radius of deformation'
+
+# Save plots for each variable: names and units are set as in out file.
+# -------------------------------------- 
+# Functions defined on 'depth_1D' grid.
+# --------------------------------------
+for var in variables_to_plot[:2]:
+    fig, ax = plt.subplots(figsize=(8, 8))
+    for column in var[0,0,:]:
+        ax.plot(column, depth, linewidth = 1.5)
+    ax.grid(alpha = 0.5, color='gray', linestyle='--')
+    ax.set_xlabel('%s (%s)\n %s, %s' %(var.attrs['long_name'], 
+                                        var.attrs['units'],
+                                        data_to_plot.attrs['region'], 
+                                        data_to_plot.attrs['period']), 
+                                                labelpad = 15, fontsize = 12,
+                                                fontweight = 'bold'          )
+    ax.xaxis.set_label_position('top')
+    ax.xaxis.set_ticks_position('top')
+    ax.set_ylabel('depth (%s)' %(depth.attrs['units']), 
+                                                  fontsize = 12, labelpad = 10)
+    ax.invert_yaxis()
+    if var.attrs['modes'] != '':
+        ax.legend(var.attrs['modes'], loc='lower right')
+    fig.savefig(output_path + '%s.png' %(var.attrs['standard_name']), 
+                                                          bbox_inches='tight')
+# -------------------------------------- ---------------
+# Functions defined on 'equally_spaced_depth_grid' grid.
+# ------------------------------------------------------
+for var in variables_to_plot[2:]:
+    fig, ax = plt.subplots(figsize=(8, 8))
+    for column in var[0,0,:]:
+        ax.plot(column, new_depth, linewidth = 1.5)
+    ax.grid(alpha = 0.5, color='gray', linestyle='--')
+    ax.set_xlabel('%s (%s)\n %s, %s' %(var.attrs['long_name'], 
+                                        var.attrs['units'],
+                                        data_to_plot.attrs['region'], 
+                                        data_to_plot.attrs['period']), 
+                                                labelpad = 15, fontsize = 12,
+                                                fontweight = 'bold'          )
+    ax.xaxis.set_label_position('top')
+    ax.xaxis.set_ticks_position('top')
+    ax.set_ylabel('depth (%s)' %(depth.attrs['units']), 
+                                                 fontsize = 12, labelpad = 10)
+    ax.invert_yaxis()
+    if var.attrs['modes'] != '':
+        ax.legend(var.attrs['modes'], loc='lower right')
+    fig.savefig(output_path + '%s.png' %(var.attrs['standard_name']), 
+                                                          bbox_inches='tight')
+
+# Close output data file.
+data_to_plot.close()
