@@ -27,7 +27,7 @@ import hypothesis.strategies as st
 #       'arr_end' is the variable defining the end value
 #        of trial arrays.
 #-----------------------------------------------------------------------
-from eos import compute_density
+from OBM.eos import compute_density
 
 
 # Test if compute_density() gives 'xarray.Variable' type as output when
@@ -125,7 +125,7 @@ def test_compute_dens_when_different_input_dims(arr_end):
 #            number 1 is set in order not to have problems 
 #            dividing numbers by 0.
 #-----------------------------------------------------------------------
-from eos import compute_BruntVaisala_freq_sq as compute_BVsq
+from OBM.eos import compute_BruntVaisala_freq_sq as compute_BVsq
 
 
 # Test if compute_BVsq() gives error when input length is < 0 and

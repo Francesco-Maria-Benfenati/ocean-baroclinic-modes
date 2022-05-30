@@ -19,7 +19,7 @@ from  scipy.sparse.linalg import ArpackError
 # ----------------------------------------------------------------------
 #                   Testing compute_barocl_modes()
 # ----------------------------------------------------------------------
-from baroclinic_modes import compute_barocl_modes as modes
+from OBM.baroclinic_modes import compute_barocl_modes as modes
 
 
 # Test compute_barocl_modes() works with N2(z)=const.

@@ -16,7 +16,7 @@ import pandas as pd
 # Testing functions for reading input config and data files.
 # (See file 'read_input.py')
 #=======================================================================
-import read_input as read
+import OBM.read_input as read
 
 #-----------------------------------------------------------------------
 #                   Testing read_JSON_config_file()
