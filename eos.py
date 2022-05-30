@@ -190,10 +190,11 @@ def compute_BruntVaisala_freq_sq(z, density):
     (1999) 'Le cause dinamiche della stratificazione verticale nel
     mediterraneo'
 
-    N = (- g/rho_0 * ∂rho_s/∂z)^1/2  with g = 9.806 m/s^2,
+    N = (g/rho_0 * ∂rho_s/∂z)^1/2  with g = 9.806 m/s^2,
 
     where rho_s is the density mean vertical profile,
-    depending only on z.
+    depending only on z. (NOTE: here there is no '-' sign under square 
+    root, since axis z is oriented towards the bottom.)
     --------------------------------------------------------------------
     NOTE:
            Here, the SQUARE OF BRUNT-VAISALA FREQUENCY is computed
@@ -209,7 +210,11 @@ def compute_BruntVaisala_freq_sq(z, density):
     # Check if depth is a 1D array.
     if z.ndim > 1:
         raise ValueError('depth must be 1D')
-
+        
+    # Take absolute value of depth, so that to avoid trouble with depth
+    # sign convention.  
+    z = abs(z)
+    
     len_z = len(z)
     # Defining value of gravitational acceleration.
     g = 9.806 # (m/s^2)
@@ -218,7 +223,7 @@ def compute_BruntVaisala_freq_sq(z, density):
     # Create empty array for squared Brunt-Vaisala frequency, N^2.
     N2 = np.empty(len_z)
     
-    
+   
     # Compute density mean vertical profile, ignoring NaNs.
     # Mean axis is set depending on input density number of dimensions.
     if len(density.dims) == 1: # 1D density
@@ -243,17 +248,17 @@ def compute_BruntVaisala_freq_sq(z, density):
         mean_dens = f(z)
     
     # Compute  N^2 for the surface level (forward finite difference).
-    N2[0] = ( (- g/rho_0)
+    N2[0] = ((g/rho_0)
              *(mean_dens[1] - mean_dens[0])/(z[1] - z[0]) )
     # Compute  N^2 for the surface level (forward finite difference).
-    N2[-1] = ( (- g/rho_0)
+    N2[-1] = ( (g/rho_0)
               *(mean_dens[-1] - mean_dens[-2])/(z[-1] - z[-2]) )
 
     if len_z > 2:
         # Compute  N^2 for the surface level (centered finite difference).
         # Do it only if len
         for i in range(1, len_z-1):
-             N2[i] = ( (- g/rho_0)
+             N2[i] = ( (g/rho_0)
                       *(mean_dens[i+1] - mean_dens[i-1])
                       /(z[i+1] - z[i-1]) )
 
@@ -278,4 +283,4 @@ def compute_BruntVaisala_freq_sq(z, density):
     mean_dens_xarr.attrs = mean_dens_xarr_attrs
 
     # Return N2 absolute value, for avoiding depth sign conventions.
-    return abs(N2_xarray), mean_dens_xarr
+    return N2_xarray, mean_dens_xarr
