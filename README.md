@@ -1,9 +1,17 @@
 ﻿# [ocean-baroclinic-modes-1.0](https://github.com/Francesco-Maria-Benfenati/ocean-baroclinic-modes-1.0)
 
 This project is for computing the *baroclinic vertical structure function* and the *baroclinic Rossby radius* for  each mode of motion, in an ocean region of interest to the user.
+### Table of contents
+1. [Baroclinic Modes](#baroclinic-modes)
+2. [Numerical Method Implemented](#numerical-method-implemented)
+3. [Project Structure](#project-structure)
+4. [User Interface](#user-interface)
+	- [JSON configuration file](#json-configuration-file)
+	- [Dataset Requirements](#dataset-requirements)
+5. [Get Started!](#get-started)
 
-## Baroclinic Modes [^1]
-Ocean vertical stratification is a complex issue which may be studied through the analysis of the **dynamic baroclinic modes of motion** and their respective **baroclinic Rossby deformation radii**.
+## Baroclinic Modes 
+[^1] Ocean vertical stratification is a complex issue which may be studied through the analysis of the **dynamic baroclinic modes of motion** and their respective **baroclinic Rossby deformation radii**.
 For deriving these quantities, we start from the linearized *QuasiGeostrophic (QG)* equation of motion, describing the motion of the field geostrophic component resulting from the balance between pressure and Coriolis forces:
 
 ![equation](https://latex.codecogs.com/gif.image?\dpi{100}\frac{\partial}{\partial&space;t}\Big\[\frac{\partial^2p_0}{\partial&space;x^2}&plus;\frac{\partial^2p_0}{\partial&space;y^2}&plus;\frac{\partial}{\partial&space;z}\Big(\frac{1}{S}\frac{\partial&space;p_0}{\partial&space;z}\Big)\Big\]&plus;\beta\frac{\partial&space;p_0}{\partial&space;x}=0\quad,\qquad(1))
