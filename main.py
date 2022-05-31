@@ -270,11 +270,14 @@ for var in variables_to_plot[:2]:
 # -------------------------------------- ---------------
 # Functions defined on 'equally_spaced_depth_grid' grid.
 # ------------------------------------------------------
+zero_vline = False
 for var in variables_to_plot[2:]:
     fig, ax = plt.subplots(figsize=(8, 8))
     for column in var[0,0,:]:
         ax.plot(column, new_depth, linewidth = 1.5)
     ax.grid(alpha = 0.5, color='gray', linestyle='--')
+    if zero_vline == True:
+        ax.axvline(x=0, color = 'k', linewidth = 0.5)
     ax.set_xlabel('%s (%s)\n %s, %s' %(var.attrs['long_name'], 
                                         var.attrs['units'],
                                         data_to_plot.attrs['region'], 
@@ -290,6 +293,8 @@ for var in variables_to_plot[2:]:
         ax.legend(var.attrs['modes'], loc='lower right')
     fig.savefig(output_path + '%s.png' %(var.attrs['standard_name']), 
                                                           bbox_inches='tight')
-
+    zero_vline = True
+del(zero_vline)
+    
 # Close output data file.
 data_to_plot.close()
