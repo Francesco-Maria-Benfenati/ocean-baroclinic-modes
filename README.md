@@ -65,11 +65,16 @@ The eigenvalues **discretized problem** is solved:
 where *n* is the number of points along depth axis, *dz* is the scaled grid step. Boundary Conditions are implemented setting the first and last lines of the finite difference matrix (L.H.S.) equal to 0.
 
 4. Eigenvectors are found integrating eq. [(7)](https://latex.codecogs.com/gif.image?\dpi{110}\frac{d^2w}{dz^2}=-\lambda{S}{w}\quad\Big\(B.C.\quad{w=0}\quad{at}\quad{z=0,1}\Big\)) through *Numerov's* numerical method
+
 ![equation](https://latex.codecogs.com/gif.image?\dpi{110}w_{n&plus;1}=\left(\frac{2-\frac{10\Delta{t^2}}{12}\lambda{S_n}}{1+\frac{\Delta{t^2}}{12}{\lambda}S_{n&plus;1}}\right)w_n-\left(\frac{1+\frac{\Delta{t^2}}{12}{\lambda}S_{n-1}}{1+&space;\frac{\Delta{t^2}}{12}{\lambda}S_{n&plus;1}}&space;\right)w_{n-1})
+
 where each eigenvalue is used for computing the corresponding eigenvector.
 The first value of each eigenvector is computed as
+
 ![equation](https://latex.codecogs.com/gif.image?\dpi{110}w_{1}=\frac{\Delta{z}\frac{dw}{dz}\vert_{z=0}}{(1&plus;\lambda\frac{S_1\Delta&space;z^2}{6})}\quad\text{with}\quad\frac{dw}{dz}\vert_{z=0}=-\lambda\Phi_0\quad\Big(\Phi_0=\Phi\vert_{z=0}=1\Big))
+
 where $\Phi_0$ is the surface value, equal to the modes maximum amplitude (and equal to the barotropic mode value). Here, it is set equal to 1.
+
 5. The *baroclinic Rossby radii* $R_n$ are computed as in eq. [(5)](https://latex.codecogs.com/gif.image?\dpi{110}R_n&space;=&space;\frac{1}{\sqrt{\lambda_n}}) while the *vertical structure functions* are obtained integrating *S, w* as in [(6)](https://latex.codecogs.com/gif.image?\dpi{110}\Phi&space;=\int_{0}^{z}Swdz+\Phi_0). The integration constant is set $\Phi_0=1$, as already discussed.
 
 [^2]: J. H. LaCasce (2012), "_Surface Quasigeostrophic Solutions and Baroclinic Modes with Exponential Stratification_".
