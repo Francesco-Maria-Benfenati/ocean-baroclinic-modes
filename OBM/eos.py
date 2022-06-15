@@ -192,8 +192,8 @@ def compute_BruntVaisala_freq_sq(z, density):
 
     N = (g/rho_0 * ∂rho_s/∂z)^1/2  with g = 9.806 m/s^2,
 
-    where rho_s is the density mean vertical profile,
-    depending only on z. (NOTE: here there is no '-' sign under square 
+    where rho_0 is the reference density.
+    (NOTE: here there is no '-' sign under square 
     root, since axis z is oriented towards the bottom.)
     --------------------------------------------------------------------
     NOTE:
