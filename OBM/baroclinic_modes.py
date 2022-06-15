@@ -196,7 +196,7 @@ def compute_barocl_modes(depth, N2, n_modes):
     A *= -1
     B *= -1
     # Compute smallest Eigenvalues.
-    val = sp.sparse.linalg.eigsh(A, k = n_modes, M=B, sigma=0, which='LM', 
+    val = sp.sparse.linalg.eigs(A, k = n_modes, M=B, sigma=0, which='LM', 
                                 return_eigenvectors=False)
     
     # Take real part of eigenvalues and sort them in ascending order.
