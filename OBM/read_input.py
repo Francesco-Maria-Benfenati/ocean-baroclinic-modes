@@ -178,10 +178,6 @@ def find_boundaries(lat, lon, set_domain):
     lat_step = domain_values[4]
     lon_step = domain_values[5]
     # Find indeces corresponding to extremant values.
-    # lat_min = np.where(flat_lat == domain_values[0])[0]
-    # lat_max = np.where(flat_lat == domain_values[1])[0]
-    # lon_min = np.where(flat_lon == domain_values[2])[0]
-    # lon_max = np.where(flat_lon == domain_values[3])[0]
     where_lat_min = np.logical_and(
                                    flat_lat >= domain_values[0] - lat_step,
                                    flat_lat <= domain_values[0] + lat_step )
