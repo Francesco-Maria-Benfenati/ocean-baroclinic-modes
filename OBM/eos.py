@@ -27,7 +27,7 @@ def compute_density(z, temp, S):
     z : <class 'xarray.core.variable.Variable'>
         depth [m]
     temp : <class 'xarray.core.variable.Variable'>
-        sea water potential temperature [°C]
+           sea water potential temperature [°C]
     S : <class 'xarray.core.variable.Variable'>
         sea water salinity [PSU]
     NOTE: the three arguments must have same dimensions!
@@ -77,7 +77,6 @@ def compute_density(z, temp, S):
     else:
         raise ValueError('dimension mismatch')
 
-    SR = np.sqrt(S)
     # ==================================================================
     # Compute reference density at atmospheric pressure
     #
@@ -86,21 +85,11 @@ def compute_density(z, temp, S):
     # Notation follows 'International one-atmosphere equation of state
     # of seawater' (Millero and Poisson, 1981).
     # ==================================================================
-
-    # Density of pure water.
-    rho_0 = ( ( ( (6.536332e-9*temp - 1.120083e-6)*temp + 1.001685e-4)
-             *temp - 9.095290e-3)*temp + 6.793952e-2)*temp + 999.842594
-    # Coefficients involving salinity and pot. temperature.
-    A = ( ( (5.3875e-9*temp - 8.2467e-7)*temp + 7.6438e-5)
-           *temp - 4.0899e-3)*temp + 0.824493
-    B = (-1.6546e-6*temp + 1.0227e-4)*temp - 5.72466e-3
-    C = 4.8314e-4
-    # International one-atmosphere Eq. of State of seawater.
-    rho = rho_0 + (A + B*SR + C*S)*S
-    del(rho_0, A, B, C)
+    
+    rho = _compute_rho(temp, S)
 
     # ==================================================================
-    # Compute bulk modulus of seawater
+    # Compute coefficients in the bulk modulus of seawater expression
     #
     #   K(S, temp, p) = K_0 + Ap + Bp^2 , with K_0 = K(S, temp, 0) .
     #
@@ -112,36 +101,20 @@ def compute_density(z, temp, S):
     # Notation follows 'A new high pressure equation of state for
     # seawater' (Millero et al, 1980).
     # ==================================================================
-
-    # Bulk modulus of seawater at atmospheric pressure: pure water term
-    Kw_0 = ( ( ( (- 1.361629e-4*temp - 1.852732e-2)*temp - 30.41638)
-              *temp + 2098.925)*temp + 190925.6)
-    # Coefficients involving salinity and pot. temperature.
-    a = ( ( (2.326469e-3*temp + 1.553190)*temp - 65.00517)
-           *temp + 1044.077)
-    b = (- 0.1909078*temp + 7.390729)*temp - 55.87545
+    
     # Bulk modulus of seawater at atmospheric pressure.
-    K_0 = Kw_0 + (a + b*SR)*S
-    del(Kw_0, a, b)
-    # Compression terms.
-    Aw = ( ( (-5.939910e-6*temp - 2.512549e-3)*temp + 0.1028859)
-          *temp + 4.721788)
-    c = (7.267926e-5*temp - 2.598241e-3)*temp - 0.1571896
-    d = 2.042967e-2
-    A = Aw + (c + d*SR)*S
-    del(Aw, c, d)
-    Bw = (-1.296821e-6*temp + 5.782165e-9)*temp - 1.045941e-4
-    e = (3.508914e-8*temp + 1.248266e-8)*temp + 2.595994e-6
-    B = Bw + e*S
-    del(Bw, e)
-
+    K_0 = _compute_K_0(temp, S)
+    # Compression term coefficients.
+    A = _compute_A(temp, S)
+    B = _compute_B(temp, S)
+    
     # ==================================================================
     # Compute IN SITU POTENTIAL DENSITY IN TERMS OF DEPTH. The above
     # coeffients of terms in K(S, temp, p) have been modified
     # consistently with Jackett and McDougall (1994).
     #
     #   density(S, temp, z) = rho/[1 - z/K(S, temp, z)]
-    #                        = rho/[1 - z/(K_0 + (Az + Bz^2))]
+    #                       = rho/[1 - z/(K_0 + (Az + Bz^2))]
     # ==================================================================
 
     density = rho / (1.0 - z/(K_0 + z*(A + z*B)) )
@@ -153,6 +126,145 @@ def compute_density(z, temp, S):
 
     # Return density xarray.
     return density
+
+
+def _compute_rho(temp, S):
+    """
+    Compute reference density at atmospheric pressure
+    
+      rho = rho(S, temp, 0) = rho_0 + A*S + B*S^3/2 + C*S^2 .
+    
+    Notation follows 'International one-atmosphere equation of state
+    of seawater' (Millero and Poisson, 1981).
+    
+    Arguments
+    ---------
+    temp : <class 'numpy.ndarray'>
+           sea water potential temperature [°C]
+    S : <class 'numpy.ndarray'>
+        sea water salinity [PSU]
+    
+    Returns
+    -------
+    rho: <class 'numpy.ndarray'>
+         reference density of sea water at atmospheric pressure
+    """
+    
+    # Square root of salinity.
+    SR = np.sqrt(S)
+    # Density of pure water.
+    rho_0 = ( ( ( (6.536332e-9*temp - 1.120083e-6)*temp + 1.001685e-4)
+               *temp - 9.095290e-3)*temp + 6.793952e-2)*temp + 999.842594
+    # Coefficients involving salinity and pot. temperature.
+    A = ( ( (5.3875e-9*temp - 8.2467e-7)*temp + 7.6438e-5)
+           *temp - 4.0899e-3)*temp + 0.824493
+    B = (-1.6546e-6*temp + 1.0227e-4)*temp - 5.72466e-3
+    C = 4.8314e-4
+    # International one-atmosphere Eq. of State of seawater.
+    rho = rho_0 + (A + B*SR + C*S)*S
+    
+    return rho
+
+
+def _compute_K_0(temp, S):
+    """
+    Compute bulk modulus of seawater at atmospheric pressure term
+    
+    K_0 = Kw_0 + a*S + b*S^3/2
+
+    Notation follows 'A new high pressure equation of state for
+    seawater' (Millero et al, 1980).
+    
+    Arguments
+    ---------
+    temp : <class 'numpy.ndarray'>
+           sea water potential temperature [°C]
+    S : <class 'numpy.ndarray'>
+        sea water salinity [PSU]
+    
+    Returns
+    -------
+    K_0: <class 'numpy.ndarray'>
+       bulk modulus of seawater at atmospheric pressure
+    """
+    
+    # Square root of salinity.
+    SR = np.sqrt(S)
+    # Bulk modulus of seawater at atmospheric pressure: pure water term
+    Kw_0 = ( ( ( (- 1.361629e-4*temp - 1.852732e-2)*temp - 30.41638)
+              *temp + 2098.925)*temp + 190925.6)
+    # Coefficients involving salinity and pot. temperature.
+    a = ( ( (2.326469e-3*temp + 1.553190)*temp - 65.00517)
+           *temp + 1044.077)
+    b = (- 0.1909078*temp + 7.390729)*temp - 55.87545
+    # Bulk modulus of seawater at atmospheric pressure.
+    K_0 = Kw_0 + (a + b*SR)*S
+    
+    return K_0
+
+
+def _compute_A(temp, S):
+    """
+    Compute compression term coefficient A in bulk modulus of seawater
+    
+    A = Aw + c*S + d*S^3/2
+
+    Notation follows 'A new high pressure equation of state for
+    seawater' (Millero et al, 1980).
+    
+    Arguments
+    ---------
+    temp : <class 'numpy.ndarray'>
+           sea water potential temperature [°C]
+    S : <class 'numpy.ndarray'>
+        sea water salinity [PSU]
+    
+    Returns
+    -------
+    A: <class 'numpy.ndarray'>
+       compression term coefficient A
+    """
+    
+    # Square root of salinity.
+    SR = np.sqrt(S)
+    # Compression term.
+    Aw = ( ( (-5.939910e-6*temp - 2.512549e-3)*temp + 0.1028859)
+          *temp + 4.721788)
+    c = (7.267926e-5*temp - 2.598241e-3)*temp - 0.1571896
+    d = 2.042967e-2
+    A = Aw + (c + d*SR)*S
+    
+    return A
+
+
+def _compute_B(temp, S):
+    """
+    Compute compression term coefficient A in bulk modulus of seawater
+    
+    B = Bw + e*S
+
+    Notation follows 'A new high pressure equation of state for
+    seawater' (Millero et al, 1980).
+    
+    Arguments
+    ---------
+    temp : <class 'numpy.ndarray'>
+           sea water potential temperature [°C]
+    S : <class 'numpy.ndarray'>
+        sea water salinity [PSU]
+    
+    Returns
+    -------
+    B: <class 'numpy.ndarray'>
+       compression term coefficient B
+    """
+    
+    # Compression term.
+    Bw = (-1.296821e-6*temp + 5.782165e-9)*temp - 1.045941e-4
+    e = (3.508914e-8*temp + 1.248266e-8)*temp + 2.595994e-6
+    B = Bw + e*S 
+    
+    return B
 
 
 def compute_BruntVaisala_freq_sq(z, density):
