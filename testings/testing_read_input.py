@@ -16,6 +16,9 @@ import pandas as pd
 # Testing functions for reading input config and data files.
 # (See file 'read_input.py')
 #=======================================================================
+import sys 
+sys.path.append('..')
+
 import OBM.read_input as read
 
 #-----------------------------------------------------------------------

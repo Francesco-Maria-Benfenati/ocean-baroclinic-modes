@@ -19,6 +19,8 @@ import hypothesis.strategies as st
 # Testing the functions for computing Potential Density & Brunt-Vaisala
 # frequency. (See file 'eos.py')
 #=======================================================================
+import sys 
+sys.path.append('..')
 
 #-----------------------------------------------------------------------
 #                     Testing compute_density()

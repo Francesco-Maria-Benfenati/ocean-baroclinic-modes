@@ -15,6 +15,8 @@ from  scipy.sparse.linalg import ArpackError
 # Testing the functions for computing the baroclinic Rossby radius 
 # vertical profile and the vertical modes of motion.
 #=======================================================================
+import sys 
+sys.path.append('..')
 
 # ----------------------------------------------------------------------
 #                   Testing compute_barocl_modes()
@@ -126,7 +128,7 @@ def test_compute_modes_output_length():
     z = np.linspace(0, H, len_z)
     N2 = np.full(len_z, 2.0)
     R, Phi = modes(z, N2, n_modes)
-    assert np.logical_and(len(R)==H+1, len(Phi)==H+1)  
+    assert np.logical_and(len(R)==n_modes+1, len(Phi)==H+1)  
 
 
 # Test if compute_barocl_modes() works whell when depth is taken with
