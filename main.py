@@ -6,7 +6,7 @@ Created on Thu Apr  7 16:10:28 2022
 """
 # ======================================================================
 # MAIN FILE recalling the functions implemented for computing the 
-# BAROCLINIC ROSSBY RADIUS MEAN VERTICAL PROFILE in a defined region.
+# BAROCLINIC ROSSBY RADIUS in a defined region.
 # ======================================================================
 import sys
 import subprocess 
@@ -57,8 +57,7 @@ depth_1D = depth.values[:,0,0]
 N_motion_modes = config_parameters['set_modes']['n_modes']
 # ----------------------------------------------------------------
 
-# Compute baroclinic Rossby radius mean vertical profile and 
-# modes of motion Phi(z).
+# Compute baroclinic Rossby radius and vert. struct. function Phi(z).
 R, Phi = modes(depth_1D, mean_depth, BV_freq_sq, N_motion_modes)
 
 # ======================================================================
