@@ -106,7 +106,7 @@ out_file.createDimension('latitude', 1)
 out_file.createDimension('longitude', 1)
 out_file.createDimension('depth', depth_len)
 # Create equally spaced depth grid for R, Phi.
-out_file.createDimension('equally_spaced_depth_grid', len(R[:,0]))
+out_file.createDimension('equally_spaced_depth_grid', len(Phi[:,0]))
 del(depth_len)
 
 # Add barotropic mode to number of modes of motion to be considered.
@@ -146,9 +146,9 @@ depth_var.standard_name = "depth"
 # Create depth variable.
 new_depth_var = out_file.createVariable('equally_spaced_depth_grid',
                                       np.int32, 'equally_spaced_depth_grid')
-new_depth_var[:] = np.linspace(0, len(R[:,0])-1, len(R[:,0]))
+new_depth_var[:] = np.linspace(0, len(Phi[:,0])-1, len(Phi[:,0]))
 new_depth_var.valid_min = 0
-new_depth_var.valid_max = len(R[:,0])-1
+new_depth_var.valid_max = len(Phi[:,0])-1
 new_depth_var.grid_step = '1m'
 new_depth_var.unit_long = "meters"
 new_depth_var.units = 'm'
@@ -181,8 +181,7 @@ BVfreq_var.standard_name = 'BV_frequency'
 
 # Create baroclinic Rossby radius variable. 
 Ross_rad_var = out_file.createVariable('R', np.float32,
-                                        ('time','latitude','longitude',
-                                        'equally_spaced_depth_grid','mode'))
+                                        ('time','latitude','longitude','mode'))
 Ross_rad_var[:] = R
 Ross_rad_var.unit_long = 'kilometers'
 Ross_rad_var.units = 'km'
