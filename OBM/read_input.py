@@ -223,7 +223,8 @@ def extract_data_from_NetCDF_input_file(config_param):
         through subdictionaries.
         {'set_paths': 
              {'indata_path': -path to input NetCDF data file-,
-              'input_file_name': -name of input NetCDF data file-},
+              'input_file_name': -name of input NetCDF data file-,
+              'bathy_file_name': -name of NetCDF bathymetry file- },
          'set_dimensions': 
              {'lat_name': -name of latitude DIM in NetCDF file-,
               'lon_name': -name of longitude DIM in NetCDF file-,
@@ -235,7 +236,7 @@ def extract_data_from_NetCDF_input_file(config_param):
               'lon_min': -min value of longitude-, 
               'lon_max': -max value of longitude-,
               'lat_step': - latitude grid step-,
-              'lon_step': - longitude grid step- },
+              'lon_step': - longitude grid step-},
          'set_time': 
              {'starting_time': -averaging time period beginning-,
               'ending_time': -averaging time period ending-},
@@ -245,7 +246,8 @@ def extract_data_from_NetCDF_input_file(config_param):
               'lat_var_name': -name of latitude VAR in NetCDF file-,
                'lon__var_name': -name of longitude VAR in NetCDF file-,
                'depth_var_name': -name of depth VAR in NetCDF file-, 
-               'time_var_name': -name of time VAR in NetCDF file-}
+               'time_var_name': -name of time VAR in NetCDF file-,
+               'bathy_var_name': -name of bathymetry VAR in NetCDF file-}
          }
          
     Raises
@@ -267,7 +269,10 @@ def extract_data_from_NetCDF_input_file(config_param):
         time-averaged temperature 3D array (one time step)
     mean_salinity : 'xarray.core.variable.Variable'
         time-averaged salinity 3D array (one time step)
-    The array dimensions are depth, latitude and longitude.
+    mean_bathy : 'int'
+                 mean sea depth in the considered region
+                 
+    The arrays dimensions are depth, latitude and longitude.
     """
     
     # Define input file path from configuration parameters
@@ -326,20 +331,40 @@ def extract_data_from_NetCDF_input_file(config_param):
                                                            lat_dim,
                                                            lon_dim, 
                                                            ...        )
+
     # Store temperature and salinity values for the desired time period.
     temperature = transposed_temp[start_tstep:end_tstep+1, :, 
                                   lat_min:lat_max+1, lon_min:lon_max+1]
     salinity = transposed_sal[start_tstep:end_tstep+1, :, 
                               lat_min:lat_max+1, lon_min:lon_max+1]
     
+    
     # Average temp and sal in time.
     mean_temperature = np.mean(temperature, axis = 0)
     mean_salinity = np.mean(salinity, axis = 0)
     
-    #-------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # Compute mean sea depth H (computed from bathymetry)
+    # ------------------------------------------------------------------
+    # Bathy file name.
+    bathy_file_name = set_paths['bathy_file_name']
+    # Open bathymetry dataset.
+    full_path_bathy = path_to_file + bathy_file_name
+    bathy_data = xarray.open_dataset(full_path_bathy)
+    # Define bathy variable name from config_param.
+    bathy_name = set_vars['bathy_var_name']
+    # Store bathymetry.
+    transposed_bathy = bathy_data.variables[bathy_name].transpose(lat_dim, 
+                                                                  lon_dim, 
+                                                                  ...     )
+    bathymetry = transposed_bathy[lat_min:lat_max+1, lon_min:lon_max+1]
+    # Mean sea depth.
+    mean_bathy = int(np.mean(bathymetry, axis = None))
+
+    # ------------------------------------------------------------------
     # Store depth as an array with dimensions as temp and sal.
     # (This will be useful for computing potential density)
-    #-------------------------------------------------------------------
+    # ------------------------------------------------------------------
     # Compute lengths
     lat_length = lat_max + 1 - lat_min
     lon_length = lon_max + 1 - lon_min
@@ -354,4 +379,4 @@ def extract_data_from_NetCDF_input_file(config_param):
          
     in_data.close()
     # Return temperature and salinity arrays (averaged in time)
-    return depth_xarray, mean_temperature, mean_salinity
+    return depth_xarray, mean_temperature, mean_salinity, mean_bathy

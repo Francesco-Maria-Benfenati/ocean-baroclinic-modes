@@ -15,7 +15,7 @@ import scipy as sp
 from scipy import interpolate, integrate
 
 
-def compute_barocl_modes(depth, N2, n_modes):
+def compute_barocl_modes(depth, H, N2, n_modes):
     """
     Computes baroclinic Rossby radius & vertical structure function.
 
@@ -23,6 +23,8 @@ def compute_barocl_modes(depth, N2, n_modes):
     ---------
     depth : <class 'numpy.ndarray'>
             depth variable (1D)
+    H : 'int'
+        mean depth of the considered region (m)
     N2 : <class 'numpy.ndarray'>
          Brunt-Vaisala frequency squared (along depth, 1D)
     n_modes : 'int'
@@ -47,7 +49,6 @@ def compute_barocl_modes(depth, N2, n_modes):
         ---------------------------------------------------------------
     The scaling parameter 'f_0' and the gravitational acceleration 
     'g' are defined.  
-    The region max depth is computed.
     
     1) N2 is linearly interpolated on a new equally spaced depth grid
        with grid step = 1 m.
@@ -95,9 +96,7 @@ def compute_barocl_modes(depth, N2, n_modes):
     # ==================================================================
     f_0 = 1e-04 # coriolis parameter (1/s)
     g = 9.806 # gravitational acceleration (m/s^2)
-    
-    # Max depth of the considered region.
-    H = _compute_max_depth(depth) # (m)
+
     n = H + 1 # number of vertical levels
     
     # ==================================================================
@@ -114,7 +113,7 @@ def compute_barocl_modes(depth, N2, n_modes):
     #       S = N2/f_0^2     .
     # ==================================================================
     # Scale N2 values.
-    scaled_N2 = _assimilate_N2(interp_N2)
+    scaled_N2 = _scale_N2(interp_N2)
     
     # Compute S(z) parameter.
     S = scaled_N2/(f_0**2)
@@ -172,26 +171,6 @@ def compute_barocl_modes(depth, N2, n_modes):
     return rossby_rad, phi
 
 
-def _compute_max_depth(depth):
-    """
-    Compute the max depth of the considered region.
-
-    Arguments
-    ---------
-    depth : <class 'numpy.ndarray'>
-            depth variable (1D)
-
-    Returns
-    -------
-    H : 'int'
-        region max depth
-    """
-    
-    H = int(max(depth))
-    
-    return H
-
-
 def _interpolate_N2(depth, N2):
     """
     Interpolate B-V freq. squared on a new equally spaced depth grid.
@@ -228,7 +207,7 @@ def _interpolate_N2(depth, N2):
     return interp_N2
 
 
-def _assimilate_N2(interp_N2):
+def _scale_N2(interp_N2):
     """
     Scale B-V freq. squared for improving performance of the algorithm.
 

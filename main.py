@@ -34,8 +34,9 @@ config_parameters = read.read_JSON_config_file(config_file_name,
                                          value_key = 'value'      )
 
 # Store depth, Potential Temperature & Salinity from NetCDF input file.
+# Store the mean depth of the consiered region, too.
 [depth, pot_temperature, 
-        salinity] = read.extract_data_from_NetCDF_input_file(config_parameters)
+ salinity, mean_depth] = read.extract_data_from_NetCDF_input_file(config_parameters)
 
 # ======================================================================
 # * COMPUTE POTENTIAL DENSITY, BRUNT-VAISALA FREQUENCY & ROSSBY RADIUS *
@@ -58,7 +59,7 @@ N_motion_modes = config_parameters['set_modes']['n_modes']
 
 # Compute baroclinic Rossby radius mean vertical profile and 
 # modes of motion Phi(z).
-R, Phi = modes(depth_1D, BV_freq_sq, N_motion_modes)
+R, Phi = modes(depth_1D, mean_depth, BV_freq_sq, N_motion_modes)
 
 # ======================================================================
 #                  *  WRITE RESULTS ON OUTPUT FILE  *

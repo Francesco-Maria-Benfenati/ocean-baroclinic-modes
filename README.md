@@ -138,6 +138,7 @@ CONFIGURATION FILE
 |       |         └─── "experiment name": name to be given to the experiment. It will characterize the output products name.
 |       |         └─── "region name": name of the computation domain along which Pot. Temperature and Salinity are averaged in latitude and longitude. It will appear among the output file attributes.
 |       |         └─── "input file name": name of the dataset file containing Pot. Temperature and Salinity. The file must be of NetCDF format.
+|       |         └─── "bathy file name": name of the NetCDF file containing the bathymetry. 
 |       |         └─── "indata path": path to the dataset file named as in "input file name". It must end with '/' (if on linx or mac) or '\\' (if on windows). Please, if on windows substitute backslash with '\\'.
 |       └─── "set variables": name of the variables as in the NetCDF input file. These will be the keys used for extracting variables *value* from the input file.
 |       |         └─── "temperature name": name of Potential Temperature variable.
@@ -146,6 +147,7 @@ CONFIGURATION FILE
 |       |         └─── "lon var name": name of longitude variable (may have different key name respect to longitude dimension).
 |       |         └─── "depth var name": name of depth variable (may have different key name respect to depth dimension).
 |       |         └─── "time var name": name of time variable (may have different key name respect to time dimension).
+|       |         └─── "bathy var name": name of bathymetry variable within NetCDF bathymetry file.
 |       └─── "set dimensions": name of the dimensions as in the NetCDF input file. These will be the keys used for extracting variables *dimension* from the input file.
 |       |         └─── "lat name": latitude dimension name
 |       |         └─── "lon name": longitude dimension name

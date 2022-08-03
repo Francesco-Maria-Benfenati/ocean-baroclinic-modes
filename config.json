@@ -18,6 +18,11 @@
             "type":"string",
             "description":"name of the input NetCDF data file."
           },
+         {  "name":"bathy_file_name",
+            "value":" ... ",
+            "type":"string",
+            "description":"name of the NetCDF file containing the bathymetry."
+          },
          {  "name":"indata_path",
             "value":" ... /",
             "value_on_windows":" ... \\",
@@ -57,7 +62,12 @@
             "value":" ... ",
             "type":"string",
             "description":"name of TIME variable within NetCDF input file."
-              }
+          },
+         {  "name":"bathy_var_name",
+            "value":" ... ",
+            "type":"string",
+            "description":"name of bathymetry variable within NetCDF bathy file."
+          }
       ]
    },
    {"title":"set_dimensions",
