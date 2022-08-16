@@ -24,7 +24,7 @@ def compute_barocl_modes(depth, H, N2, n_modes):
     depth : <class 'numpy.ndarray'>
             depth variable (1D)
     H : 'int'
-        mean depth of the considered region (m)
+        mean depth of the considered region (m); depth scaling parameter
     N2 : <class 'numpy.ndarray'>
          Brunt-Vaisala frequency squared (along depth, 1D)
     n_modes : 'int'
@@ -47,30 +47,30 @@ def compute_barocl_modes(depth, H, N2, n_modes):
         ---------------------------------------------------------------
                             About the algorithm
         ---------------------------------------------------------------
-    The scaling parameter 'f_0' and the gravitational acceleration 
-    'g' are defined.  
+    The scaling parameters 'f_0', 'L' and gravitational acceleration 
+    'g' are defined. 'H' is the depth scaling parameter.
     
-    1) N2 is linearly interpolated on a new equally spaced depth grid
-       with grid step = 1 m.
-    2) N2 is scaled. This way, the algorithm for finding the problem 
-       eigenvalues works best.
-       The problem parameter S is then computed as in 
+    1) N2 is linearly interpolated on a new equally spaced 
+       nondimensional depth grid with grid step dz = 1 m.
+    2) The problem parameter S is then computed as in 
        Grilli, Pinardi (1999)
     
-            S = N2/f_0^2
+            S = (N2 * H^2)/(f_0^2 * L^2)
             
-       where f_0 is the Coriolis parameter.
+       where L and H are respectively the horizontal and vertical 
+       scales of motion; f_0 is the Coriolis parameter. Depth is
+       scaled through parameter H, so that it goes from 0 to 1.
     3) The finite difference matrix 'A' and the S matrix 'B' are
        computed and the eigenvalues problem is solved:
            
            A * w = lambda * B * w  (lambda eigenvalues, w eigenvectors)
            
-       with BCs: w = 0 at z=0,H .
+       with BCs: w = 0 at z=0,1.
      
     4) The eigenvectors are computed through numerical integration
        of the equation 
     
-        (d^2/dz^2) * w = - lambda * S * w    (with BCs  w = 0 at z=0,H).
+        (d^2/dz^2) * w = - lambda * S * w    (with BCs  w = 0 at z=0,1).
        
     5) The baroclinic Rossby radius is obtained as 
            
@@ -95,9 +95,8 @@ def compute_barocl_modes(depth, H, N2, n_modes):
     # Define parameters in the QG equation.
     # ==================================================================
     f_0 = 1e-04 # coriolis parameter (1/s)
+    L = 100e+03 # Horizontal length scale (100 km)
     g = 9.806 # gravitational acceleration (m/s^2)
-
-    n = H + 1 # number of vertical levels
     
     # ==================================================================
     # 1) Interpolate values on a new equally spaced depth grid 'z' 
@@ -105,25 +104,23 @@ def compute_barocl_modes(depth, H, N2, n_modes):
     # ==================================================================
     interp_N2 = _interpolate_N2(depth, N2)
     # Take only interp_N2 part from 0 to mean depth H.
+    n = H + 1 # number of vertical levels
     interp_N2 = interp_N2[:n]
     
     # ==================================================================
-    # 2) Scale N2 values (so that scipy algorithm works best) and 
-    #    compute problem parameter S:
-    #       S = N2/f_0^2     .
+    # 2) Compute problem parameter S:
+    #       S = (N2 * H^2)/(f_0^2 * L^2)   .
     # ==================================================================
-    # Scale N2 values.
-    scaled_N2 = _scale_N2(interp_N2)
     
     # Compute S(z) parameter.
-    S = scaled_N2/(f_0**2)
+    S = (interp_N2 * H**2)/(f_0**2 * L**2)
 
     # ==================================================================
     # 3) Compute matrices of the eigenvalues/eigenvectors problem:
     #               A * v = (lambda * B) * v   .
     # ==================================================================
-    # Store new z grid step (= 1m).
-    dz = 1 # (m)
+    # Store new scaled z grid step (= 1m/H).
+    dz = 1/H
     
     A = _compute_matrix_A(n, dz)
     B = _compute_matrix_B(n, dz, S)
@@ -146,7 +143,7 @@ def compute_barocl_modes(depth, H, N2, n_modes):
     # 5) Compute baroclinic Rossby radius and Phi.
     # ==================================================================
     # Store rossby radius array (only n° of modes desired).
-    rossby_rad = np.empty(n_modes)
+    rossby_rad = np.empty([n_modes])
     # Store function phi describing vertical modes of motion.
     phi = np.empty([n, n_modes])
 
@@ -207,32 +204,6 @@ def _interpolate_N2(depth, N2):
     return interp_N2
 
 
-def _scale_N2(interp_N2):
-    """
-    Scale B-V freq. squared for improving performance of the algorithm.
-
-    Arguments
-    ---------
-    interp_N2 : <class 'numpy.ndarray'>
-                newly interpolated Brunt-Vaisala frequency squared.
-
-    Returns
-    -------
-    scaled_N2: <class 'numpy.ndarray'>
-               scaled Brunt-Vaisala frequency squared
-    """
-    
-    # Scale N2 values, if N2 not constant.
-    if max(interp_N2) != min(interp_N2): 
-        scaled_N2 = (interp_N2 - 
-                      min(interp_N2))/(max(interp_N2)-min(interp_N2))
-       
-    else:
-        scaled_N2 = interp_N2
-        
-    return scaled_N2
-
-
 def _compute_matrix_A(n, dz):
     """
     Compute L.H.S. matrix in the eigenvalues/eigenvectors problem.
@@ -241,7 +212,7 @@ def _compute_matrix_A(n, dz):
     ---------
     n : 'int'
         number of vertical levels
-    dz : 'int'
+    dz : 'float'
          vertical grid step
     
     Returns
@@ -258,7 +229,7 @@ def _compute_matrix_A(n, dz):
                      | .            0    0    12  -24  12 |
                      | 0      0    0     0   . . . . .  0 |
                    
-    where dz is the grid step (= 1m).
+    where dz is the scaled grid step (= 1m/H).
     Boundary Conditions are implemented setting the first and 
     last lines of A = 0.
     """
@@ -299,7 +270,7 @@ def _compute_matrix_B(n, dz, S):
     ---------
     n : 'int'
         number of vertical levels
-    dz : 'int'
+    dz : 'float'
          vertical grid step
     S: <class 'numpy.ndarray'>
        problem parameter S = N2/f_0^2 
@@ -316,7 +287,7 @@ def _compute_matrix_B(n, dz, S):
                      | .        .      .      .   . |
                      | .          0     0      -S_n |
                     
-    where dz is the grid step (= 1m).
+    where dz is the scaled grid step (= 1m/H).
     """
     
     # Create matrix (only null values).
@@ -363,7 +334,7 @@ def _compute_eigenvals(A, B, n_modes):
     
         A * w = lambda * B * w  (lambda eigenvalues, w eigenvectors)
 
-        with BCs: w = 0 at z=0,H .
+        with BCs: w = 0 at z=0,1 .
         
     Here, a scipy algorithm is used.
     """
@@ -393,7 +364,7 @@ def _Numerov_method(n, n_modes, dz, eigenvalues, S, phi_0):
         number of vertical levels
     n_modes : 'int'
               number of modes of motion to be considered
-    dz : 'int'
+    dz : 'float'
          vertical grid step
     eigenvalues : <class 'numpy.ndarray'>
                   problem eigenvalues 'lambda'
@@ -410,7 +381,7 @@ def _Numerov_method(n, n_modes, dz, eigenvalues, S, phi_0):
     The problem eigenvectors are computed through Numerov's numerical 
     method, integrating the equation 
     
-        (d^2/dz^2) * w = - lambda * S * w    (with BCs  w = 0 at z=0,H).
+        (d^2/dz^2) * w = - lambda * S * w    (with BCs  w = 0 at z=0,1).
         
     The first value is computed as
         w(0 + dz)= (- eigenvalues*phi_0)*dz/(1+lambda*S[1]*(dz**2)/6)
