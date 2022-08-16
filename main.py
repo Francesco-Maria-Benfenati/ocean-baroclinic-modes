@@ -145,15 +145,16 @@ depth_var.standard_name = "depth"
 
 # Create depth variable.
 new_depth_var = out_file.createVariable('equally_spaced_depth_grid',
-                                      np.int32, 'equally_spaced_depth_grid')
-new_depth_var[:] = np.linspace(0, len(Phi[:,0])-1, len(Phi[:,0]))
+                                      np.float32, 'equally_spaced_depth_grid')
+new_depth_var[:] = np.linspace(0, 1, len(Phi[:,0]))
+print(new_depth_var[:])
 new_depth_var.valid_min = 0
-new_depth_var.valid_max = len(Phi[:,0])-1
-new_depth_var.grid_step = '1m'
-new_depth_var.unit_long = "meters"
-new_depth_var.units = 'm'
-new_depth_var.long_name = "depth below sea level" 
-new_depth_var.standard_name = "depth" 
+new_depth_var.valid_max = 1
+new_depth_var.grid_step = '1m/H'
+new_depth_var.unit_long = "dimensionless"
+new_depth_var.units = '1'
+new_depth_var.long_name = "depth below sea level (equally spaced grid)" 
+new_depth_var.standard_name = "equally spaced depth grid" 
 
 # Create modes variable.
 mode_var = out_file.createVariable('mode', np.int32, 'mode')
@@ -187,7 +188,7 @@ Ross_rad_var.unit_long = 'kilometers'
 Ross_rad_var.units = 'km'
 Ross_rad_var.long_name = 'Rossby deformation radius'
 Ross_rad_var.standard_name = 'Rossby_radius'
-    
+
 # Create baroclinic Rossby radius variable. 
 Phi_var = out_file.createVariable('phi', np.float32, 
                                   ('time','latitude','longitude',
