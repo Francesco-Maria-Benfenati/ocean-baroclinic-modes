@@ -206,9 +206,13 @@ Coherently with the [configuration file](https://github.com/Francesco-Maria-Benf
 	cd ..
 	python main.py test_case/config_test_case.json
 	```
-5. Lastly, the **output products** will be within your dataset directory, in a sub-directory named as your experiment. Here, you will find the output file and the plots of the variables vertical profile. You can esplore the output file using *ncdump* utility.
+5. Lastly, the **output products** will be within your dataset directory, in a sub-directory named as your experiment. Here, you will find the output file. You can esplore the output file using *ncdump* utility.
 	```
 	cd test_case/dataset_azores/Azores_JAN21
 	ncdump -h Azores_JAN21_output.nc
+	```
+6. For plotting the output variables, you may just run the _run_plots.py_ script with the output products directory as first argument and the output file name as second argument.
+	```
+	python run_plots.py test_case/dataset_azores/Azores_JAN21 Azores_JAN21_output.nc
 	```
 ### Enjoy the project!
