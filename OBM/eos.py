@@ -18,6 +18,7 @@ import xarray
 import numpy as np
 from scipy import interpolate
 
+
 def compute_density(z, temp, S):
     """
     Compute potential density from salinity and potential temperature.
@@ -153,7 +154,7 @@ def _compute_rho(temp, S):
     # Square root of salinity.
     SR = np.sqrt(S)
     # Density of pure water.
-    rho_0 = ( ( ( (6.536332e-9*temp - 1.120083e-6)*temp + 1.001685e-4)
+    rho_0 = ( ( ( (6.536336e-9*temp - 1.120083e-6)*temp + 1.001685e-4)
                *temp - 9.095290e-3)*temp + 6.793952e-2)*temp + 999.842594
     # Coefficients involving salinity and pot. temperature.
     A = ( ( (5.3875e-9*temp - 8.2467e-7)*temp + 7.6438e-5)
@@ -191,15 +192,15 @@ def _compute_K_0(temp, S):
     # Square root of salinity.
     SR = np.sqrt(S)
     # Bulk modulus of seawater at atmospheric pressure: pure water term
-    Kw_0 = ( ( ( (- 1.361629e-4*temp - 1.852732e-2)*temp - 30.41638)
-              *temp + 2098.925)*temp + 190925.6)
+    Kw_0 = ( ( ( (- 5.155288e-5*temp + 1.360477e-2)*temp - 2.327105)
+              *temp + 148.4206)*temp + 19652.21)
     # Coefficients involving salinity and pot. temperature.
-    a = ( ( (2.326469e-3*temp + 1.553190)*temp - 65.00517)
-           *temp + 1044.077)
-    b = (- 0.1909078*temp + 7.390729)*temp - 55.87545
+    a = ( ( (- 6.1670e-05*temp + 1.09987e-02)*temp - 0.603459)
+           *temp + 54.6746)
+    b = (- 5.3009e-04*temp + 1.6483e-02)*temp + 7.944e-02
     # Bulk modulus of seawater at atmospheric pressure.
     K_0 = Kw_0 + (a + b*SR)*S
-    
+
     return K_0
 
 
@@ -228,12 +229,12 @@ def _compute_A(temp, S):
     # Square root of salinity.
     SR = np.sqrt(S)
     # Compression term.
-    Aw = ( ( (-5.939910e-6*temp - 2.512549e-3)*temp + 0.1028859)
-          *temp + 4.721788)
-    c = (7.267926e-5*temp - 2.598241e-3)*temp - 0.1571896
-    d = 2.042967e-2
+    Aw = ( ( (-5.77905e-7*temp + 1.16092e-04)*temp + 1.43713e-03)
+          *temp + 3.239908)
+    c = (- 1.6078e-06*temp - 1.0981e-05)*temp + 2.2838e-03
+    d = 1.91075e-04
     A = Aw + (c + d*SR)*S
-    
+
     return A
 
 
@@ -260,10 +261,10 @@ def _compute_B(temp, S):
     """
     
     # Compression term.
-    Bw = (-1.296821e-6*temp + 5.782165e-9)*temp - 1.045941e-4
-    e = (3.508914e-8*temp + 1.248266e-8)*temp + 2.595994e-6
+    Bw = (+ 5.2787e-8*temp - 6.12293e-06)*temp + 8.50935e-05
+    e = (9.1697e-10*temp + 2.0816e-8)*temp - 9.9348e-07
     B = Bw + e*S 
-    
+
     return B
 
 
@@ -302,11 +303,9 @@ def compute_BruntVaisala_freq_sq(z, density):
     (1999) 'Le cause dinamiche della stratificazione verticale nel
     mediterraneo'
 
-    N = (g/rho_0 * ∂rho_s/∂z)^1/2  with g = 9.806 m/s^2,
+    N = (- g/rho_0 * ∂rho_s/∂z)^1/2  with g = 9.806 m/s^2,
 
     where rho_0 is the reference density.
-    (NOTE: here there is no '-' sign under square 
-    root, since axis z is oriented towards the bottom.)
     --------------------------------------------------------------------
     NOTE:
            Here, the SQUARE OF BRUNT-VAISALA FREQUENCY is computed
@@ -326,7 +325,7 @@ def compute_BruntVaisala_freq_sq(z, density):
     # Take absolute value of depth, so that to avoid trouble with depth
     # sign convention.  
     z = abs(z)
-    
+
     len_z = len(z)
     # Defining value of gravitational acceleration.
     g = 9.806 # (m/s^2)
@@ -360,19 +359,19 @@ def compute_BruntVaisala_freq_sq(z, density):
         mean_dens = f(z)
     
     # Compute  N^2 for the surface level (forward finite difference).
-    N2[0] = ((g/rho_0)
-             *(mean_dens[1] - mean_dens[0])/(z[1] - z[0]) )
+    N2[0] = ( - (g/rho_0)
+              *(mean_dens[0] - mean_dens[1])/abs(z[1] - z[0]) )
     # Compute  N^2 for the surface level (forward finite difference).
-    N2[-1] = ( (g/rho_0)
-              *(mean_dens[-1] - mean_dens[-2])/(z[-1] - z[-2]) )
+    N2[-1] = ( - (g/rho_0)
+              *(mean_dens[-2] - mean_dens[-1])/abs(z[-1] - z[-2]) )
 
     if len_z > 2:
         # Compute  N^2 for the surface level (centered finite difference).
-        # Do it only if len
+        # Do it only if len_z>2.
         for i in range(1, len_z-1):
-             N2[i] = ( (g/rho_0)
-                      *(mean_dens[i+1] - mean_dens[i-1])
-                      /(z[i+1] - z[i-1]) )
+            dz = abs(z[i+1] - z[i-1])
+            N2[i] = ( - (g/rho_0)
+                      *(mean_dens[i-1] - mean_dens[i+1])/dz )
 
     #-------------------------------------------------------------------
     # Return Brunt-Vaisala frequency & mean density profiles.
