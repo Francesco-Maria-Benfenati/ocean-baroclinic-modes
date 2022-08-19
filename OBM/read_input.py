@@ -193,9 +193,14 @@ def extract_data_from_NetCDF_input_file(config_param):
     
     # Call external function for setting the domain boundaries.
     set_domain = config_param['set_domain']
-    lat_min, lat_max, lon_min, lon_max = _find_boundaries(latitude, 
-                                                         longitude,
-                                                         set_domain)
+    lat_min = set_domain['lat_min']
+    lat_max = set_domain['lat_max']
+    lon_min = set_domain['lon_min']
+    lon_max = set_domain['lon_max']
+
+    lat_min_idx, lat_max_idx = _find_nearest(latitude, [lat_min, lat_max])
+    lon_min_idx, lon_max_idx = _find_nearest(longitude, [lon_min, lon_max])
+    
     # Call external function for looking for the time period wanted.
     set_time =  config_param['set_time']
     start_time = set_time['starting_time']
@@ -210,13 +215,16 @@ def extract_data_from_NetCDF_input_file(config_param):
     temp_name = set_vars['temperature_name']
     sal_name = set_vars['salinity_name']
     dimensions = [time_dim, depth_dim, lat_dim, lon_dim]
-    indeces = start_tstep, end_tstep, lat_min, lat_max, lon_min, lon_max
+    indeces = [start_tstep, end_tstep, 
+               lat_min_idx, lat_max_idx, lon_min_idx, lon_max_idx]
+    
+    temperature = in_data.variables[temp_name]
+    salinity = in_data.variables[sal_name]
     
     # Mean Temperature
-    mean_temperature = _compute_mean_var(in_data, temp_name,
-                                         dimensions, indeces)
+    mean_temperature = _compute_mean_var(temperature, dimensions, indeces)
     # Mean Salinity
-    mean_salinity = _compute_mean_var(in_data, sal_name, dimensions, indeces)
+    mean_salinity = _compute_mean_var(salinity, dimensions, indeces)
     
     # ------------------------------------------------------------------
     # Compute mean bathymetry.
@@ -228,18 +236,19 @@ def extract_data_from_NetCDF_input_file(config_param):
     bathy_data = xarray.open_dataset(full_path_bathy)
     # Define bathy variable name from config_param.
     bathy_name = set_vars['bathy_var_name']
-    
+    bathymetry = bathy_data.variables[bathy_name]
     # Mean Bathymetry
-    mean_bathy = _compute_mean_bathy(bathy_data, bathy_name,
-                                         dimensions, indeces)
+    mean_bathy = _compute_mean_bathy(bathymetry, [lat_dim, lon_dim], 
+                                                 [lat_min_idx, lat_max_idx, 
+                                                  lon_min_idx, lon_max_idx])
     
     # ------------------------------------------------------------------
     # Store depth as an array with dimensions as temp and sal.
     # (This will be useful for computing potential density)
     # ------------------------------------------------------------------
     # Compute lengths
-    lat_length = lat_max + 1 - lat_min
-    lon_length = lon_max + 1 - lon_min
+    lat_length = lat_max_idx + 1 - lat_min_idx
+    lon_length = lon_max_idx + 1 - lon_min_idx
     depth_length = len(depth)
     # Create empty array.
     depth_3D = np.empty((depth_length, lat_length, lon_length))
@@ -278,10 +287,12 @@ def _find_time_step(time, user_time):
     time_step : 'int'
         index corresponding to the time date looked for.
     """
-
+    
     # Convert user time into pandas datetime.
     time_date = pd.to_datetime(user_time, errors='raise')
-    # # Find index corresponding to user time date.
+    time = pd.to_datetime(time, errors='raise')
+
+    # Find index corresponding to user time date.
     time_index = np.where(time == time_date)[0]
     # Check if index has been found or if more than one has been found.
     if time_index.size == 0 : 
@@ -296,76 +307,21 @@ def _find_time_step(time, user_time):
     return time_step
 
 
-def _find_boundaries(lat, lon, set_domain):
+def _find_nearest(array, values):
     """
-    Find the indeces corresponding to lat and lon boundary values.
-
-    Arguments
-    ---------
-    lat : <class 'numpy.ndarray'>
-        latitude array.
-    lon : <class 'numpy.ndarray'>
-        longitude array.
-    set_domain : <class 'dict'>
-        dictionary containing, in this order,
-        lat_min, lat_max, lon_min and lon_max values.
-
-    Raises
-    ------
-    ValueError
-        if extremants values do not correspond to values within the
-        lat and lon arrays.
-
-    Returns
-    -------
-    lat_min_index, lat_max_index, lon_min_index, lon_max_index : 'int'
-        indeces corresponding to lat and lon extremants, 
-        as set by the user.
+    Find the index of nearest value to given ones, 
+    within a  given array.
     """
     
-    # Flatten lat and lon arrays
-    flat_lat = np.unique(lat)
-    flat_lon = np.unique(lon)
-    # Create array containing user lat & lon extremant values.
-    domain_values = [val for val in set_domain.values()]
-    lat_step = domain_values[4]
-    lon_step = domain_values[5]
-    # Find indeces corresponding to extremant values.
-    where_lat_min = np.logical_and(
-                                   flat_lat >= domain_values[0] - lat_step,
-                                   flat_lat <= domain_values[0] + lat_step )
-    lat_min = np.where(where_lat_min)[0]
-    where_lat_max = np.logical_and(
-                                   flat_lat >= domain_values[1] - lat_step,
-                                   flat_lat <= domain_values[1] + lat_step )
-    lat_max = np.where(where_lat_max)[0]
-    where_lon_min = np.logical_and(
-                                   flat_lon >= domain_values[2] - lon_step,
-                                   flat_lon <= domain_values[2] + lon_step )
-    lon_min = np.where(where_lon_min)[0]
-    where_lon_max = np.logical_and(
-                                   flat_lon >= domain_values[3] - lon_step,
-                                   flat_lon <= domain_values[3] + lon_step )
-    lon_max = np.where(where_lon_max)[0]
-    
-    # Check if indeces have been found.
-    extremes_indeces = [lat_min, lat_max, lon_min, lon_max] 
-    for ndarray in extremes_indeces:
-        if ndarray.size == 0 : 
-            raise ValueError(
-                'Extremants values for latitude and longitude\
-                 do not correspond to values within the arrays.\
-                 They may be inaccurate or out of range')
-                
-    # Store indeces as int.
-    lat_min_index = int(lat_min)
-    lat_max_index = int(lat_max)
-    lon_min_index = int(lon_min)
-    lon_max_index = int(lon_max)
-    return lat_min_index, lat_max_index, lon_min_index, lon_max_index
+    array = np.asarray(array)
+    indeces = []
+    for val in values:
+        index = (np.abs(array - val)).argmin()
+        indeces.append(index)
+    return indeces
 
 
-def _compute_mean_var(in_data, var_name, dimensions, indeces):
+def _compute_mean_var(variable, dimensions, indeces):
     """
     Computing time averaged variable (temperature or salinity) in the
     desired region.
@@ -375,35 +331,33 @@ def _compute_mean_var(in_data, var_name, dimensions, indeces):
     start_tstep, end_tstep, lat_min, lat_max, lon_min, lon_max = indeces
     
     # Transpose temperature and salinity arrays for rearranging indeces.
-    transposed_var = in_data.variables[var_name].transpose(time_dim, 
-                                                             depth_dim,
-                                                             lat_dim, 
-                                                             lon_dim, 
-                                                             ...        )
-   
+    transposed_var = variable.transpose(time_dim, 
+                                        depth_dim,
+                                        lat_dim, 
+                                        lon_dim, 
+                                        ...        )
     # Store temperature and salinity values for the desired time period.
     var = transposed_var[start_tstep:end_tstep+1, :, 
                                   lat_min:lat_max+1, lon_min:lon_max+1]
     
     # Average temp and sal in time.
     mean_var = np.mean(var, axis = 0)
-    
+         
     return mean_var
 
 
-def _compute_mean_bathy(bathy_data, bathy_name, dimensions, indeces):
+def _compute_mean_bathy(bathymetry, dimensions, indeces):
     """
     Computing mean bathymetry in the considered region.
     """
     
-    time_dim, depth_dim, lat_dim, lon_dim = dimensions
-    start_tstep, end_tstep, lat_min, lat_max, lon_min, lon_max = indeces
+    [lat_dim, lon_dim] = dimensions
+    [lat_min, lat_max, lon_min, lon_max] = indeces
     
     # Store bathymetry.
-    transposed_bathy = bathy_data.variables[bathy_name].transpose(lat_dim, 
-                                                                  lon_dim, 
-                                                                  ...     )
+    transposed_bathy = bathymetry.transpose(lat_dim, lon_dim, ... )
     bathymetry = transposed_bathy[lat_min:lat_max+1, lon_min:lon_max+1]
+    
     # Mean sea depth.
     mean_bathy = int(np.mean(bathymetry, axis = None))
     

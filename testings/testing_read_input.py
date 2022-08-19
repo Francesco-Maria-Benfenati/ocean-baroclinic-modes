@@ -8,9 +8,8 @@ Created on Thu Apr  7 16:13:54 2022
 # THIS FILE INCLUDES PART OF THE TESTS FOR FUNCTIONS IMPLEMENTED
 # IN COMPUTING THE BAROCLINIC ROSSBY RADIUS ...
 # ======================================================================
-import xarray
 import numpy as np
-import pandas as pd
+import xarray
 
 #=======================================================================
 # Testing functions for reading input config and data files.
@@ -26,510 +25,495 @@ import OBM.read_input as read
 #-----------------------------------------------------------------------
 
 
-# Test if output from read_JSON_config_file() is 'dict' type.
-def test_JSON_output_type():
-    file_name = 'config.json'
-    output_dict = read.read_JSON_config_file(file_name,  
-                                             section_key = 'sections',
-                                             title_key = 'title',
-                                             items_key = 'items',
-                                             name_key = 'name',
-                                             type_key = 'type', 
-                                             value_key = 'value'      )
-    trial_dict = {}
-    assert type(output_dict) == type(trial_dict)
-
-
-# Test if outputs 'lat_min', 'lat_max', 'lon_min', 'lon_max' from 
-# read_JSON_config_file() are 'float' type.
-def test_JSON_set_domain_with_float_values():
-    file_name = 'config.json'
-    output_dict = read.read_JSON_config_file(file_name,  
-                                            section_key = 'sections',
-                                            title_key = 'title',
-                                            items_key = 'items',
-                                            name_key = 'name',
-                                            type_key = 'type', 
-                                            value_key = 'value'      )
-
-    extremants = [val for val in output_dict['set_domain'].values()]
-    assert [type(extr) == float for extr in extremants]
-   
-
-# Test if read_JSON_config_file() gives error when values which may be
-# floats are not of the right type.
-def test_JSON_set_domain_with_nonfloat_values():
-    file_name = 'config_modified_for_testing_DO-NOT-USE-IT.json'
-    try:
-        read.read_JSON_config_file(file_name,  
-                                  section_key = 'MODIFIED_sections',
-                                  title_key = 'title',
-                                  items_key = 'items',
-                                  name_key = 'name',
-                                  type_key = 'type', 
-                                  value_key = 'value'      )
-    except ValueError:
-        assert True
-    else: 
-        assert False
-
-
-# Test if read_JSON_config_file() gives error when keys given do not 
-# correspond to the one in JSON file.
-def test_JSON_incoherent_keys():
-    file_name = 'config_modified_for_testing_DO-NOT-USE-IT.json'
-    try:
-        read.read_JSON_config_file(file_name,  
-                                  section_key = 'sections', # INCORRECT KEY
-                                  title_key = 'title',
-                                  items_key = 'items',
-                                  name_key = 'name',
-                                  type_key = 'type', 
-                                  value_key = 'value'      )
-    except KeyError:
-        assert True
-    else: 
-        assert False
+def test_read_JSON_output_dictionary():
+    """
+    Test if read_JSON_config_file() output is correct, as expected.
+    *** NOTE: This test exploits the "test case" configuration file. ***
+    """
+    
+    config_path = '../test_case/'
+    config_file = config_path + 'config_test_case.json'
+    # Store configuration parameters from JSON config file.
+    config_parameters = read.read_JSON_config_file(config_file,
+                                                     section_key = 'sections',
+                                                     title_key = 'title',
+                                                     items_key = 'items',
+                                                     name_key = 'name',
+                                                     type_key = 'type', 
+                                                     value_key = 'value'     )
+    expected_config_param = {
+        'set_paths': 
+            {'experiment_name': 'Azores_JAN21', 
+             'region_name': 'Azores', 
+             'input_file_name': 'azores_Jan2021.nc', 
+             'bathy_file_name': 'GLO-MFC_001_024_mask_bathy_azores.nc', 
+             'indata_path': 'test_case/dataset_azores/'}, 
+        'set_variables': 
+            {'temperature_name': 'thetao', 
+             'salinity_name': 'so', 
+             'lat_var_name': 'latitude', 
+             'lon_var_name': 'longitude', 
+             'depth_var_name': 'depth', 
+             'time_var_name': 'time', 
+             'bathy_var_name': 'deptho'}, 
+        'set_dimensions': 
+            {'lat_name': 'latitude', 
+             'lon_name': 'longitude', 
+             'depth_name': 'depth', 
+             'time_name': 'time'}, 
+        'set_domain': 
+            {'lat_min': 33.0, 
+             'lat_max': 35.0,
+             'lat_step': 0.03,
+             'lon_min': -30.0, 
+             'lon_max': -28.0, 
+             'lon_step': 0.03 }, 
+        'set_time': 
+            {'period_name': 'January 2021', 
+             'starting_time': '2021-01-01 12:00:00', 
+             'ending_time': '2021-01-31 12:00:00'}, 
+        'set_modes':{'n_modes': 4}                                        }
         
-        
+    assert config_parameters == expected_config_param
+
+
 #-----------------------------------------------------------------------
-#                       Testing find_time_step()
+#                       Testing _find_time_step()
 #-----------------------------------------------------------------------
-# Test if function find_time_step() gives err when time array is empty.
-def test_find_time_when_empty_array():
-    time = pd.to_datetime([])
+
+
+def test_find_time_when_same_format():
+    """ 
+    Test if function _find_time_step() gives correct output index
+    when the user time format is the same as the array one.
+    """
+    
+    time = np.array(['2021-01-05 12:30:00', '2021-01-04 12:00:00', 
+                     '2021-01-05 09:00:00', '2021-01-05 12:00:30',
+                     '2021-01-05 12:00:00'], dtype='datetime64'   )
     user_time = '2021-01-05 12:00:00'
-    try: 
-        read.find_time_step(time, user_time)
-    except ValueError:
-        assert True
-    else:
-        assert False
-        
-        
-# Test if function find_time_step() gives err when no value is found.
+
+    time_index = read._find_time_step(time, user_time)
+    expected_index = 4
+    
+    assert time_index == expected_index
+
+    
+def test_find_time_when_various_user_formats():
+    """ 
+    Test if function _find_time_step() gives correct output index
+    with various time formats given by the user.
+    """
+    time = np.array(['2021-01-05 12:30:00', '2021-01-04 12:00:00', 
+                     '2021-01-05 09:00:00', '2021-01-05 12:00:30',
+                     '2021-01-05 12:00:00'], dtype='datetime64'   )
+    user_time_1 = '2021 jan 05 12:30:00'
+    user_time_2 = 'jan 04 2021 12:00:00'
+    user_time_3 = '09:00 jan 5 21'
+    user_time_4 = 'January 05 21, 12:00:30'
+    user_time = [user_time_1, user_time_2, user_time_3, user_time_4]
+    
+    time_indeces = []
+    for val in user_time:
+        time_index = read._find_time_step(time, val)
+        time_indeces.append(time_index)
+   
+    expected_indeces = [0, 1, 2, 3]
+    assert time_indeces == expected_indeces
+
+
 def test_find_time_no_value_found():
+    """
+    Test if function _find_time_step() gives err when no value is found.
+    """
+    
     time = np.array(['2025-12-31 12:00:00'], dtype='datetime64')
     user_time = '2021-01-05 12:00:00'
     try: 
-        read.find_time_step(time, user_time)
+        read._find_time_step(time, user_time)
     except ValueError:
         assert True
     else:
         assert False
     
  
-# Test if function find_time_step() gives error when the same time
-# value is found more than once.
 def test_find_time_with_repeated_values():
+    """
+    Test if function _find_time_step() gives error when the same time
+    value is found more than once.
+    """
+    
     time = np.array(['2021-01-05 12:00:00', 
                      '2021-01-05 12:00:00' ], dtype='datetime64')
     user_time = '2021-01-05 12:00:00'
     try: 
-        read.find_time_step(time, user_time)
+        read._find_time_step(time, user_time)
     except ValueError:
         assert True
     else: assert False
     
     
 #-----------------------------------------------------------------------
-#                       Testing find_boundaries()
+#                       Testing _find_nearest()
+#-----------------------------------------------------------------------   
+
+
+def test_find_nearest_correct_output():
+    """
+    Test if function _find_nearest() gives correct output.
+    """
+    
+    array = np.linspace(30.0, 50.0, 20)
+    values = [38, 45, 42.53]
+    
+    out_idx = read._find_nearest(array, values)
+    expected_indeces = [8, 14, 12]
+    
+    assert out_idx == expected_indeces
+
+
+def test_find_nearest_when_range_exceeded():
+    """
+    Test if function _find_nearest() gives the extremant values when
+    the input values exceed the array range.
+    """
+    
+    array = np.linspace(30.0, 50.0, 20)
+    exceeding_values = [20,80]
+    
+    out_idx = read._find_nearest(array, exceeding_values)
+    extremants_indeces = [0, 19]
+    
+    assert out_idx == extremants_indeces
+    
+
+#-----------------------------------------------------------------------
+#                       Testing _compute_mean_var()
 #-----------------------------------------------------------------------
 
 
-# Test if find_boundaries() gives error when arrays are empty.
-def test_find_boundaries_when_empty_array():
-    lat = np.array([])
-    lon = np.array([])
-    set_domain = {'lat_min' : 30.0, 'lat_max' : 50.,
-                  'lon_min' : -38,  'lon_max' : -18,
-                  'lat_step': 0.5,  'lon_step': 0.5 }
-    try:
-        read.find_boundaries(lat, lon, set_domain)
-    except ValueError:
-        assert True
-    else: assert False
+def test_compute_mean_var_correct_average():
+    """
+    Test if function _compute_mean_var() computes the mean correctly
+    in the desired time range, when dims do not need transposition.
+    """
     
+    # Input Variable.
+    dims = 't', 'z', 'y', 'x' # time, depth, lat, lon.
+    data = np.arange(15,30)
+    temp = np.empty([15, 10, 7, 5])    
+    for i in range(len(data)):
+        temp[i,:,:,:] = np.full([10,7,5], data[i])
+    temperature = xarray.Variable(dims, temp)
+    # Expected Output.
+    mean_value = 20.0
+    mean_temp = np.full([10,7,5], mean_value)
+    expected_output = xarray.Variable(['z', 'y', 'x'], mean_temp)
+    # Compute Output.
+    t_start, t_end = 0, 10
+    lat_min, lat_max = 0, 6
+    lon_min, lon_max = 0, 5
+    indeces = t_start, t_end, lat_min, lat_max, lon_min, lon_max
+    out_var = read._compute_mean_var(temperature, dims, indeces)
+
+    assert np.array_equal(out_var.values, expected_output.values)
+  
+
+def test_compute_mean_var_with_different_dims_order():
+    """
+    Test if function _compute_mean_var() gives correct output when
+    dimensions are ordered differently.
+    """
     
-# Test if find_boundaries() gives error when no value is found.
-def test_find_boundaries_no_value_found():
-    lat = np.array([20.0, 100.0])
-    lon = np.array([-57.0, -122])
-    set_domain = {'lat_min' : 30.0, 'lat_max' : 50.,
-                  'lon_min' : -38,  'lon_max' : -18,
-                  'lat_step': 0.5,  'lon_step': 0.5 }
-    try:
-        read.find_boundaries(lat, lon, set_domain)
-    except ValueError:
-        assert True
-    else: assert False
+    # Input Variable.
+    dims = 'y', 'z', 'x', 't' # lat, depth, lon, time.
+    data = np.arange(15,26)
+    temp = np.empty([5, 10, 7, 11]) 
+    for i in range(len(data)):
+        temp[:,:,:,i] = np.full([5,10,7], data[i])
+    temperature = xarray.Variable(dims, temp)
+    # Expected Output.
+    mean_value = 20.0
+    mean_temp = np.full([10,5,7], mean_value)
+    expected_output = xarray.Variable(['z', 'y', 'x'], mean_temp)
+    right_dims = 't', 'z', 'y', 'x' # time, depth, lat, lon.
+    # Compute Output
+    t_start, t_end = 0, 10
+    lat_min, lat_max = 0, 10 # consider all values along lat.
+    lon_min, lon_max = 0, 10 # consider all values along lon.
+    indeces = t_start, t_end, lat_min, lat_max, lon_min, lon_max
+    out_var = read._compute_mean_var(temperature, right_dims, indeces)
+
+    assert np.array_equal(out_var.values, expected_output.values)
+  
+
+def test_compute_mean_var_correct_transposition():
+    """
+    Test if function _compute_mean_var() transposes dims correctly in
+    the desired lat-lon range.
+    """
+    
+    # Input Variable.
+    dims = 'y', 'z', 'x', 't' # lat, depth, lon, time.
+    data = np.arange(15,26)
+    temp = np.empty([7, 10, 5, 11]) 
+    for i in range(len(data)):
+        temp[:,:,:,i] = np.full([7,10,5], data[i])
+    # Expected Output.
+    temperature = xarray.Variable(dims, temp)
+    lat_min, lat_max = 0, 3
+    lon_min, lon_max = 0, 2
+    right_dims = 't', 'z', 'y', 'x' # time, depth, lat, lon.
+    expected_sizes = {'z': 10, 'y': lat_max+1, 'x': lon_max+1}
+    # Compute Output
+    t_start, t_end = 0, 10
+
+    indeces = t_start, t_end, lat_min, lat_max, lon_min, lon_max
+    out_var = read._compute_mean_var(temperature, right_dims, indeces)
+    
+    assert out_var.sizes == expected_sizes
 
 
-# Test if find_boundaries() gives error if values are not 
-# exactly the same.
-def test_find_boundaries_precision():
-    lat = np.array([30.1, 50.2], dtype = float)
-    lon = np.array([-18.01, -38.005,], dtype = float)
-    set_domain = {'lat_min' : 30.0, 'lat_max' : 50.,
-                  'lon_min' : -38,  'lon_max' : -18,
-                  'lat_step': 0.0,  'lon_step': 0.0 }
-    try:
-        read.find_boundaries(lat, lon, set_domain)
-    except ValueError:
-        assert True
-    else: assert False
+#-----------------------------------------------------------------------
+#                       Testing _compute_mean_bathy()
+#-----------------------------------------------------------------------
+
+
+def test_compute_mean_bathy_correct_average():
+    """
+    Test if function _compute_mean_bathy() compute the mean correctly
+    when dims do not need transposition.
+    """
     
+    # Input Variable.
+    dims = ['y', 'x'] # lon, lat.
+    bathy =  np.random.random((5,7))*1000
+    bathymetry = xarray.Variable(dims, bathy)
+    # Expected Output.
+    lat_min, lat_max = 0, 10 # take all values
+    lon_min, lon_max = 0, 10 # take all values
+    expected_mean_value = int(np.mean(bathy, axis=None))
+    # Compute Output.
+    indeces = [lat_min, lat_max, lon_min, lon_max]
+    out_mean_bathy = read._compute_mean_bathy(bathymetry, dims, indeces)
     
+    assert out_mean_bathy == expected_mean_value
+    
+ 
+def test_compute_mean_bathy_inverted_dims():
+    """
+    Test if function _compute_mean_bathy() computes the mean correctly
+    when dimensions are inverted.
+    """
+    
+    # Input Variable.
+    dims = ['x', 'y'] # lon, lat.
+    bathy =  np.random.random((5,7))*1000
+    bathymetry = xarray.Variable(dims, bathy)
+    # Expected Output.
+    right_dims = 'y', 'x' # lat, lon.
+    expected_mean_value = int(np.mean(bathy, axis=None))
+    # Compute Output.
+    lat_min, lat_max = 0, 10 # take all values
+    lon_min, lon_max = 0, 10 # take all values
+    indeces = [lat_min, lat_max, lon_min, lon_max]
+    out_mean_bathy = read._compute_mean_bathy(bathymetry, right_dims, indeces)
+    
+    assert out_mean_bathy == expected_mean_value
+
+    
+def test_compute_mean_bathy_correct_range():
+    """
+    Test if function _compute_mean_bathy() compute the mean correctly
+    within the desired lat-lon range.
+    """
+    
+    # Input Variable.
+    dims = ['x', 'y'] # lon, lat.
+    bathy =  np.random.random((5,7))*1000
+    bathymetry = xarray.Variable(dims, bathy)
+    # Expected Output.
+    right_dims = 'y', 'x' # lat, lon.
+    lat_min, lat_max = 0, 4 # take few values
+    lon_min, lon_max = 0, 2 # take few values
+    expected_mean_value = int(np.mean(bathy[0:3,0:5], axis=None))
+    # Compute Output.
+    indeces = [lat_min, lat_max, lon_min, lon_max]
+    out_mean_bathy = read._compute_mean_bathy(bathymetry, right_dims, indeces)
+    
+    assert out_mean_bathy == expected_mean_value
+
+
 #-----------------------------------------------------------------------
 #             Testing extract_data_from_NetCDF_input_file()
 #-----------------------------------------------------------------------
 
 
-# Test if output variables from extract_data_from_NetCDF_input_file()
-# are of type 'xarray.core.variable.Variable'.
-def test_NetCDF_output_type():
-    config_dict = {'set_paths': 
-                       {'input_file_name': 'azores_Jan2021.nc', 
-'indata_path':
-         '/mnt/d/Physics/SubMesoscale_Ocean/SOFTWARE_Rossby_Radius/Datasets/'},
-                   'set_variables': 
-                       {'temperature_name': 'thetao', 
-                        'salinity_name': 'so',
-                        'lat_var_name': 'latitude', 
-                        'lon_var_name': 'longitude', 
-                        'depth_var_name': 'depth', 
-                        'time_var_name': 'time'}, 
-                   'set_dimensions': 
-                       {'lat_name': 'latitude', 
-                        'lon_name': 'longitude', 
-                        'depth_name': 'depth', 
-                        'time_name': 'time'}, 
-                   'set_domain': 
-                       {'lat_min': 35.0, 
-                        'lat_max': 40.0, 
-                        'lon_min': -30.0, 
-                        'lon_max': -25.0,
-                        'lat_step': 0.0, 
-                        'lon_step': 0.0}, 
-                   'set_time': 
-                       {'starting_time': '2021-01-01 12:00:00',
-                        'ending_time': '2021-01-31 12:00:00'}                   
-                   }
-    output_vars = read.extract_data_from_NetCDF_input_file(config_dict)
-    trial_data = np.arange(0,10)
-    trial_dims = 'depth'
-    trial_var = xarray.Variable(trial_dims, trial_data)
-    assert( [type(output_vars[i]) == type(trial_var)
-             for i in range(len(output_vars))])
+def test_extract_data_correct_output_temp():
+    """
+    Test if extract_data_from_NetCDF_input_file() gives correct output
+    temperature, after having tested all subfunctions inside it.
+    *** NOTE: This test exploits the "dataset_for_testing.nc" file. ***
+    """
     
-
-# Test if output variables from extract_data_from_NetCDF_input_file()
-# are of of correct dimensions.
-def test_NetCDF_output_dims():
-    config_dict = {'set_paths': 
-                       {'input_file_name': 'azores_Jan2021.nc', 
-'indata_path':
-         '/mnt/d/Physics/SubMesoscale_Ocean/SOFTWARE_Rossby_Radius/Datasets/'},
-                   'set_variables': 
-                       {'temperature_name': 'thetao', 
-                        'salinity_name': 'so',
-                        'lat_var_name': 'latitude', 
-                        'lon_var_name': 'longitude', 
-                        'depth_var_name': 'depth', 
-                        'time_var_name': 'time'}, 
-                   'set_dimensions': 
-                       {'lat_name': 'latitude', 
-                        'lon_name': 'longitude', 
-                        'depth_name': 'depth', 
-                        'time_name': 'time'},
-                   'set_domain': 
-                       {'lat_min': 35.0, 
-                        'lat_max': 40.0, 
-                        'lon_min': -30.0, 
-                        'lon_max': -25.0,
-                        'lat_step': 0.0, 
-                        'lon_step': 0.0}, 
-                   'set_time': 
-                       {'starting_time': '2021-01-01 12:00:00',
-                        'ending_time': '2021-01-31 12:00:00'}                    
-                   }
-    output_vars = read.extract_data_from_NetCDF_input_file(config_dict)
-    assert [var.dims == ('depth', 'latitude', 
-                         'longitude'         ) for var in output_vars]
+    # Output results.
+    config_param = {
+        'set_paths': 
+            {'input_file_name': 'dataset_for_testing.nc', 
+             'bathy_file_name': 'dataset_for_testing.nc', 
+             'indata_path': './'}, 
+        'set_variables': 
+            {'temperature_name': 'theta', 
+             'salinity_name': 'salinity', 
+             'lat_var_name': 'latitude', 
+             'lon_var_name': 'longitude', 
+             'depth_var_name': 'depth', 
+             'time_var_name': 'time', 
+             'bathy_var_name': 'bathy'}, 
+        'set_dimensions': 
+            {'lat_name': 'latitude', 
+             'lon_name': 'longitude', 
+             'depth_name': 'depth', 
+             'time_name': 'time'}, 
+        'set_domain': 
+            {'lat_min': 2, 
+             'lat_max': 3, 
+             'lon_min': 4, 
+             'lon_max': 6}, 
+        'set_time': 
+            {'starting_time': '2021-01-05 12:00:00', 
+             'ending_time': '2021-01-15 12:00:00'},                          }    
+    [depth_xarray, mean_temperature, mean_salinity, 
+     mean_bathy] = read.extract_data_from_NetCDF_input_file(config_param)
+    # Expected value.
+    expected_mean_temp = np.full([10,2,3], np.sum(np.arange(4,15))/11)
     
-    
-# Test if extract_data_from_NetCDF_input_file() gives error when keys
-# within the function do not correspond to the ones in JSON file.
-def test_NetCDF_incoherent_keys():
-    config_dict = {'set_paths': 
-                      {'input_file_name': 'azores_Jan2021.nc', 
-'indata_path':
-         '/mnt/d/Physics/SubMesoscale_Ocean/SOFTWARE_Rossby_Radius/Datasets/'},
-                   'set_variables': 
-                       {'MODIFIED_temperature_name': 'thetao', 
-                        'salinity_name': 'so',
-                        'lat_var_name': 'latitude', 
-                        'lon_var_name': 'longitude', 
-                        'depth_var_name': 'depth', 
-                        'time_var_name': 'time'}, 
-                   'set_dimensions': 
-                       {'lat_name': 'latitude', 
-                        'lon_name': 'longitude', 
-                        'depth_name': 'depth', 
-                        'time_name': 'time'},
-                   'set_domain': 
-                      {'lat_min': 35.0, 
-                       'lat_max': 40.0, 
-                       'lon_min': -30.0, 
-                       'lon_max': -25.0,
-                       'lat_step': 0.0, 
-                       'lon_step': 0.0}, 
-                   'set_time': 
-                      {'starting_time': '2021-01-01 12:00:00',
-                       'ending_time': '2021-01-31 12:00:00'}                      
-                   }
-    try:
-        read.extract_data_from_NetCDF_input_file(config_dict)
-    except KeyError:
-        assert True
-    else: 
-        assert False
-
-    
-# Test if extract_data_from_NetCDF_input_file() gives error when 
-# variables name within NetCDF file does not correspond to the ones 
-# in JSON file.
-def test_NetCDF_wrong_variables_name():
-    config_dict = {'set_paths': 
-                      {'input_file_name': 'azores_Jan2021.nc', 
-'indata_path':
-         '/mnt/d/Physics/SubMesoscale_Ocean/SOFTWARE_Rossby_Radius/Datasets/'},
-                  'set_variables': 
-                      {'temperature_name': 'WRONG_VARIABLE_NAME', 
-                       'salinity_name': 'so',
-                       'lat_var_name': 'latitude', 
-                       'lon_var_name': 'longitude', 
-                       'depth_var_name': 'depth', 
-                       'time_var_name': 'time'}, 
-                  'set_dimensions': 
-                      {'lat_name': 'latitude', 
-                       'lon_name': 'longitude', 
-                       'depth_name': 'depth', 
-                       'time_name': 'time'}, 
-                  'set_domain': 
-                      {'lat_min': 35.0, 
-                       'lat_max': 40.0, 
-                       'lon_min': -30.0, 
-                       'lon_max': -25.0,
-                       'lat_step': 0.0, 
-                       'lon_step': 0.0}, 
-                  'set_time': 
-                      {'starting_time': '2021-01-01 12:00:00',
-                       'ending_time': '2021-01-31 12:00:00'}                     
-                  }
-    try:
-        read.extract_data_from_NetCDF_input_file(config_dict)
-    except KeyError:
-        assert True
-    else: 
-        assert False
-        
-        
-# Test if extract_data_from_NetCDF_input_file() gives error when 
-# dimensions name within NetCDF file does not correspond to the ones 
-# in JSON file.
-def test_NetCDF_wrong_depth_name():
-    config_dict = {'set_paths': 
-                      {'input_file_name': 'azores_Jan2021.nc', 
-'indata_path':
-         '/mnt/d/Physics/SubMesoscale_Ocean/SOFTWARE_Rossby_Radius/Datasets/'},
-                   'set_variables': 
-                       {'temperature_name': 'thetao', 
-                        'salinity_name': 'so',
-                        'lat_var_name': 'latitude', 
-                        'lon_var_name': 'longitude', 
-                        'depth_var_name': 'depth', 
-                        'time_var_name': 'time'}, 
-                   'set_dimensions': 
-                       {'lat_name': 'latitude', 
-                        'lon_name': 'longitude', 
-                        'depth_name': 'WRONG_DIMENSION_NAME', 
-                        'time_name': 'time'},
-                   'set_domain': 
-                      {'lat_min': 35.0, 
-                       'lat_max': 40.0, 
-                       'lon_min': -30.0, 
-                       'lon_max': -25.0,
-                       'lat_step': 0.0, 
-                       'lon_step': 0.0}, 
-                   'set_time': 
-                      {'starting_time': '2021-01-01 12:00:00',
-                       'ending_time': '2021-01-31 12:00:00'}                      
-                   }
-    try:
-        read.extract_data_from_NetCDF_input_file(config_dict)
-    except ValueError:
-        assert True
-    else: 
-        assert False
+    assert np.array_equal(mean_temperature, expected_mean_temp)
 
 
-# Test if extract_data_from_NetCDF_input_file() works well when starting
-# and ending time are the same (i.e. one time step given).
-def test_NetCDF_one_tstep_given():
-    config_dict = {'set_paths': 
-                      {'input_file_name': '20210131_AZORES.nc', 
-'indata_path':
-         '/mnt/d/Physics/SubMesoscale_Ocean/SOFTWARE_Rossby_Radius/Datasets/'},
-                   'set_variables': 
-                       {'temperature_name': 'thetao', 
-                        'salinity_name': 'so',
-                        'lat_var_name': 'latitude', 
-                        'lon_var_name': 'longitude', 
-                        'depth_var_name': 'depth', 
-                        'time_var_name': 'time'}, 
-                   'set_dimensions': 
-                       {'lat_name': 'latitude', 
-                        'lon_name': 'longitude', 
-                        'depth_name': 'WRONG_DIMENSION_NAME', 
-                        'time_name': 'time'},
-                   'set_domain': 
-                      {'lat_min': 35.0, 
-                       'lat_max': 40.0, 
-                       'lon_min': -30.0, 
-                       'lon_max': -25.0,
-                       'lat_step': 0.0, 
-                       'lon_step': 0.0}, 
-                   'set_time': 
-                      {'starting_time': '2021-01-31 12:00:00',
-                       'ending_time': '2021-01-31 12:00:00'}                      
-                   }
-    try:
-        read.extract_data_from_NetCDF_input_file(config_dict)
-    except Exception:
-        assert True
-    else: 
-        assert False
-        
+def test_extract_data_correct_output_sal():
+    """
+    Test if extract_data_from_NetCDF_input_file() gives correct output
+    salinity, after having tested all subfunctions inside it.
+    *** NOTE: This test exploits the "dataset_for_testing.nc" file. ***
+    """
+    
+    # Output results.
+    config_param = {
+        'set_paths': 
+            {'input_file_name': 'dataset_for_testing.nc', 
+             'bathy_file_name': 'dataset_for_testing.nc', 
+             'indata_path': './'}, 
+        'set_variables': 
+            {'temperature_name': 'theta', 
+             'salinity_name': 'salinity', 
+             'lat_var_name': 'latitude', 
+             'lon_var_name': 'longitude', 
+             'depth_var_name': 'depth', 
+             'time_var_name': 'time', 
+             'bathy_var_name': 'bathy'}, 
+        'set_dimensions': 
+            {'lat_name': 'latitude', 
+             'lon_name': 'longitude', 
+             'depth_name': 'depth', 
+             'time_name': 'time'}, 
+        'set_domain': 
+            {'lat_min': 2, 
+             'lat_max': 3, 
+             'lon_min': 4, 
+             'lon_max': 6}, 
+        'set_time': 
+            {'starting_time': '2021-01-05 12:00:00', 
+             'ending_time': '2021-01-15 12:00:00'},                          }    
+    [depth_xarray, mean_temperature, mean_salinity, 
+     mean_bathy] = read.extract_data_from_NetCDF_input_file(config_param)
+    # Expected value.
+    expected_mean_sal = np.full([10,2,3], np.sum(np.arange(1005,1016))/11)
+    
+    assert np.array_equal(mean_salinity, expected_mean_sal)
+    
 
-# Test if extract_data_from_NetCDF_input_file() works well when min
-# and max latitude/longitude are the same (i.e. punctual profiles).
-def test_NetCDF_punctual_profiles_wanted():
-    config_dict = {'set_paths': 
-                      {'input_file_name': 'azores_Jan2021.nc.nc', 
-'indata_path':
-         '/mnt/d/Physics/SubMesoscale_Ocean/SOFTWARE_Rossby_Radius/Datasets/'},
-                   'set_variables': 
-                       {'temperature_name': 'thetao', 
-                        'salinity_name': 'so',
-                        'lat_var_name': 'latitude', 
-                        'lon_var_name': 'longitude', 
-                        'depth_var_name': 'depth', 
-                        'time_var_name': 'time'}, 
-                   'set_dimensions': 
-                       {'lat_name': 'latitude', 
-                        'lon_name': 'longitude', 
-                        'depth_name': 'WRONG_DIMENSION_NAME', 
-                        'time_name': 'time'},
-                   'set_domain': 
-                      {'lat_min': 35.0, 
-                       'lat_max': 35.0, 
-                       'lon_min': -25.0, 
-                       'lon_max': -25.0,
-                       'lat_step': 0.0, 
-                       'lon_step': 0.0}, 
-                   'set_time': 
-                      {'starting_time': '2021-01-01 12:00:00',
-                       'ending_time': '2021-01-31 12:00:00'}                      
-                   }
-    try:
-        read.extract_data_from_NetCDF_input_file(config_dict)
-    except Exception:
-        assert True
-    else: 
-        assert False
-        
-        
-# Test if extract_data_from_NetCDF_input_file() output type is correct
-# when handling different datasets (one time step given).
-def test_NetCDF_correct_output_type_when_different_dataset():
-    config_dict = {'set_paths': 
-                      {'input_file_name':'SURF_1h_20200702_20200706_grid_T.nc', 
-'indata_path':
-         '/mnt/d/Physics/SubMesoscale_Ocean/SOFTWARE_Rossby_Radius/Datasets/'},
-                  'set_variables': 
-                      {'temperature_name': 'votemper', 
-                       'salinity_name': 'vosaline',
-                       'lat_var_name': 'nav_lat', 
-                       'lon_var_name': 'nav_lon', 
-                       'depth_var_name': 'deptht', 
-                       'time_var_name': 'time_counter'}, 
-    # Input file imensions are (in order): 
-    # x, y, deptht, time_counter, tbnds.
-                  'set_dimensions': 
-                      {'lat_name': 'y', 
-                       'lon_name': 'x', 
-                       'depth_name': 'deptht', 
-                       'time_name': 'time_counter'}, 
-                  'set_domain': 
-                      {'lat_min': -26, 
-                       'lat_max': -23.5, 
-                       'lon_min': -45, 
-                       'lon_max': -43.5,
-                       'lat_step': 0.01,
-                       'lon_step': 0.01},
-                  'set_time': 
-                      {'starting_time': '2020-07-02T18:30:00.000000000',
-                       'ending_time': '2020-07-02T18:30:00.000000000'}                   
-                  }
-    output_vars = read.extract_data_from_NetCDF_input_file(config_dict)
-    trial_data = np.arange(0,10)
-    trial_dims = 'depth'
-    trial_var = xarray.Variable(trial_dims, trial_data)
-    assert( [type(var) == type(trial_var)
-                    for var in output_vars])
+def test_extract_data_correct_output_bathy():
+    """
+    Test if extract_data_from_NetCDF_input_file() gives correct output
+    mean bathymetry, after having tested all subfunctions inside it.
+    *** NOTE: This test exploits the "dataset_for_testing.nc" file. ***
+    """
+    
+    # Output results.
+    config_param = {
+        'set_paths': 
+            {'input_file_name': 'dataset_for_testing.nc', 
+             'bathy_file_name': 'dataset_for_testing.nc', 
+             'indata_path': './'}, 
+        'set_variables': 
+            {'temperature_name': 'theta', 
+             'salinity_name': 'salinity', 
+             'lat_var_name': 'latitude', 
+             'lon_var_name': 'longitude', 
+             'depth_var_name': 'depth', 
+             'time_var_name': 'time', 
+             'bathy_var_name': 'bathy'}, 
+        'set_dimensions': 
+            {'lat_name': 'latitude', 
+             'lon_name': 'longitude', 
+             'depth_name': 'depth', 
+             'time_name': 'time'}, 
+        'set_domain': 
+            {'lat_min': 2, 
+             'lat_max': 3, 
+             'lon_min': 4, 
+             'lon_max': 6}, 
+        'set_time': 
+            {'starting_time': '2021-01-05 12:00:00', 
+             'ending_time': '2021-01-15 12:00:00'},                          }    
+    [depth_xarray, mean_temperature, mean_salinity, 
+     mean_bathy] = read.extract_data_from_NetCDF_input_file(config_param)
+    # Expected value.
+    expected_mean_bathy = int((500+750)/2)
+    
+    assert np.array_equal(expected_mean_bathy, mean_bathy)
     
     
-# Test if dimensions of extract_data_from_NetCDF_input_file() outputs
-# are correct when:
-# 1) additional dimensions are given (more than time, depth, lat, lon)
-# 2) input dimension are in a different order.
-# 3) latitude and longitude are 2D arrays.
-# 4) one time step given.
-# This may happen with different input datasets.
-# NOTE: 
-#      Here more than one property is tested at the same time. 
-#      This is related to the difficulties of handling different
-#      datasets for testing the function correct behavior.      
-def test_NetCDF_correct_output_dims_when_different_dataset():
-    config_dict = {'set_paths': 
-                      {'input_file_name':'SURF_1h_20200702_20200706_grid_T.nc', 
-'indata_path':
-         '/mnt/d/Physics/SubMesoscale_Ocean/SOFTWARE_Rossby_Radius/Datasets/'},
-                  'set_variables': 
-                      {'temperature_name': 'votemper', 
-                       'salinity_name': 'vosaline',
-                       'lat_var_name': 'nav_lat', 
-                       'lon_var_name': 'nav_lon', 
-                       'depth_var_name': 'deptht', 
-                       'time_var_name': 'time_counter'}, 
-    # Input file imensions are (in order): 
-    # x, y, deptht, time_counter, tbnds.
-                  'set_dimensions': 
-                      {'lat_name': 'y', 
-                       'lon_name': 'x', 
-                       'depth_name': 'deptht', 
-                       'time_name': 'time_counter'}, 
-                  'set_domain': 
-                      {'lat_min': -26, 
-                       'lat_max': -23.5, 
-                       'lon_min': -45, 
-                       'lon_max': -43.5,
-                       'lat_step': 0.01,
-                       'lon_step': 0.01},
-                  'set_time': 
-                      {'starting_time': '2020-07-02T18:30:00.000000000',
-                       'ending_time': '2020-07-02T18:30:00.000000000'}            
-                  }
-    output_vars = read.extract_data_from_NetCDF_input_file(config_dict)
-    assert [var.dims == ('deptht', 'y', 'x') for var in output_vars]
+def test_extract_data_correct_output_depth():
+    """
+    Test if extract_data_from_NetCDF_input_file() gives correct output
+    depth xarray, after having tested all subfunctions inside it.
+    *** NOTE: This test exploits the "dataset_for_testing.nc" file. ***
+    """
+    
+    # Output results.
+    config_param = {
+        'set_paths': 
+            {'input_file_name': 'dataset_for_testing.nc', 
+             'bathy_file_name': 'dataset_for_testing.nc', 
+             'indata_path': './'}, 
+        'set_variables': 
+            {'temperature_name': 'theta', 
+             'salinity_name': 'salinity', 
+             'lat_var_name': 'latitude', 
+             'lon_var_name': 'longitude', 
+             'depth_var_name': 'depth', 
+             'time_var_name': 'time', 
+             'bathy_var_name': 'bathy'}, 
+        'set_dimensions': 
+            {'lat_name': 'latitude', 
+             'lon_name': 'longitude', 
+             'depth_name': 'depth', 
+             'time_name': 'time'}, 
+        'set_domain': 
+            {'lat_min': 2, 
+             'lat_max': 3, 
+             'lon_min': 4, 
+             'lon_max': 6}, 
+        'set_time': 
+            {'starting_time': '2021-01-05 12:00:00', 
+             'ending_time': '2021-01-15 12:00:00'},                          }    
+    [depth_xarray, mean_temperature, mean_salinity, 
+     mean_bathy] = read.extract_data_from_NetCDF_input_file(config_param)
+    # Expected value.
+    expected_depth = np.empty([10,2,3])
+    for i in range(10):
+        expected_depth[i,:,:] = np.full([2,3], i)
+
+    assert np.array_equal(depth_xarray.values, expected_depth)
