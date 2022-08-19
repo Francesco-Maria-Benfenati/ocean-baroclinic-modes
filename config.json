@@ -108,6 +108,11 @@
             "description":"value of maximum latitude in °N (°S are negative)",
             "note":"set lat_max = lat_min if punctual profile is considered."
           },
+         {  "name":"lat_step",
+            "value":" ... ",
+            "type":"float",
+            "description":"value of latitude step (to find the extremant values)."
+          },
          {  "name":"lon_min",
             "value":" ... ",
             "type":"float",
@@ -119,11 +124,6 @@
             "type":"float",
             "description":"value of maximum longitude in °E (°W are negative)",
             "note":"set lon_max = lon_min if punctual profile is considered."
-          },
-         {  "name":"lat_step",
-            "value":" ... ",
-            "type":"float",
-            "description":"value of latitude step (to find the extremant values)."
           },
          {  "name":"lon_step",
             "value":" ... ",
