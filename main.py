@@ -122,16 +122,16 @@ time_var.long_name = 'time'
 time_var.standard_name = 'time'
 
 # Create latitude variable.
-time_var = out_file.createVariable('latitude', np.int32,'latitude')
-time_var[:] = 1
-time_var.long_name = 'latitude'
-time_var.standard_name = 'latitude'
+lat_var = out_file.createVariable('latitude', np.int32,'latitude')
+lat_var[:] = 1
+lat_var.long_name = 'latitude'
+lat_var.standard_name = 'latitude'
 
 # Create longitude variable.
-time_var = out_file.createVariable('longitude', np.int32,'longitude')
-time_var[:] = 1
-time_var.long_name = 'longitude'
-time_var.standard_name = 'longitude'
+lon_var = out_file.createVariable('longitude', np.int32,'longitude')
+lon_var[:] = 1
+lon_var.long_name = 'longitude'
+lon_var.standard_name = 'longitude'
 
 # Create depth variable.
 depth_var = out_file.createVariable('depth', np.float32, 'depth')
@@ -147,7 +147,6 @@ depth_var.standard_name = "depth"
 new_depth_var = out_file.createVariable('equally_spaced_depth_grid',
                                       np.float32, 'equally_spaced_depth_grid')
 new_depth_var[:] = np.linspace(0, 1, len(Phi[:,0]))
-print(new_depth_var[:])
 new_depth_var.valid_min = 0
 new_depth_var.valid_max = 1
 new_depth_var.grid_step = '1m/H'
