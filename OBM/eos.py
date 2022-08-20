@@ -17,6 +17,7 @@ Created on Fri Apr 22 10:25:22 2022
 import xarray
 import numpy as np
 from scipy import interpolate
+from OBM.baroclinic_modes import _interpolate_N2 as _interpolate
 
 
 def compute_density(z, temp, S):
@@ -306,6 +307,7 @@ def compute_BruntVaisala_freq_sq(z, density):
     N = (- g/rho_0 * ∂rho_s/∂z)^1/2  with g = 9.806 m/s^2,
 
     where rho_0 is the reference density.
+    NOTE: here, dz = 1m .
     --------------------------------------------------------------------
     NOTE:
            Here, the SQUARE OF BRUNT-VAISALA FREQUENCY is computed
@@ -331,8 +333,6 @@ def compute_BruntVaisala_freq_sq(z, density):
     g = 9.806 # (m/s^2)
     # Defining value of reference density rho_0.
     rho_0 = 1025 #(kg/m^3)
-    # Create empty array for squared Brunt-Vaisala frequency, N^2.
-    N2 = np.empty(len_z)
     
    
     # Compute density mean vertical profile, ignoring NaNs.
@@ -347,31 +347,32 @@ def compute_BruntVaisala_freq_sq(z, density):
     # Check if density has same length as z along depth direction.
     if len(mean_dens) != len_z:
         raise ValueError('legth mismatch along depth direction.')
-
-    # Linear Interpolation along z axis (only if depth length is > 2).
-    if len_z > 2:
-        where_nan_dens = np.where(np.isnan(mean_dens))
-        dens_nan_excl = np.delete(mean_dens, where_nan_dens, None)
-        depth_nan_excl = np.delete(z, where_nan_dens, None)
-        
-        f = interpolate.interp1d(depth_nan_excl, dens_nan_excl, 
-                                  fill_value='extrapolate', kind='linear')
-        mean_dens = f(z)
     
+    # Linear Interpolation along z axis, on an equally spaced depth grid
+    # with dz = 1m (only if depth length is > 2).
+    if len_z > 2:
+        interp_mean_dens = _interpolate(z, mean_dens)
+    else: 
+        interp_mean_dens = mean_dens
+    len_dens = len(interp_mean_dens)
+    
+    # Create empty array for squared Brunt-Vaisala frequency, N^2.
+    N2 = np.empty(len_dens)
+    
+    dz = 1 #(m) grid step of the new interpolation grid
     # Compute  N^2 for the surface level (forward finite difference).
     N2[0] = ( - (g/rho_0)
-              *(mean_dens[0] - mean_dens[1])/abs(z[1] - z[0]) )
+              *(interp_mean_dens[0] - interp_mean_dens[1])/dz)
     # Compute  N^2 for the surface level (forward finite difference).
     N2[-1] = ( - (g/rho_0)
-              *(mean_dens[-2] - mean_dens[-1])/abs(z[-1] - z[-2]) )
+              *(interp_mean_dens[-2] - interp_mean_dens[-1])/dz)
 
     if len_z > 2:
         # Compute  N^2 for the surface level (centered finite difference).
         # Do it only if len_z>2.
-        for i in range(1, len_z-1):
-            dz = abs(z[i+1] - z[i-1])
+        for i in range(1, len_dens-1):
             N2[i] = ( - (g/rho_0)
-                      *(mean_dens[i-1] - mean_dens[i+1])/dz )
+                      *(interp_mean_dens[i-1] - interp_mean_dens[i+1])/(2*dz))
 
     #-------------------------------------------------------------------
     # Return Brunt-Vaisala frequency & mean density profiles.
@@ -385,7 +386,7 @@ def compute_BruntVaisala_freq_sq(z, density):
     N2_xarray.attrs = N2_attrs
 
     # Make mean density of 'xarray.core.variable.Variable' type.
-    mean_dens_xarr =  xarray.Variable(dims = 'depth', data = mean_dens)
+    mean_dens_xarr =  xarray.Variable(dims = 'depth', data = interp_mean_dens)
     # Associate attributes to mean density xarray object.
     mean_dens_xarr_attrs = {'long_name':
                                     'mean potential density',

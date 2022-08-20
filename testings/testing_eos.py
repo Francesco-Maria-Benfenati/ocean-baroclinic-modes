@@ -10,7 +10,7 @@ Created on Thu May  5 17:49:21 2022
 # ======================================================================
 import xarray
 import numpy as np
-
+from scipy import interpolate
 from hypothesis import given
 import hypothesis.strategies as st
 
@@ -230,14 +230,19 @@ def test_compute_mean_dens_1D_input(arr_end):
     without computing the mean.
     """
     
-    depth = np.arange(1, arr_end) 
-    arr_1D =  np.arange(1, arr_end) 
+    depth = np.linspace(0, arr_end, 30) 
+    arr_1D =  np.arange(0, 30) 
     dims_1D = 'depth'
     trial_1D_array = xarray.Variable(dims_1D, arr_1D)
     mean_dens = compute_BVsq(depth, trial_1D_array)[1]
- 
-    assert np.array_equal(mean_dens, arr_1D)
     
+    f = interpolate.interp1d(depth, arr_1D, 
+                              fill_value = 'extrapolate', kind = 'linear')
+    z = np.linspace(0, arr_end, arr_end+1)
+    expected_mean_dens = f(z)
+
+    assert np.array_equal(mean_dens, expected_mean_dens)
+
 
 @given(arr_end = st.integers(3,100))
 def test_compute_mean_dens_2D_input(arr_end):
@@ -246,8 +251,8 @@ def test_compute_mean_dens_2D_input(arr_end):
     2D input arrays.
     """
     
-    depth = np.arange(1, arr_end) 
-    arr =  np.arange(1, arr_end) 
+    depth = np.linspace(0, arr_end, 50) 
+    arr =  np.arange(0, 50) 
     len_lat = 5
     arr_2D = np.tile(arr, (len_lat,1))
     dims_2D = ('depth', 'lat')
@@ -255,7 +260,12 @@ def test_compute_mean_dens_2D_input(arr_end):
     mean_dens = compute_BVsq(depth, trial_2D_array)[1]
     expected_mean_dens = np.mean(arr_2D, axis = 0)
     
-    assert np.array_equal(mean_dens, expected_mean_dens)
+    f = interpolate.interp1d(depth, expected_mean_dens, 
+                              fill_value = 'extrapolate', kind = 'linear')
+    z = np.linspace(0, arr_end, arr_end+1)
+    interp_mean_dens = f(z)
+    
+    assert np.array_equal(mean_dens, interp_mean_dens)
 
     
 @given(arr_end = st.integers(3,100))
@@ -265,8 +275,8 @@ def test_compute_mean_dens_3D_input(arr_end):
     3D input arrays.
     """
     
-    depth = np.arange(1, arr_end) 
-    arr =  np.arange(1, arr_end) 
+    depth = np.linspace(0, arr_end, 75) 
+    arr =  np.arange(0, 75)  
     len_lat = 5
     len_lon = 3
     dims_3D = ('depth', 'lat', 'lon')
@@ -277,8 +287,13 @@ def test_compute_mean_dens_3D_input(arr_end):
     mean_dens = compute_BVsq(depth, trial_3D_array)[1]
     expected_mean_dens = np.mean(arr_3D, axis = (1,2))
     
-    assert np.array_equal(mean_dens, expected_mean_dens)
-  
+    f = interpolate.interp1d(depth, expected_mean_dens, 
+                              fill_value = 'extrapolate', kind = 'linear')
+    z = np.linspace(0, arr_end, arr_end+1)
+    interp_mean_dens = f(z)
+    
+    assert np.array_equal(mean_dens, interp_mean_dens)
+ 
 
 def test_compute_BV_const_dens():
     """
@@ -302,23 +317,25 @@ def test_compute_BV_const_dens():
     density = xarray.Variable(dims_3D, rho_3D)
     out_BV2 = compute_BVsq(depth, density)[0]
 
-    assert np.allclose(out_BV2, theor_BV2, atol=1e-06)
+    assert np.allclose(out_BV2, theor_BV2, atol=1e-08)
  
 
-def test_compute_BV_linear_dens():
+@given(a = st.floats(0, 50))
+def test_compute_BV_linear_dens(a):
     """
     Test if compute_BVsq() computes the BV freq. squared correctly 
     in a known linear case
-    rho(z) = rho_0 * z + const, z < 0 --> N^2 = -g .
+    rho(z) = a * z + rho_0, z < 0 --> N^2 = -g .
     """
     
     # Theoretical case.
-    depth = - np.arange(0, 100)
+    H = 1000
+    depth = - np.arange(0, H+1)
     rho_0 = 1025 #(kg/m^3) #kg/m^3, ref. density
-    const = 1.4
-    rho = rho_0*depth + const 
+    a /= - H
+    rho = a*depth + rho_0
     g = 9.806 # (m/s^2)
-    theor_BV2 = - g*np.ones(len(depth))
+    theor_BV2 = - (g*a/rho_0) * np.ones(len(depth))
     # Output product.
     len_lat = 5
     len_lon = 3
@@ -329,10 +346,11 @@ def test_compute_BV_linear_dens():
     density = xarray.Variable(dims_3D, rho_3D)
     out_BV2 = compute_BVsq(depth, density)[0]
     
-    assert np.allclose(out_BV2, theor_BV2, atol=1e-06)
+    assert np.allclose(out_BV2, theor_BV2, atol=1e-08)
 
 
-def test_compute_BV_expon_dens():
+@given(a = st.floats(0, 0.05))
+def test_compute_BV_expon_dens(a):
     """
     Test if compute_BVsq() computes the BV freq. squared correctly 
     in a known exponential case 
@@ -340,10 +358,10 @@ def test_compute_BV_expon_dens():
     """
     
     # Theoretical case.
-    H = 100
-    depth = - np.arange(0, H)
+    H = 1000
+    depth = - np.arange(0, H+1)
     rho_0 = 1025 #(kg/m^3) #kg/m^3, ref. density
-    a = - 1/H
+    a /= - H
     rho = rho_0*np.exp(a*depth) 
     g = 9.806 # (m/s^2)
     theor_BV2 = - g*a*np.exp(a*depth)
@@ -356,22 +374,12 @@ def test_compute_BV_expon_dens():
         rho_3D[i,:,:] = np.tile(rho[i], (len_lat, len_lon)) 
     density = xarray.Variable(dims_3D, rho_3D)
     out_BV2 = compute_BVsq(depth, density)[0]
-    
-    err_centered_diff = 1e-05 # Error related to centered finite differences.
-    # Equality of the interior elements, from second to second-last elements.
-    equality_interior = np.allclose(out_BV2[1:-1], theor_BV2[1:-1], 
-                                                atol= err_centered_diff)
-    # Equality of the array extremes, compute through forward/backward 
-    # finite differences.
-    err_fwd_diff = 1e-02
-    equality_extremes = np.allclose([out_BV2[0], out_BV2[-1]],
-                                    [theor_BV2[0], theor_BV2[-1]], 
-                                    atol= err_fwd_diff)
-    
-    assert np.logical_and(equality_interior, equality_extremes)
 
+    error = 1e-08 #error related to finite differences (dx**2)
+    assert np.allclose(out_BV2, theor_BV2, atol= error)
+    
 
-def test_compute_BVsq_values_NOT_adjacent_to_NaNs():
+def test_compute_BVsq_NaNs_behaviour():
     """
     Test if in compute_BVsq() values which are NaNs becomes values due
     to interpolation.
@@ -384,6 +392,7 @@ def test_compute_BVsq_values_NOT_adjacent_to_NaNs():
     output_N2 = compute_BVsq(depth, trial_dens)[0]
     where_NaNs = np.where(np.isnan(output_N2.values))[0]
     expected_indeces = np.array([])
+    
     assert np.array_equal(where_NaNs, expected_indeces)
     
     
