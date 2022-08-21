@@ -120,7 +120,7 @@ ax.set_title('%s (%s)\n %s, %s'
                                fontsize = 12, 
                                fontweight = 'bold', loc = 'center'        )
 # Save figure.
-fig.savefig(outdata_path + '/test.png', bbox_inches='tight')
+fig.savefig(outdata_path + '/Rossby_rad.png', bbox_inches='tight')
 
 # ----------------------------------------------------------------------
 # Close output data file.
