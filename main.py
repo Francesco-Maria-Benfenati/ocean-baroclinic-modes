@@ -56,9 +56,12 @@ depth_1D = depth.values[:,0,0]
 # N° of modes of motion considered (including the barotropic one).
 N_motion_modes = config_parameters['set_modes']['n_modes']
 # ----------------------------------------------------------------
+# Create new depth grid, 1m grid step, coherent with BV freq.
+max_depth = int(max(depth_1D))
+z = np.linspace(0,max_depth,max_depth+1)
 
 # Compute baroclinic Rossby radius and vert. struct. function Phi(z).
-R, Phi = modes(depth_1D, mean_depth, BV_freq_sq, N_motion_modes)
+R, Phi = modes(z, mean_depth, BV_freq_sq, N_motion_modes)
 
 # ======================================================================
 #                  *  WRITE RESULTS ON OUTPUT FILE  *
@@ -104,9 +107,9 @@ depth_len = len(depth_1D)
 out_file.createDimension('time', 1)
 out_file.createDimension('latitude', 1)
 out_file.createDimension('longitude', 1)
-out_file.createDimension('depth', depth_len)
+out_file.createDimension('depth', len(z))
 # Create equally spaced depth grid for R, Phi.
-out_file.createDimension('equally_spaced_depth_grid', len(Phi[:,0]))
+out_file.createDimension('nondim_depth_grid', len(Phi[:,0]))
 del(depth_len)
 
 # Add barotropic mode to number of modes of motion to be considered.
@@ -135,25 +138,26 @@ lon_var.standard_name = 'longitude'
 
 # Create depth variable.
 depth_var = out_file.createVariable('depth', np.float32, 'depth')
-depth_var[:] = depth_1D
-depth_var.valid_min = min(depth_1D)
-depth_var.valid_max = max(depth_1D)
+depth_var[:] = z
+depth_var.valid_min = 0.0
+depth_var.valid_max = max_depth
+depth_var.grid_step = 1.0
 depth_var.unit_long = "meters"
 depth_var.units = 'm'
-depth_var.long_name = "depth below sea level" 
+depth_var.long_name = "depth below sea level, 1m grid step" 
 depth_var.standard_name = "depth" 
 
 # Create depth variable.
-new_depth_var = out_file.createVariable('equally_spaced_depth_grid',
-                                      np.float32, 'equally_spaced_depth_grid')
+new_depth_var = out_file.createVariable('nondim_depth_grid',
+                                      np.float32, 'nondim_depth_grid')
 new_depth_var[:] = np.linspace(0, 1, len(Phi[:,0]))
 new_depth_var.valid_min = 0
 new_depth_var.valid_max = 1
 new_depth_var.grid_step = '1m/H'
 new_depth_var.unit_long = "dimensionless"
 new_depth_var.units = '1'
-new_depth_var.long_name = "depth below sea level (equally spaced grid)" 
-new_depth_var.standard_name = "equally spaced depth grid" 
+new_depth_var.long_name = "non-dim depth below sea level (equally spaced grid)" 
+new_depth_var.standard_name = "non dimensional depth grid" 
 
 # Create modes variable.
 mode_var = out_file.createVariable('mode', np.int32, 'mode')
@@ -191,7 +195,7 @@ Ross_rad_var.standard_name = 'Rossby_radius'
 # Create baroclinic Rossby radius variable. 
 Phi_var = out_file.createVariable('phi', np.float32, 
                                   ('time','latitude','longitude',
-                                   'equally_spaced_depth_grid', 'mode'))
+                                   'nondim_depth_grid', 'mode'))
 Phi_var[:] = Phi
 Phi_var.unit_long = 'dimensionless'
 Phi_var.units = '1'

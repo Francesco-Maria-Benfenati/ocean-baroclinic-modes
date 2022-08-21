@@ -22,7 +22,7 @@ outdata_file_name = sys.argv[2]
 data_to_plot = xarray.open_dataset(outdata_path + '/' + outdata_file_name)
 
 depth = data_to_plot.variables['depth']
-new_depth = data_to_plot.variables['equally_spaced_depth_grid']
+new_depth = data_to_plot.variables['nondim_depth_grid']
 time = data_to_plot.variables['time']
 variables_to_plot = [data_to_plot.variables['mean_density'], 
                      data_to_plot.variables['BVfreq'],
