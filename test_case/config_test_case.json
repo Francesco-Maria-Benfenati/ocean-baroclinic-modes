@@ -18,7 +18,7 @@
             "description":"name of the input NetCDF data file."
           },
          {  "name":"bathy_file_name",
-            "value":"GLO-MFC_001_024_mask_bathy_azores.nc",
+            "value":"mask_bathy_test_case_azores.nc",
             "type":"string",
             "description":"name of the NetCDF file containing the bathymetry."
           },

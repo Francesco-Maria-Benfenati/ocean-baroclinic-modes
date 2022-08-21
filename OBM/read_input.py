@@ -197,7 +197,7 @@ def extract_data_from_NetCDF_input_file(config_param):
     lat_max = set_domain['lat_max']
     lon_min = set_domain['lon_min']
     lon_max = set_domain['lon_max']
-
+    
     lat_min_idx, lat_max_idx = _find_nearest(latitude, [lat_min, lat_max])
     lon_min_idx, lon_max_idx = _find_nearest(longitude, [lon_min, lon_max])
     
@@ -353,11 +353,11 @@ def _compute_mean_bathy(bathymetry, dimensions, indeces):
     
     [lat_dim, lon_dim] = dimensions
     [lat_min, lat_max, lon_min, lon_max] = indeces
-    
+
     # Store bathymetry.
     transposed_bathy = bathymetry.transpose(lat_dim, lon_dim, ... )
     bathymetry = transposed_bathy[lat_min:lat_max+1, lon_min:lon_max+1]
-    
+
     # Mean sea depth.
     mean_bathy = int(np.mean(bathymetry, axis = None))
     

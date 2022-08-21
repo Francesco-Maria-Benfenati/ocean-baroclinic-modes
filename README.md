@@ -122,6 +122,7 @@ Eventually, the output products will be located in a directory created within th
 
 >#### Note:
 >The software may be run on Windows system, too. In that case, please set the input dataset path as shown within the configuration file and make sure the necessary packages are already installed on Windows.
+>The mask file containing the bathymetry has to be defined on the same lat/lon grid as the input dataset!
 
 ### JSON Configuration File
 The [JSON configuration file](https://github.com/Francesco-Maria-Benfenati/ocean-baroclinic-modes-1.0/blob/main/config.json) is structured as a list of subdictionaries called **sections**. Each *section* consists of a **section title** and a list of **items**. Each *item* is characterized by a *name*, a *value*, a *type* and a *description* for helping the user understand the *item* function. 

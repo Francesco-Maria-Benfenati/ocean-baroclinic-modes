@@ -23,10 +23,10 @@ period_name = 'Jan2021'
 # ----------------------------------------------------------------------
 azores = {
   'name': 'azores',
-  'lon_min': '-38',
-  'lon_max': '-18',
-  'lat_min': '30',
-  'lat_max': '50'}
+  'lon_min': '-30.5',
+  'lon_max': '-27.5',
+  'lat_min': '32.5',
+  'lat_max': '35.5'}
 
 # Insert regions of interest within an array.
 regions = [azores]
