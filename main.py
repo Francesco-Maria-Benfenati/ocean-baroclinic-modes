@@ -141,6 +141,7 @@ depth_var = out_file.createVariable('depth', np.float32, 'depth')
 depth_var[:] = z
 depth_var.valid_min = 0.0
 depth_var.valid_max = max_depth
+depth_var.mean_depth = mean_depth
 depth_var.grid_step = 1.0
 depth_var.unit_long = "meters"
 depth_var.units = 'm'
