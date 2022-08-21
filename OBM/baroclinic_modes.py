@@ -123,21 +123,33 @@ def compute_barocl_modes(depth, H, N2, n_modes):
     dz = 1/H
     
     A = _compute_matrix_A(n, dz)
-    B = _compute_matrix_B(n, dz, S)
+    B = _compute_matrix_B(n, S)
     
     # ==================================================================
     # Compute eigenvalues.
     # ==================================================================
     eigenvalues = _compute_eigenvals(A, B, n_modes)
-    
+
     # ==================================================================
     # 4) Compute eigenvectors through numerical integration.
+    #     d^2/dz^2 w(z) = f(z) * w(z)
     # ================================================================== 
     # Define integration constant phi_0 = phi(z = 0) as BC.
     phi_0 = np.ones(n_modes)
+    # Define f_n(z).
+    f_n = np.empty([n, n_modes])
+    for i in range(n_modes):
+        f_n[:,i] = - eigenvalues[i] * S[:]
+    # Define dw_0 = dw/dz at z=0.
+    dw_0 = - eigenvalues*phi_0
+    # Define BCs: w_0 = w(z=0) = 0 ; w_N = w(z=1) = 0.
+    w_0 = 0
+    w_N = 0
     
     # Compute eigenvectors through Numerov's Algortihm.
-    w = _Numerov_method(n, n_modes, dz, eigenvalues, S, phi_0)
+    w = np.empty([n, n_modes])
+    for i in range(n_modes):
+        w[:,i] = _Numerov_method(dz, f_n[:,i], dw_0[i], w_0, w_N)
         
     # ==================================================================
     # 5) Compute baroclinic Rossby radius and Phi.
@@ -161,7 +173,7 @@ def compute_barocl_modes(depth, H, N2, n_modes):
     # (mode 0 = barotropic mode). 
     barotr_phi = 1
     phi = np.insert(phi, 0, barotr_phi, axis=1)
-    barotr_rad = np.sqrt(g*H)/f_0
+    barotr_rad = np.nan # For a barotr. ocean, it would be sqrt(g*H)/f_0
     rossby_rad = np.insert(rossby_rad, 0, barotr_rad)
     
     # Return newly interpolated rossby radius and phi.
@@ -182,7 +194,7 @@ def _interpolate_N2(depth, N2):
     Returns
     -------
     interp_N2 : <class 'numpy.ndarray'>
-                interpolated Brunt-Vaisala frequency squared.
+                interpolated Brunt-Vaisala frequency squared.   
     """
     
     # Delete NaN elements from N2 (and corresponding dept values).
@@ -262,7 +274,7 @@ def _compute_matrix_A(n, dz):
     return A
 
 
-def _compute_matrix_B(n, dz, S):
+def _compute_matrix_B(n, S):
     """
     Comput R.H.S. matrix in the eigenvalues/eigenvectors problem.
 
@@ -354,24 +366,25 @@ def _compute_eigenvals(A, B, n_modes):
     return eigenvalues
 
 
-def _Numerov_method(n, n_modes, dz, eigenvalues, S, phi_0):
+def _Numerov_method(dz, f, dw_0, w_0, w_N):
     """
     Compute eigenvectors through Numerov's method.
+    
+    Solves the generic ODE:
+       -------------------------------
+      | d^2/dz^2 w(z) = f(z) * w(z)  | .
+      --------------------------------
 
     Parameters
     ----------
-    n : 'int'
-        number of vertical levels
-    n_modes : 'int'
-              number of modes of motion to be considered
     dz : 'float'
          vertical grid step
-    eigenvalues : <class 'numpy.ndarray'>
-                  problem eigenvalues 'lambda'
-    S : <class 'numpy.ndarray'>
-        problem parameter S = N2/f_0^2 
-    phi_0 : <class 'numpy.ndarray'>
-            phi_0 = phi(z=0), BC for the vertical structure function
+    f : <class 'numpy.ndarray'>
+        problem parameter, depending on z
+    dw_0 : 'float'
+           first derivative of w: dw/dz computed at z = 0. 
+    w_0, w_N : 'float'
+               BCs, respectively at z = 0,1
 
     Returns
     -------
@@ -388,16 +401,19 @@ def _Numerov_method(n, n_modes, dz, eigenvalues, S, phi_0):
     where phi_0 = phi(z=0) set = 1 as BC.
     """
     
+    # Number of vertical levels.
+    n = len(f)
     # Store array for eigenvectors ( w(0) = w(n-1) = 0 for BCs).
-    w = np.zeros([n,n_modes])
-   
+    w = np.empty([n]) 
+    w[0] = w_0
+    w[n-1] = w_N
     # Define constant k
-    k = eigenvalues * ((dz**2) / 12)
-    # First value computed from Phi_0 value
-    w[1,:] = (- eigenvalues*phi_0)*dz/(1+S[1]*k*2)
+    k = (dz**2) / 12
+    # First value computed from BCs and dw/dz|z=0 .
+    w[1] = (w[0] + dz*dw_0 + (1/3)*(dz**2)*f[0]*w[0])/(1-k*2*f[1])
     # Numerov's algorithm.
-    for j in range(2,n-1):
-        w[j,:] = ((2 - 10*k*S[j-1])/(1 + k*S[j])
-                  ) * w[j-1,:] - ((1 + k*S[j-2])/(1 + k*S[j])) * w[j-2,:] 
-        
+    for j in range(2,n-1):  
+        w[j] = (1/(1 - k*f[j])) * ((2 + 10*k*f[j-1])*w[j-1] 
+                                    - (1 - k*f[j-2])* w[j-2])
+    
     return w

@@ -9,7 +9,10 @@ Created on Sun May  8 18:55:44 2022
 # IN COMPUTING THE BAROCLINIC ROSSBY RADIUS ...
 # ======================================================================
 import numpy as np
-from  scipy.sparse.linalg import ArpackError
+import scipy as sp
+
+from hypothesis import given, settings
+import hypothesis.strategies as st
 
 #=======================================================================
 # Testing the functions for computing the baroclinic Rossby radius 
@@ -17,157 +20,358 @@ from  scipy.sparse.linalg import ArpackError
 #=======================================================================
 import sys 
 sys.path.append('..')
+import OBM.baroclinic_modes as modes
 
 # ----------------------------------------------------------------------
-#                   Testing compute_barocl_modes()
+#                   Testing _interp_N2()
 # ----------------------------------------------------------------------
-from OBM.baroclinic_modes import compute_barocl_modes as modes
 
 
-# Test compute_barocl_modes() works with N2(z)=const.
-def test_compute_modes_when_N2_const():
-    n_modes = 5
-    z = np.linspace(0.5, 5000, 50)
-    N2 = np.full(len(z), 2.0)
-    try:
-        modes(z, N2, n_modes)
-    except ValueError:
-        assert False
-    else:
-        assert True
-        
-
-# Test compute_barocl_modes() gives ValueError when input N2 array
-# is empty.
-def test_compute_modes_when_empty_input():
-    n_modes = 5
-    z = np.linspace(0.5, 5000, 50)
-    N2 = []
-    try:
-        modes(z, N2, n_modes)
-    except ValueError:
-        assert True
-    else:
-        assert False
-
+def test_interp_when_NaNs_as_input():
+    """
+    Test _interp_N2() gives correct output when all elements except two
+    are NaN, using linear interpolation.
+    """
     
-# Test compute_barocl_modes() gives error when all NaN values 
-# are given as N2 input and interpolation can not be done.
-def test_compute_modes_when_all_NaNs_as_input():
-    n_modes = 5
     len_z = 50
-    z = np.linspace(0.5, 5000, len_z)
+    H = 1000
+    z = np.linspace(1, H, len_z)
     N2 = np.full(len_z, np.nan)
-    try:
-        modes(z, N2, n_modes)
-    except ValueError:
-        assert True
-    else:
-        assert False
+    a = 3.5e-05
+    c = 2.3e-05
+    new_z = np.linspace(0, H, H+1)
+    expected_N2 = a * new_z/H + c # linear BV freq. sq.
+    N2[0] = expected_N2[1]
+    N2[-1] = expected_N2[-1]
+    out_N2 = modes._interpolate_N2(z, N2)
     
-
-# Test compute_barocl_modes() gives ArpackError when input N2 array
-# is null.
-def test_compute_modes_when_null_input():
-    n_modes = 5
-    len_z = 50
-    z = np.linspace(0.5, 5000, len_z)
-    N2 = np.full(len_z, 0)
-    try:
-        modes(z, N2, n_modes)
-    except ArpackError:
-        assert True
-    else:
-        assert False
-
-        
-# Test compute_barocl_modes() output arrays are of type 'numpy.ndarray'
-# when the same type is given as input.
-def test_compute_modes_out_type_when_input_ndarray():
-    n_modes = 5
-    z = np.linspace(0.5, 5000, 50)
-    N2 = np.full(len(z), 2.0)
-    R, Phi = modes(z, N2, n_modes)
-    assert np.logical_and(type(R)==type(z), type(Phi)==type(z))
-
-
-# Test compute_barocl_modes() gives ValueError when input arrays
-# have different lengths.
-def test_compute_modes_when_input_different_lengths():
-    n_modes = 5
-    z = np.linspace(0.5, 5000, 50)
-    N2 = np.full(len(z) + 1, 2.0)
-    try:
-        modes(z, N2, n_modes)
-    except ValueError:
-        assert True
-    else:
-        assert False
-
-
-# Test compute_barocl_modes() returns structure functions Phi(z) 
-# included between -1 and 1 for constant N2.
-def test_compute_modes_output_in_right_range_when_const_input():
-    n_modes = 5
-    len_z = 50
-    z = np.linspace(0, 5000, len_z)
-    N2 = np.full(len_z, 2.0)
-    R, Phi = modes(z, N2, n_modes)
-    for i in range(n_modes):
-        max_val = max(Phi[:,i])
-        min_val = min(Phi[:,i])
-        assert np.logical_and(max_val <= 1.01, min_val >= - 1.01)
-
-
-# Test compute_barocl_modes() returns output arrays of length 
-# equal to max(depth) expressed in m.
-def test_compute_modes_output_length():
-    n_modes = 5
-    len_z = 50
-    H = 5e+03
-    z = np.linspace(0, H, len_z)
-    N2 = np.full(len_z, 2.0)
-    R, Phi = modes(z, N2, n_modes)
-    assert np.logical_and(len(R)==n_modes+1, len(Phi)==H+1)  
-
-
-# Test if compute_barocl_modes() works whell when depth is taken with
-# negative sign convention.
-def test_compute_modes_when_neg_z():
-    n_modes = 5
-    len_z = 50
-    z_neg = - np.linspace(0.5, 5000, len_z)
-    z_pos = np.linspace(0.5, 5000, len_z)
-    N2 = np.full(len_z, 2.0)
-    R_pos, Phi_pos = modes(z_pos, N2, n_modes)
-    R_neg, Phi_neg = modes(z_neg, N2, n_modes) 
-    assert np.logical_and(np.allclose(R_pos, R_neg, rtol=1e-05, atol=1e-08, 
-                                      equal_nan=True),
-                          np.allclose(Phi_pos, Phi_neg, rtol=1e-05, atol=1e-08, 
-                                      equal_nan=True))
-
-
-# Test if compute_barocl_modes() gives all positive Rossby radii values
-# as output.
-def test_compute_modes_positive_Rossby_Rad():
-    n_modes = 5
-    len_z = 50
-    z = np.linspace(0.5, 5000, len_z)
-    N2 = np.full(len_z, 2.0)
-    R, Phi = modes(z, N2, n_modes)
-    assert R.all()>0
+    assert np.allclose(out_N2, expected_N2, atol = 1e-08)
     
+    
+@given(a = st.floats(1, 5), c = st.floats(1,5))
+def test_interp_when_different_grid_step(a, c):
+    """
+    Test _interp_N2() gives the same results for two different grid
+    steps, whit dz_2 = 1/2 dz_1. 
+    BV freq. is taken as exponential.
+    """
+    
+    len_z_1 = 50
+    len_z_2 = 100
+    H = 1000
+    z_1 = np.linspace(0, H, len_z_1+1)
+    z_2 = np.linspace(0, H, len_z_2+1)
+    
+    N = (a * np.exp( - z_2/H ) + c) * 1e-03
+    N2 = N**2
+ 
+    out_N2_1 = modes._interpolate_N2(z_1, N2[0::2])
+    out_N2_2 = modes._interpolate_N2(z_2, N2)
+    
+    assert np.allclose(out_N2_1, out_N2_2, atol = 1e-08)
 
-# Test if compute_barocl_modes gives the same output length, always
-# approximating max depth down when converted to int.
-def test_compute_modes_H_approximation_as_int():
-    n_modes = 5
+
+def test_H_approximation_as_int():
+    """
+    Test if interpolate() gives the same output length, always
+    approximating max depth down when converted to int.
+    """
+    
     len_z = 50
     H_1 = 5000.01
     H_2 = 5000.99
     z_1 = np.linspace(0, H_1, len_z)
     z_2 = np.linspace(0, H_2, len_z)
     N2 = np.full(len_z, 2.0)
-    R_1, Phi_1 = modes(z_1, N2, n_modes)
-    R_2, Phi_2 = modes(z_2, N2, n_modes)
-    assert np.logical_and(len(R_1)==len(R_2), len(Phi_1)==len(Phi_2))  
+    
+    out_N2_1 = modes._interpolate_N2(z_1, N2)
+    out_N2_2 = modes._interpolate_N2(z_2, N2)
+    
+    assert len(out_N2_1) == len(out_N2_2)
+ 
+
+# ----------------------------------------------------------------------
+#                   Testing _compute_matrix_A()
+# ----------------------------------------------------------------------
+
+
+@given(dz = st.floats(0.1,1))
+def test_correct_matrix_A(dz):
+    """
+    Test if Matrix A is computed correctly for a general dz.
+    """
+
+    A = (1/(12*dz**2))* np.array([[-24,  12,  0,  0,  0,  0],
+                                  [ 16, -30, 16, -1,  0,  0],
+                                  [ -1,  16,-30, 16, -1,  0],
+                                  [  0,  -1, 16,-30, 16, -1],
+                                  [  0,   0, -1, 16,-30, 16],
+                                  [  0,   0,  0,  0, 12,-24] ])
+    computed_A = modes._compute_matrix_A(8, dz)
+ 
+    assert np.allclose(A, computed_A)
+
+
+# ----------------------------------------------------------------------
+#                   Testing _compute_matrix_B()
+# ----------------------------------------------------------------------
+
+
+@given(n = st.integers(5, 100))
+def test_correct_matrix_B(n):
+    """
+    Test if Matrix B is computed correctly for a random S.
+    """
+
+    S = np.random.rand(n)
+    B = np.diag(- S[1:-1])
+    computed_B = modes._compute_matrix_B(n, S)
+
+    assert np.allclose(B, computed_B)
+
+
+# ----------------------------------------------------------------------
+#                   Testing _compute_eigenvals()
+# ----------------------------------------------------------------------
+
+
+def test_compute_eigenvals_simple_problem():
+    """
+    Test if eigenvalues are computed correctly for a simple problem
+    taken from a linear algebra book.
+    """
+    
+    n_modes = 3
+    A = np.array([[8.0,-18.0,9.0],[3.0,-7.0,3.0],[0.0,0.0,-1.0]])
+    B = np.diag(np.ones(3))
+    expected_eigenvals = np.array([-1, -1, 2])
+    out_eigenvals = modes._compute_eigenvals(A, B, n_modes)
+    
+    assert np.allclose(out_eigenvals, expected_eigenvals)
+
+
+@given(n = st.integers(100, 1000))
+def test_compute_eigenvals_stationary_wave(n):
+    """
+    Test if eigenvalues are computed correctly for a simple problem
+    with well-know resolution: the stationary wave (non-dimensional).
+    """
+    
+    n_modes = 5 # take first 5 eigenvalues (the most interesting ones).
+    expected_integers = np.arange(1,n_modes+1) 
+    dz = 1/n 
+    A = modes._compute_matrix_A(n, dz)
+    B = np.diag(- np.ones(n-2))
+    
+    out_eigenvals = modes._compute_eigenvals(A, B, n_modes)
+    out_integers = (np.sqrt(out_eigenvals)/(np.pi))
+
+    assert np.allclose(out_integers, expected_integers, atol=1e-01)
+
+
+# ----------------------------------------------------------------------
+#                   Testing _Numerov_Method()
+# ----------------------------------------------------------------------
+
+
+def test_Numerov_method_harm_oscillator():
+    """
+    Test if _Numerov_method() gives correct eigenvectors for the
+    harmonic oscillator problem.
+    """
+    
+    k = 6.25 #N/m
+    m = 1 #kg
+    omega = np.sqrt(k/m)
+    A = 1
+    n = 100
+    L = 10
+    x = np.linspace(0,L,n)
+    dx = abs(x[1]-x[0])
+    theor_sol = A*np.cos(omega * (x/L) * 2 * np.pi)
+    dw_0 = 0
+    f = -omega*np.ones(n)
+    w_0 = 1 * A
+    w_N = -1 * A
+    num_sol = modes._Numerov_method(dx, f, dw_0, w_0, w_N)
+   
+    assert np.allclose(theor_sol, num_sol ,atol=1e-01)
+
+
+def test_Numerov_method_stationary_wave():
+    """
+    Test if _Numerov_method() gives correct eigenvectors for the
+    stationary wave problem, 3rd mode of motion.
+    """
+    
+    L = 9.5
+    n = 1000
+    n_modes = 3
+    A = 1 # oscillation amplitude
+    integers = np.arange(1, n_modes+1)
+    eigenvals = np.sqrt (integers * np.pi / L)
+    x = np.linspace(0,L,n)
+    dx = abs(x[1]-x[0])
+    theor_sol = np.empty([n,n_modes])
+    f = np.empty([n, n_modes])
+    for i in range(n_modes):
+        theor_sol[:,i] = A*np.sin(integers[i] *np.pi * x/L)
+        f[:,i] = - (eigenvals[i]**2)
+    w_0 = 0
+    w_N = 0
+    dw_0 = integers*np.pi*A/L 
+    num_sol = np.empty([n,n_modes])
+    for i in range(n_modes):
+        num_sol[:,i] = modes._Numerov_method(dx, f[:,i], dw_0[i], w_0, w_N )
+    
+    theor_sol_3rdmode = theor_sol[:,2]
+    num_sol_3rdmode = num_sol[:,2]
+    
+    assert np.allclose(theor_sol_3rdmode, num_sol_3rdmode, atol=1e-01) 
+
+
+# ----------------------------------------------------------------------
+#                   Testing compute_barocl_modes()
+# ----------------------------------------------------------------------
+
+
+@settings(deadline = None, max_examples = 50)
+@given(n=st.integers(30,100), H = st.integers(1000, 3000))
+def test_compute_modes_N2_const(n, H):
+    """
+    Test if compute_barocl_modes() gives correct output when N2 is
+    constant (see Pedlosky, GFD book, 1987).
+    """
+    
+    # Problem parameters.
+    A  = 1
+    n_modes = 3
+    z = np.linspace(0.5, 2*H, n)
+    integers = np.arange(0, n_modes + 1)
+    new_z = np.linspace(0, H, H+1)
+    N2_0 = 1.0
+    N2 = np.full(n, N2_0)
+    S = (N2_0 * H**2)/100
+    # Theoretical solution.
+    theor_Phi = np.empty([H+1, n_modes+1])
+    eigenvals = (integers**2)*(np.pi**2)/S # See Pedlosky, GFD book.
+    theor_R = 1/np.sqrt(eigenvals[1:])
+    for i in range(n_modes+1):
+        theor_Phi[:,i] = A * np.cos(integers[i] * np.pi * new_z/H)
+    # Numerical solution. 
+    num_R, num_Phi = modes.compute_barocl_modes(z, H, N2, n_modes)
+    # Comparison.
+    Phi_coherence = np.allclose(num_Phi, theor_Phi, atol = A/100)
+    R_coherence = np.allclose(num_R[1:], theor_R, atol = 1e-03)
+    
+    assert np.logical_and(Phi_coherence, R_coherence)
+   
+
+@settings(deadline = None, max_examples = 50)
+@given(n=st.integers(30,100), H = st.integers(1000, 3000))
+def test_compute_modes_N2_exp(n, H):
+    """
+    Test if compute_barocl_modes() computes correct modes of motion
+    when N2 is exponential of type N2 = N0 * exp(alpha*z) 
+    with alpha = 2/H, z < 0 ; (see LaCasce, 2012).
+    """
+    
+    # Problem parameters.
+    A  = 1
+    alpha = 2/H
+    n_modes = 3
+    z = - np.linspace(0.5, 2*H, n)
+    new_z = - np.linspace(0, H, H+1)
+    N2_0 = 1.0
+    N2 = N2_0 * np.exp(alpha*z)
+    # Theoretical solution.
+    gamma = np.array([4.9107, 9.9072, 14.8875, 19.8628])/2 # see LaCasce, 2012
+    theor_Phi = np.empty([H+1, n_modes])
+    for i in range(n_modes):
+        theor_Phi[:,i] = (A * np.exp(alpha*new_z/2)
+                         * (sp.special.yn(0 , 2*gamma[i])
+                         * sp.special.jv(1, 2*gamma[i]*np.exp(alpha*new_z/2)) 
+                         - sp.special.jv(0, 2*gamma[i]) 
+                         * sp.special.yn(1, 2*gamma[i]*np.exp(alpha*new_z/2))
+                            ) )
+        theor_Phi[:,i] /= max(theor_Phi[:,i]) # Norm. theor sol.
+    # Numerical solution.   
+    num_R, num_Phi = modes.compute_barocl_modes(z, H, N2, n_modes)
+    # Comparison.
+    Phi_coherence = np.allclose(num_Phi[:,1:], theor_Phi, atol = 2*A/100)
+    
+    assert Phi_coherence
+
+
+@settings(deadline = None, max_examples = 50)
+@given(n=st.integers(30,100), H = st.integers(1000, 3000))
+def test_compute_modes_N2_exp_strong_stratification(n, H):
+    """
+    Test if compute_barocl_modes() computes correct modes of motion
+    when N2 is exponential of type N2 = N0 * exp(alpha*z) ; z < 0  
+    with alpha = 10/H, i.e. strong stratification (see LaCasce, 2012).
+    """
+    
+    # Problem parameters.
+    A  = 1
+    alpha = 10/H
+    n_modes = 3
+    z = - np.linspace(0.5, 2*H, n)
+    new_z = - np.linspace(0, H, H+1)
+    N2_0 = 1.0
+    N2 = N2_0 * np.exp(alpha*z)
+    # Theoretical solution.
+    gamma = np.array([2.7565, 5.9590, 9.1492, 12.334])/2 # see LaCasce, 2012
+    theor_Phi = np.empty([H+1, n_modes])
+    for i in range(n_modes):
+        theor_Phi[:,i] = (A * np.exp(alpha*new_z/2)
+                         * (sp.special.yn(0 , 2*gamma[i])
+                         * sp.special.jv(1, 2*gamma[i]*np.exp(alpha*new_z/2)) 
+                         - sp.special.jv(0, 2*gamma[i]) 
+                         * sp.special.yn(1, 2*gamma[i]*np.exp(alpha*new_z/2))
+                            ) )
+        theor_Phi[:,i] /= max(theor_Phi[:,i]) # Norm. theor sol.
+    # Numerical solution.   
+    num_R, num_Phi = modes.compute_barocl_modes(z, H, N2, n_modes)
+    # Comparison.
+    Phi_coherence = np.allclose(num_Phi[:,1:], theor_Phi, atol = 5*A/100)
+    
+    assert Phi_coherence
+  
+
+def test_compute_modes_when_input_different_lengths():
+    """
+    Test compute_barocl_modes() gives ValueError when input arrays
+    have different lengths.
+    """
+    
+    n_modes = 3
+    H = 5000
+    z = np.linspace(0.5, H, 50)
+    N2 = np.full(len(z) + 1, 2.0)
+    try:
+        modes.compute_barocl_modes(z, H, N2, n_modes)
+    except ValueError:
+        assert True
+    else:
+        assert False
+
+
+def test_compute_modes_when_neg_z():
+    """
+    Test if compute_barocl_modes() works whell when depth is taken with
+    negative sign convention.
+    """
+    
+    n_modes = 3
+    len_z = 50
+    H = 5000
+    z_neg = - np.linspace(0.5, H, len_z)
+    z_pos = np.linspace(0.5, H, len_z)
+    N2 = np.full(len_z, 2.0)
+    R_pos, Phi_pos = modes.compute_barocl_modes(z_pos, H, N2, n_modes)
+    R_neg, Phi_neg = modes.compute_barocl_modes(z_neg, H, N2, n_modes) 
+    assert np.logical_and(np.allclose(R_pos, R_neg, rtol=1e-05, atol=1e-08, 
+                                      equal_nan=True),
+                          np.allclose(Phi_pos, Phi_neg, rtol=1e-05, atol=1e-08, 
+                                      equal_nan=True))
