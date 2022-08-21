@@ -46,7 +46,7 @@ def test_read_JSON_output_dictionary():
             {'experiment_name': 'Azores_JAN21', 
              'region_name': 'Azores', 
              'input_file_name': 'azores_Jan2021.nc', 
-             'bathy_file_name': 'GLO-MFC_001_024_mask_bathy_azores.nc', 
+             'bathy_file_name': 'mask_bathy_test_case_azores.nc', 
              'indata_path': 'test_case/dataset_azores/'}, 
         'set_variables': 
             {'temperature_name': 'thetao', 
