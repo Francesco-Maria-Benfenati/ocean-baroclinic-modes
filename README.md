@@ -64,7 +64,7 @@ so that
 obtaining a simple eigenvalues/eigenvectors problem of known resolution. 
 The numerical method implemented here aims to find the eigenvalues  and eigenvectors in eq. [(4)](https://latex.codecogs.com/gif.image?\dpi{100}\boxed{\frac{d}{d&space;z}\Big\(\frac{1}{S}\frac{d\Phi_n}{dz}\Big\)=-\lambda_n\Phi_n\quad\Big\(B.C.\quad{\frac{d\Phi_n}{dz}\vline}_{z=0}^{z=1}=0\Big\)}), exploiting relation [(6)](https://latex.codecogs.com/gif.image?\dpi{110}\Phi&space;=\int_{0}^{z}Swdz+\Phi_0) and numerically solving the well known problem [(7)](https://latex.codecogs.com/gif.image?\dpi{110}\frac{d^2w}{dz^2}=-\lambda{S}{w}) for $\lambda_n$ and $w_n$. This is done through few steps, starting from the Brunt-Vaisala frequency vertical profile:
 1. The Brunt-Vaisala frequency is linearly interpolated on a new equally spaced  depth grid (1 m grid step).
-2. The Brunt-Vaisala frequency values are scaled (so that they go from 0 to 1), in order for the algorithm to work at its best. Then, problem parameter S (depth-dependent) is computed as in eq. [(2)](https://latex.codecogs.com/gif.image?\dpi{100}S(z)=\frac{N^2(z)H^2}{f_0^2L^2}\quad,).
+2. Problem parameter S (depth-dependent) is computed as in eq. [(2)](https://latex.codecogs.com/gif.image?\dpi{100}S(z)=\frac{N^2(z)H^2}{f_0^2L^2}\quad,).
 3. The *left* finite difference matrix  corresponding to operator $\frac{d^2}{dz^2}$ and the *right* diagonal matrix related to *S* are computed. 
 The eigenvalues **discretized problem** is solved:
 
