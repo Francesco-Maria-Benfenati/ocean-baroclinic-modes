@@ -170,10 +170,10 @@ mode_var.standard_name = 'modes_of_motion'
 dens_var = out_file.createVariable('mean_density', np.float32, 
                                     ('time','latitude','longitude','depth'))
 dens_var[:] = mean_pot_density
-dens_var.unit_long = mean_pot_density.attrs['unit_long']
-dens_var.units = mean_pot_density.attrs['units']
-dens_var.long_name = mean_pot_density.attrs['long_name']
-dens_var.standard_name = mean_pot_density.attrs['standard_name']
+dens_var.unit_long = 'kilograms per meter cube'
+dens_var.units = 'kg/m^3'
+dens_var.long_name = 'Density'
+dens_var.standard_name = 'sea_water_potential_density'
 
 # Create Brunt-Vaisala frequency variable.  
 BVfreq_var = out_file.createVariable('BVfreq', np.float32, 

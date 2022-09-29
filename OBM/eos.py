@@ -16,7 +16,6 @@ Created on Fri Apr 22 10:25:22 2022
 # ======================================================================
 import xarray
 import numpy as np
-from scipy import interpolate
 from OBM.baroclinic_modes import _interpolate_N2 as _interpolate
 
 
@@ -26,24 +25,22 @@ def compute_density(z, temp, S):
 
     Arguments
     ---------
-    z : <class 'xarray.core.variable.Variable'>
+    z : <numpy.ndarray>
         depth [m]
-    temp : <class 'xarray.core.variable.Variable'>
+    temp : <numpy.ndarray>
            sea water potential temperature [°C]
-    S : <class 'xarray.core.variable.Variable'>
+    S : <numpy.ndarray>
         sea water salinity [PSU]
     NOTE: the three arguments must have same dimensions!
 
     Raises
     ------
     ValueError
-        if input arrays have not same lengths or number of dimensions
-    AttributeError
-        if input arrays are not of type 'xarray.core.variable.Variable'
+        if input arrays have not same lengths
 
     Returns
     -------
-    density : <class 'xarray.core.variable.Variable'>
+    density : <numpy.ndarray>
         potential density [kg/(m^3)]
 
 
@@ -72,12 +69,6 @@ def compute_density(z, temp, S):
     The following function is a later modification of the one found in
     NEMO by D. J. Lea, Dec 2006.
     """
-
-    # Check if input arrays have same number of dimensions.
-    if (len(z.dims) == len(temp.dims) and len(temp.dims) == len(S.dims)):
-        pass
-    else:
-        raise ValueError('dimension mismatch')
 
     # ==================================================================
     # Compute reference density at atmospheric pressure
@@ -120,13 +111,8 @@ def compute_density(z, temp, S):
     # ==================================================================
 
     density = rho / (1.0 - z/(K_0 + z*(A + z*B)) )
-    # Associate attributes to density xarray object.
-    dens_attrs = {'long_name': 'Density',
-                 'standard_name': 'sea_water_potential_density',
-                 'units': 'kg/m^3', 'unit_long':'kilograms per meter cube'}
-    density.attrs = dens_attrs
-
-    # Return density xarray.
+   
+    # Return density array.
     return density
 
 

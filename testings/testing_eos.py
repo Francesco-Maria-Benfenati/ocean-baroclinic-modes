@@ -40,9 +40,10 @@ def test_compute_rho_pure_water():
     ref_Temp = [5, 25] #°C
     ref_rho = [999.96675, 997.04796] #kg/m^3
     out_rho=[]
-    for temp in ref_Temp:
-        out_rho.append(eos._compute_rho(temp, ref_Sal))
-        
+    
+    out_rho.append(eos._compute_rho(ref_Temp[0], ref_Sal))
+    out_rho.append(eos._compute_rho(ref_Temp[1], ref_Sal))
+    
     error = 3.6e-03 #kg/m^3
     assert np.allclose(ref_rho, out_rho, atol=error)
 
@@ -60,8 +61,9 @@ def test_compute_rho_standard_seawater():
     ref_Temp = [5, 25] #°C
     ref_rho = [1027.67547, 1023.34306] #kg/m^3
     out_rho=[]
-    for temp in ref_Temp:
-        out_rho.append(eos._compute_rho(temp, ref_Sal))
+
+    out_rho.append(eos._compute_rho(ref_Temp[0], ref_Sal))
+    out_rho.append(eos._compute_rho(ref_Temp[1], ref_Sal))
         
     error = 3.6e-03 #kg/m^3
     assert np.allclose(ref_rho, out_rho, atol=error)
@@ -107,7 +109,6 @@ def test_compute_bulk_modulus_K():
 #-----------------------------------------------------------------------
 #                     Testing compute_density()
 #-----------------------------------------------------------------------
-from OBM.eos import compute_density
  
 
 def test_compute_density_pure_water():
@@ -120,23 +121,17 @@ def test_compute_density_pure_water():
     """
     
     ref_Sal = 0 #PSU
-    Sal = xarray.Variable('z', np.full([10], ref_Sal))
     ref_P = 1000 #bar (1 bar = 10 dbar)
-    P = xarray.Variable('z', np.full([10], ref_P))
     ref_density = [1044.12802, 1037.90204] #kg/m^3
-    ref_temperature = [5, 25] #°C
-    ref_Temp = [np.full([10], ref_temperature[0]), 
-                np.full([10], ref_temperature[1])]
-    ref_rho = [np.full([10], ref_density[0]), 
-               np.full([10], ref_density[1])] 
+    ref_Temp = [5, 25] #°C
+    
     # Compute Density.
     out_rho=[]
-    for temp in ref_Temp:
-        temp = xarray.Variable('z', temp)
-        out_rho.append(eos.compute_density(P, temp, Sal))
+    out_rho.append(eos.compute_density(ref_P, ref_Temp[0], ref_Sal))
+    out_rho.append(eos.compute_density(ref_P, ref_Temp[1], ref_Sal))
         
     error = 1e-06 #kg/m^3
-    assert np.allclose(ref_rho, out_rho, atol=error)
+    assert np.allclose(ref_density, out_rho, atol=error)
 
 
 def test_compute_density_seawater():
@@ -150,71 +145,15 @@ def test_compute_density_seawater():
     """
     
     ref_Sal = 35 #PSU
-    Sal = xarray.Variable('z', np.full([10], ref_Sal))
     ref_P = 1000 #bar
-    P = xarray.Variable('z', np.full([10], ref_P))
-    ref_Temp = [np.full([10], 5), np.full([10], 25)] #°C
-    ref_rho = [np.full([10], 1069.48914), np.full([10], 1062.53817)] #kg/m^3
+    ref_Temp = [5, 25] #°C
+    ref_rho = [1069.48914, 1062.53817] #kg/m^3
     # Compute Density.
     out_rho=[]
-    for temp in ref_Temp:
-        temp = xarray.Variable('z', temp)
-        out_rho.append(eos.compute_density(P, temp, Sal))
-        
+    out_rho.append(eos.compute_density(ref_P, ref_Temp[0], ref_Sal))
+    out_rho.append(eos.compute_density(ref_P, ref_Temp[1], ref_Sal))   
     error = 1e-06 #kg/m^3
     assert np.allclose(ref_rho, out_rho, atol=error)
-
-
-@given(arr_end = st.integers(0,100))
-def test_compute_dens_output_dims(arr_end):
-    """
-    Test if compute_density() gives correct output dimensions.
-    """
-    
-    new_arr = np.arange(arr_end)
-    trial_dims = ('lat', 'lon')
-    trial_array = xarray.Variable(trial_dims, [new_arr, new_arr])
-    density = compute_density(trial_array, trial_array, trial_array)
-    
-    assert density.dims == trial_dims
-
-
-@given(arr_end = st.integers(0,100))
-def test_compute_dens_output_attrs(arr_end):
-    """
-    Test if compute_density() gives correct output attributes.
-    """
-    
-    new_arr = np.arange(arr_end)
-    trial_dims = ('lat', 'lon')
-    trial_array = xarray.Variable(trial_dims, [new_arr, new_arr])
-    dens_attrs = {'long_name': 'Density', 
-                 'standard_name': 'sea_water_potential_density', 
-                 'units': 'kg/m^3', 'unit_long':'kilograms per meter cube'}
-    density = compute_density(trial_array, trial_array, trial_array)
-    
-    assert density.attrs == dens_attrs
-         
-
-@given(arr_end = st.integers(0,100))
-def test_compute_dens_when_different_input_dims(arr_end):
-    """
-    Test if compute_density() gives error when input arrays have 
-    different dimensions.
-    """
-    
-    new_arr = np.arange(arr_end)
-    trial_dim1 = ('depth')
-    trial_dim2 = ('lat', 'lon')
-    trial_array1 = xarray.Variable(trial_dim1, new_arr)
-    trial_array2 = xarray.Variable(trial_dim2, [new_arr, new_arr])
-    
-    try:
-        compute_density(trial_array1, trial_array2, trial_array2)
-    except ValueError:
-        assert True
-    else:
-        assert False
 
 
 #-----------------------------------------------------------------------
