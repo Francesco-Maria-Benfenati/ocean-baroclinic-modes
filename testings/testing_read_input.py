@@ -111,14 +111,15 @@ def test_find_time_when_various_user_formats():
     user_time_2 = 'jan 04 2021 12:00:00'
     user_time_3 = '09:00 jan 5 21'
     user_time_4 = 'January 05 21, 12:00:30'
-    user_time = [user_time_1, user_time_2, user_time_3, user_time_4]
-    
-    time_indeces = []
-    for val in user_time:
-        time_index = read._find_time_step(time, val)
-        time_indeces.append(time_index)
+
+    time_index_1 = read._find_time_step(time,  user_time_1)
+    time_index_2 = read._find_time_step(time,  user_time_2)
+    time_index_3 = read._find_time_step(time,  user_time_3)
+    time_index_4 = read._find_time_step(time,  user_time_4)
    
+    time_indeces = [time_index_1, time_index_2, time_index_3 , time_index_4]
     expected_indeces = [0, 1, 2, 3]
+    
     assert time_indeces == expected_indeces
 
 
@@ -200,10 +201,11 @@ def test_compute_mean_var_correct_average():
     
     # Input Variable.
     dims = 't', 'z', 'y', 'x' # time, depth, lat, lon.
-    data = np.arange(15,30)
-    temp = np.empty([15, 10, 7, 5])    
-    for i in range(len(data)):
-        temp[i,:,:,:] = np.full([10,7,5], data[i])
+    data_time_series = np.arange(15,30)
+    depth = np.arange(10)
+    lat = np.arange(7)
+    lon = np.arange(5)
+    temp = np.meshgrid(depth, data_time_series, lat,lon)[1]
     temperature = xarray.Variable(dims, temp)
     # Expected Output.
     mean_value = 20.0
@@ -227,10 +229,11 @@ def test_compute_mean_var_with_different_dims_order():
     
     # Input Variable.
     dims = 'y', 'z', 'x', 't' # lat, depth, lon, time.
-    data = np.arange(15,26)
-    temp = np.empty([5, 10, 7, 11]) 
-    for i in range(len(data)):
-        temp[:,:,:,i] = np.full([5,10,7], data[i])
+    data_time_series = np.arange(15,26)
+    depth = np.arange(10)
+    lat = np.arange(5)
+    lon = np.arange(7)
+    temp = np.meshgrid(depth, lat, lon, data_time_series)[3]
     temperature = xarray.Variable(dims, temp)
     # Expected Output.
     mean_value = 20.0
@@ -255,10 +258,11 @@ def test_compute_mean_var_correct_transposition():
     
     # Input Variable.
     dims = 'y', 'z', 'x', 't' # lat, depth, lon, time.
-    data = np.arange(15,26)
-    temp = np.empty([7, 10, 5, 11]) 
-    for i in range(len(data)):
-        temp[:,:,:,i] = np.full([7,10,5], data[i])
+    data_time_series = np.arange(15,26)
+    depth = np.arange(10)
+    lat = np.arange(7)
+    lon = np.arange(5)
+    temp = np.meshgrid(depth, lat, lon, data_time_series)[3]
     # Expected Output.
     temperature = xarray.Variable(dims, temp)
     lat_min, lat_max = 0, 3
@@ -285,9 +289,11 @@ def test_compute_mean_bathy_correct_average():
     when dims do not need transposition.
     """
     
-    # Input Variable.
-    dims = ['y', 'x'] # lon, lat.
-    bathy =  np.random.random((5,7))*1000
+    # Input Variable: create "slope-type" bathymetry.
+    dims = ['y', 'x'] # lat, lon.
+    slope_along_x =  np.arange(7)*1000
+    lat = np.ones(5)
+    bathy = np.meshgrid(slope_along_x, lat)[0]
     bathymetry = xarray.Variable(dims, bathy)
     # Expected Output.
     lat_min, lat_max = 0, 10 # take all values
@@ -296,9 +302,9 @@ def test_compute_mean_bathy_correct_average():
     # Compute Output.
     indeces = [lat_min, lat_max, lon_min, lon_max]
     out_mean_bathy = read._compute_mean_bathy(bathymetry, dims, indeces)
-    
+
     assert out_mean_bathy == expected_mean_value
-    
+ 
  
 def test_compute_mean_bathy_inverted_dims():
     """
@@ -308,7 +314,9 @@ def test_compute_mean_bathy_inverted_dims():
     
     # Input Variable.
     dims = ['x', 'y'] # lon, lat.
-    bathy =  np.random.random((5,7))*1000
+    slope_along_x =  np.arange(7)*1000
+    lat = np.ones(5)
+    bathy = np.meshgrid(lat, slope_along_x)[1]
     bathymetry = xarray.Variable(dims, bathy)
     # Expected Output.
     right_dims = 'y', 'x' # lat, lon.
@@ -328,18 +336,19 @@ def test_compute_mean_bathy_correct_range():
     within the desired lat-lon range.
     """
     
-    # Input Variable.
-    dims = ['x', 'y'] # lon, lat.
-    bathy =  np.random.random((5,7))*1000
+    # Input Variable: create "slope-type" bathymetry.
+    dims = ['y', 'x'] # lat, lon.
+    slope_along_x =  np.arange(7)*1000
+    lat = np.ones(5)
+    bathy = np.meshgrid(slope_along_x, lat)[0]
     bathymetry = xarray.Variable(dims, bathy)
     # Expected Output.
-    right_dims = 'y', 'x' # lat, lon.
     lat_min, lat_max = 0, 4 # take few values
     lon_min, lon_max = 0, 2 # take few values
-    expected_mean_value = int(np.mean(bathy[0:3,0:5], axis=None))
+    expected_mean_value = int(np.mean(bathy[0:5,0:3], axis=None))
     # Compute Output.
     indeces = [lat_min, lat_max, lon_min, lon_max]
-    out_mean_bathy = read._compute_mean_bathy(bathymetry, right_dims, indeces)
+    out_mean_bathy = read._compute_mean_bathy(bathymetry, dims, indeces)
     
     assert out_mean_bathy == expected_mean_value
 
@@ -386,7 +395,8 @@ def test_extract_data_correct_output_temp():
     [depth_xarray, mean_temperature, mean_salinity, 
      mean_bathy] = read.extract_data_from_NetCDF_input_file(config_param)
     # Expected value.
-    expected_mean_temp = np.full([10,2,3], np.sum(np.arange(4,15))/11)
+    mean_temp_val = np.sum(np.arange(4,15))/11
+    expected_mean_temp = np.full([10,2,3], mean_temp_val)
     
     assert np.array_equal(mean_temperature, expected_mean_temp)
 
@@ -428,7 +438,8 @@ def test_extract_data_correct_output_sal():
     [depth_xarray, mean_temperature, mean_salinity, 
      mean_bathy] = read.extract_data_from_NetCDF_input_file(config_param)
     # Expected value.
-    expected_mean_sal = np.full([10,2,3], np.sum(np.arange(1005,1016))/11)
+    mean_sal_val = np.sum(np.arange(1005,1016))/11
+    expected_mean_sal = np.full([10,2,3], mean_sal_val)
     
     assert np.array_equal(mean_salinity, expected_mean_sal)
     
@@ -512,8 +523,9 @@ def test_extract_data_correct_output_depth():
     [depth_xarray, mean_temperature, mean_salinity, 
      mean_bathy] = read.extract_data_from_NetCDF_input_file(config_param)
     # Expected value.
-    expected_depth = np.empty([10,2,3])
-    for i in range(10):
-        expected_depth[i,:,:] = np.full([2,3], i)
+    lat = np.arange(2)
+    lon = np.arange(3)
+    depth = np.arange(10)
+    expected_depth = np.meshgrid(lat, depth, lon)[1]
 
     assert np.array_equal(depth_xarray.values, expected_depth)
