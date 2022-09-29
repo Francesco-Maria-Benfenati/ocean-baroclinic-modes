@@ -50,7 +50,8 @@ depth_1D = depth.values[:,0,0]
 # Compute Brunt-Vaisala frequency squared from Potential Density.
 # Store vertical mean potential density as used within the function
 # while computing Brunt-Vaisala frequency squared.
-[BV_freq_sq, mean_pot_density] = compute_BVsq(depth_1D, pot_density)
+mean_pot_density = np.nanmean(pot_density, axis = (1,2))
+BV_freq_sq = compute_BVsq(depth_1D, mean_pot_density)
 
 # ----------------------------------------------------------------
 # N° of modes of motion considered (including the barotropic one).
@@ -172,8 +173,8 @@ dens_var = out_file.createVariable('mean_density', np.float32,
 dens_var[:] = mean_pot_density
 dens_var.unit_long = 'kilograms per meter cube'
 dens_var.units = 'kg/m^3'
-dens_var.long_name = 'Density'
-dens_var.standard_name = 'sea_water_potential_density'
+dens_var.long_name = 'averaged density'
+dens_var.standard_name = 'averaged sea_water_potential_density'
 
 # Create Brunt-Vaisala frequency variable.  
 BVfreq_var = out_file.createVariable('BVfreq', np.float32, 

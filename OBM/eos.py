@@ -14,7 +14,6 @@ Created on Fri Apr 22 10:25:22 2022
 #   B) a function for computing Brunt-Vaisala frequency squared from
 #      Potential Density.
 # ======================================================================
-import xarray
 import numpy as np
 from OBM.baroclinic_modes import _interpolate_N2 as _interpolate
 
@@ -255,7 +254,7 @@ def _compute_B(temp, S):
     return B
 
 
-def compute_BruntVaisala_freq_sq(z, density):
+def compute_BruntVaisala_freq_sq(z, mean_density):
     """
     Compute Brunt-Vaisala frequency squared from depth and density.
 
@@ -263,8 +262,8 @@ def compute_BruntVaisala_freq_sq(z, density):
     ---------
     z : <class 'numpy.ndarray'>
         domain depth coordinate [m]
-    density : <class 'xarray.core.variable.Variable'>
-        potential density [kg/(m^3)]
+    mean_density : <class 'numpy.ndarray'>
+        mean potential density vertical profile [kg/(m^3)], defined on z grid
     NOTE:
         input arrays must have length >= 2 along z for computing
         Brunt-Vaisala frequency through the finite difference algorithm.
@@ -273,18 +272,13 @@ def compute_BruntVaisala_freq_sq(z, density):
     ------
     ValueError
         if input density has not same length as z along depth direction
-    AttributeError
-        if input density is not of type 'xarray.core.variable.Variable'
-        - or - if z is not of type 'numpy.ndarray'
     IndexError
         if input arrays are empty
 
     Returns
     -------
-    N2_xarray : <class 'xarray.core.variable.Variable'>
+    N2 : <class 'numpy.ndarray'>
         Brunt-Vaisala frequency squared [(cycles/s)^2]
-    mean_dens_xarr : <class 'xarray.core.variable.Variable'>
-        mean density vertical profile [kg/(m^3)]
 
     The Brunt-Vaisala frequency N is computed as in Grilli, Pinardi
     (1999) 'Le cause dinamiche della stratificazione verticale nel
@@ -305,10 +299,6 @@ def compute_BruntVaisala_freq_sq(z, density):
            one dataset to another one.
     --------------------------------------------------------------------
     """
-
-    # Check if depth is a 1D array.
-    if z.ndim > 1:
-        raise ValueError('depth must be 1D')
         
     # Take absolute value of depth, so that to avoid trouble with depth
     # sign convention.  
@@ -319,29 +309,16 @@ def compute_BruntVaisala_freq_sq(z, density):
     g = 9.806 # (m/s^2)
     # Defining value of reference density rho_0.
     rho_0 = 1025 #(kg/m^3)
-    
-   
-    # Compute density mean vertical profile, ignoring NaNs.
-    # Mean axis is set depending on input density number of dimensions.
-    if len(density.dims) == 1: # 1D density
-                                mean_dens = density.values
-    elif len(density.dims) == 2: # 2D density
-                                mean_dens = np.nanmean(density, axis=0)
-    else:
-        mean_dens = np.nanmean(density, axis=(1,2))# 3D density
 
-    # Check if density has same length as z along depth direction.
-    if len(mean_dens) != len_z:
-        raise ValueError('legth mismatch along depth direction.')
-    
     # Linear Interpolation along z axis, on an equally spaced depth grid
     # with dz = 1m (only if depth length is > 2).
     if len_z > 2:
-        interp_mean_dens = _interpolate(z, mean_dens)
+        interp_mean_dens = _interpolate(z, mean_density)
     else: 
-        interp_mean_dens = mean_dens
+        interp_mean_dens = mean_density
+   
     len_dens = len(interp_mean_dens)
-    
+  
     # Create empty array for squared Brunt-Vaisala frequency, N^2.
     N2 = np.empty(len_dens)
     
@@ -360,25 +337,5 @@ def compute_BruntVaisala_freq_sq(z, density):
             N2[i] = ( - (g/rho_0)
                       *(interp_mean_dens[i-1] - interp_mean_dens[i+1])/(2*dz))
 
-    #-------------------------------------------------------------------
-    # Return Brunt-Vaisala frequency & mean density profiles.
-    #-------------------------------------------------------------------
-    # Make N2 of 'xarray.core.variable.Variable' type.
-    N2_xarray =  xarray.Variable(dims = 'depth', data = N2)
-    # Associate attributes to N2 xarray object.
-    N2_attrs = {'long_name': 'Brunt-Vaisala frequency squared.',
-                 'standard_name': 'N_squared',
-                 'units': '1/s^2', 'unit_long':'cycles per second squared.'}
-    N2_xarray.attrs = N2_attrs
-
-    # Make mean density of 'xarray.core.variable.Variable' type.
-    mean_dens_xarr =  xarray.Variable(dims = 'depth', data = interp_mean_dens)
-    # Associate attributes to mean density xarray object.
-    mean_dens_xarr_attrs = {'long_name':
-                                    'mean potential density',
-                 'standard_name': 'mean_pot_density',
-                 'units': 'kg/m^3', 'unit_long':'kilograms per meter cube'}
-    mean_dens_xarr.attrs = mean_dens_xarr_attrs
-
     # Return N2 absolute value, for avoiding depth sign conventions.
-    return N2_xarray, mean_dens_xarr
+    return N2
