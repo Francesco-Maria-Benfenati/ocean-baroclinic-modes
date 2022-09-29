@@ -9,10 +9,10 @@ Created on Sun May  8 18:55:44 2022
 # IN COMPUTING THE BAROCLINIC ROSSBY RADIUS ...
 # ======================================================================
 import numpy as np
-import scipy as sp
 
 from hypothesis import given, settings
 import hypothesis.strategies as st
+import utils
 
 #=======================================================================
 # Testing the functions for computing the baroclinic Rossby radius 
@@ -120,10 +120,10 @@ def test_correct_matrix_A(dz):
 @given(n = st.integers(5, 100))
 def test_correct_matrix_B(n):
     """
-    Test if Matrix B is computed correctly for a random S.
+    Test if Matrix B is computed correctly for a generic S.
     """
 
-    S = np.random.rand(n)
+    S = np.arange(n)
     B = np.diag(- S[1:-1])
     computed_B = modes._compute_matrix_B(n, S)
 
@@ -201,31 +201,25 @@ def test_Numerov_method_harm_oscillator():
 def test_Numerov_method_stationary_wave():
     """
     Test if _Numerov_method() gives correct eigenvectors for the
-    stationary wave problem, 3rd mode of motion.
+    stationary wave problem, 3rd mode of motion "n=3" .
     """
     
+    # Problem parameters
     L = 9.5
-    n = 1000
-    n_modes = 3
-    A = 1 # oscillation amplitude
-    integers = np.arange(1, n_modes+1)
-    eigenvals = np.sqrt (integers * np.pi / L)
-    x = np.linspace(0,L,n)
+    N = 1000
+    n = 3 # integer corresponding to mode of motion
+    eigenvals = np.sqrt(n * np.pi / L)
+    x = np.linspace(0,L,N)
     dx = abs(x[1]-x[0])
-    theor_sol = np.empty([n,n_modes])
-    f = np.empty([n, n_modes])
-    for i in range(n_modes):
-        theor_sol[:,i] = A*np.sin(integers[i] *np.pi * x/L)
-        f[:,i] = - (eigenvals[i]**2)
+    # Theoretical solution
+    theor_sol_3rdmode = np.sin(n *np.pi * x/L)
+    # Numerical solution
     w_0 = 0
     w_N = 0
-    dw_0 = integers*np.pi*A/L 
-    num_sol = np.empty([n,n_modes])
-    for i in range(n_modes):
-        num_sol[:,i] = modes._Numerov_method(dx, f[:,i], dw_0[i], w_0, w_N )
-    
-    theor_sol_3rdmode = theor_sol[:,2]
-    num_sol_3rdmode = num_sol[:,2]
+    dw_0 = n*np.pi/L 
+    f_val = - (eigenvals**2)
+    f = np.full(N, f_val)
+    num_sol_3rdmode = modes._Numerov_method(dx, f, dw_0, w_0, w_N )
     
     assert np.allclose(theor_sol_3rdmode, num_sol_3rdmode, atol=1e-01) 
 
@@ -244,28 +238,20 @@ def test_compute_modes_N2_const(n, H):
     """
     
     # Problem parameters.
-    A  = 1
     n_modes = 3
-    z = np.linspace(0.5, 2*H, n)
-    integers = np.arange(0, n_modes + 1)
-    new_z = np.linspace(0, H, H+1)
     N2_0 = 1.0
-    N2 = np.full(n, N2_0)
-    S = (N2_0 * H**2)/100
-    # Theoretical solution.
-    theor_Phi = np.empty([H+1, n_modes+1])
-    eigenvals = (integers**2)*(np.pi**2)/S # See Pedlosky, GFD book.
-    theor_R = 1/np.sqrt(eigenvals[1:])
-    for i in range(n_modes+1):
-        theor_Phi[:,i] = A * np.cos(integers[i] * np.pi * new_z/H)
+    # Theoretical Solution.
+    theor_Phi, theor_R = utils.baroclModes_constN2(N2_0, H, n_modes)
     # Numerical solution. 
+    z = np.linspace(0.5, 2*H, n)
+    N2 = np.full(n, N2_0)
     num_R, num_Phi = modes.compute_barocl_modes(z, H, N2, n_modes)
     # Comparison.
-    Phi_coherence = np.allclose(num_Phi, theor_Phi, atol = A/100)
+    Phi_coherence = np.allclose(num_Phi[:,1:], theor_Phi, atol = 1e-02)
     R_coherence = np.allclose(num_R[1:], theor_R, atol = 1e-03)
     
     assert np.logical_and(Phi_coherence, R_coherence)
-   
+
 
 @settings(deadline = None, max_examples = 50)
 @given(n=st.integers(30,100), H = st.integers(1000, 3000))
@@ -277,28 +263,19 @@ def test_compute_modes_N2_exp(n, H):
     """
     
     # Problem parameters.
-    A  = 1
     alpha = 2/H
     n_modes = 3
     z = - np.linspace(0.5, 2*H, n)
-    new_z = - np.linspace(0, H, H+1)
     N2_0 = 1.0
     N2 = N2_0 * np.exp(alpha*z)
-    # Theoretical solution.
-    gamma = np.array([4.9107, 9.9072, 14.8875, 19.8628])/2 # see LaCasce, 2012
-    theor_Phi = np.empty([H+1, n_modes])
-    for i in range(n_modes):
-        theor_Phi[:,i] = (A * np.exp(alpha*new_z/2)
-                         * (sp.special.yn(0 , 2*gamma[i])
-                         * sp.special.jv(1, 2*gamma[i]*np.exp(alpha*new_z/2)) 
-                         - sp.special.jv(0, 2*gamma[i]) 
-                         * sp.special.yn(1, 2*gamma[i]*np.exp(alpha*new_z/2))
-                            ) )
-        theor_Phi[:,i] /= max(theor_Phi[:,i]) # Norm. theor sol.
+    # Theoretical solution (see LaCasce, 2012).
+    gamma = np.array([4.9107, 9.9072, 14.8875])/2 
+    theor_Phi = utils.baroclModes_expN2(gamma, alpha, H)
     # Numerical solution.   
     num_R, num_Phi = modes.compute_barocl_modes(z, H, N2, n_modes)
     # Comparison.
-    Phi_coherence = np.allclose(num_Phi[:,1:], theor_Phi, atol = 2*A/100)
+    Phi_coherence = np.allclose(num_Phi[:,1:], theor_Phi, 
+                                                      atol = 2e-02)
     
     assert Phi_coherence
 
@@ -313,29 +290,19 @@ def test_compute_modes_N2_exp_strong_stratification(n, H):
     """
     
     # Problem parameters.
-    A  = 1
     alpha = 10/H
     n_modes = 3
     z = - np.linspace(0.5, 2*H, n)
-    new_z = - np.linspace(0, H, H+1)
     N2_0 = 1.0
     N2 = N2_0 * np.exp(alpha*z)
-    # Theoretical solution.
-    gamma = np.array([2.7565, 5.9590, 9.1492, 12.334])/2 # see LaCasce, 2012
-    theor_Phi = np.empty([H+1, n_modes])
-    for i in range(n_modes):
-        theor_Phi[:,i] = (A * np.exp(alpha*new_z/2)
-                         * (sp.special.yn(0 , 2*gamma[i])
-                         * sp.special.jv(1, 2*gamma[i]*np.exp(alpha*new_z/2)) 
-                         - sp.special.jv(0, 2*gamma[i]) 
-                         * sp.special.yn(1, 2*gamma[i]*np.exp(alpha*new_z/2))
-                            ) )
-        theor_Phi[:,i] /= max(theor_Phi[:,i]) # Norm. theor sol.
+    # Theoretical solution (see LaCasce, 2012).
+    gamma = np.array([2.7565, 5.9590, 9.1492])/2 
+    theor_Phi = utils.baroclModes_expN2(gamma, alpha, H)
     # Numerical solution.   
     num_R, num_Phi = modes.compute_barocl_modes(z, H, N2, n_modes)
     # Comparison.
-    Phi_coherence = np.allclose(num_Phi[:,1:], theor_Phi, atol = 5*A/100)
-    
+    Phi_coherence = np.allclose(num_Phi[:,1:], theor_Phi, atol = 5e-02)
+
     assert Phi_coherence
   
 

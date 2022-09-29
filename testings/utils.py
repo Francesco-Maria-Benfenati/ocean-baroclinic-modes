@@ -82,11 +82,11 @@ def baroclModes_expN2(gamma, alpha, H):
     
     A = 1 # amplitude
     n_modes = len(gamma) # n° modes of motion
-    new_z = np.linspace(0, H, H+1)# new equally spaced depth grid
+    new_z = - np.linspace(0, H, H+1)# new equally spaced depth grid
     # Theoretical Vertical Structure Function Phi(z)
     theor_Phi = np.empty([H+1, n_modes])
     for i in range(n_modes):
-        theor_Phi[:,i] = A * (np.exp(alpha*new_z/2)
+        theor_Phi[:,i] = (A * np.exp(alpha*new_z/2)
                          * (special.yn(0 , 2*gamma[i])
                          *  special.jv(1, 2*gamma[i]*np.exp(alpha*new_z/2)) 
                          -  special.jv(0, 2*gamma[i]) 
