@@ -150,6 +150,7 @@ def test_compute_eigenvals_simple_problem():
     assert np.allclose(out_eigenvals, expected_eigenvals)
 
 
+@settings(deadline = None, max_examples = 50)
 @given(n = st.integers(100, 1000))
 def test_compute_eigenvals_stationary_wave(n):
     """
