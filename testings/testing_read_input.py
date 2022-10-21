@@ -46,7 +46,6 @@ def test_read_JSON_output_dictionary():
             {'experiment_name': 'Azores_JAN21', 
              'region_name': 'Azores', 
              'input_file_name': 'azores_Jan2021.nc', 
-             'bathy_file_name': 'mask_bathy_test_case_azores.nc', 
              'indata_path': 'test_case/dataset_azores/'}, 
         'set_variables': 
             {'temperature_name': 'thetao', 
@@ -54,8 +53,16 @@ def test_read_JSON_output_dictionary():
              'lat_var_name': 'latitude', 
              'lon_var_name': 'longitude', 
              'depth_var_name': 'depth', 
-             'time_var_name': 'time', 
-             'bathy_var_name': 'deptho'}, 
+             'time_var_name': 'time'}, 
+        'set_bathymetry':
+            {'bathy_file_name': 'mask_bathy_test_case_azores.nc',
+             'bathy_path': 'test_case/dataset_azores/bathymetry/',
+             'bathy_var_name': 'deptho',
+             'lat_var_name': 'latitude', 
+             'lon_var_name': 'longitude', 
+             'lat_name': 'latitude', 
+             'lon_name': 'longitude'
+             },
         'set_dimensions': 
             {'lat_name': 'latitude', 
              'lon_name': 'longitude', 
@@ -64,10 +71,8 @@ def test_read_JSON_output_dictionary():
         'set_domain': 
             {'lat_min': 33.0, 
              'lat_max': 35.0,
-             'lat_step': 0.03,
              'lon_min': -30.0, 
-             'lon_max': -28.0, 
-             'lon_step': 0.03 }, 
+             'lon_max': -28.0}, 
         'set_time': 
             {'period_name': 'January 2021', 
              'starting_time': '2021-01-01 12:00:00', 
@@ -369,16 +374,13 @@ def test_extract_data_correct_output_temp():
     config_param = {
         'set_paths': 
             {'input_file_name': 'dataset_for_testing.nc', 
-             'bathy_file_name': 'dataset_for_testing.nc', 
              'indata_path': './'}, 
         'set_variables': 
             {'temperature_name': 'theta', 
              'salinity_name': 'salinity', 
              'lat_var_name': 'latitude', 
              'lon_var_name': 'longitude', 
-             'depth_var_name': 'depth', 
-             'time_var_name': 'time', 
-             'bathy_var_name': 'bathy'}, 
+             'time_var_name': 'time'}, 
         'set_dimensions': 
             {'lat_name': 'latitude', 
              'lon_name': 'longitude', 
@@ -392,8 +394,8 @@ def test_extract_data_correct_output_temp():
         'set_time': 
             {'starting_time': '2021-01-05 12:00:00', 
              'ending_time': '2021-01-15 12:00:00'},                          }    
-    [depth_xarray, mean_temperature, mean_salinity, 
-     mean_bathy] = read.extract_data_from_NetCDF_input_file(config_param)
+    [mean_temperature, 
+     mean_salinity] = read.extract_data_from_NetCDF_input_file(config_param)
     # Expected value.
     mean_temp_val = np.sum(np.arange(4,15))/11
     expected_mean_temp = np.full([10,2,3], mean_temp_val)
@@ -412,16 +414,13 @@ def test_extract_data_correct_output_sal():
     config_param = {
         'set_paths': 
             {'input_file_name': 'dataset_for_testing.nc', 
-             'bathy_file_name': 'dataset_for_testing.nc', 
              'indata_path': './'}, 
         'set_variables': 
             {'temperature_name': 'theta', 
              'salinity_name': 'salinity', 
              'lat_var_name': 'latitude', 
              'lon_var_name': 'longitude', 
-             'depth_var_name': 'depth', 
-             'time_var_name': 'time', 
-             'bathy_var_name': 'bathy'}, 
+             'time_var_name': 'time'}, 
         'set_dimensions': 
             {'lat_name': 'latitude', 
              'lon_name': 'longitude', 
@@ -434,9 +433,10 @@ def test_extract_data_correct_output_sal():
              'lon_max': 6}, 
         'set_time': 
             {'starting_time': '2021-01-05 12:00:00', 
-             'ending_time': '2021-01-15 12:00:00'},                          }    
-    [depth_xarray, mean_temperature, mean_salinity, 
-     mean_bathy] = read.extract_data_from_NetCDF_input_file(config_param)
+             'ending_time': '2021-01-15 12:00:00'},                          }
+        
+    [mean_temperature, 
+     mean_salinity] = read.extract_data_from_NetCDF_input_file(config_param)
     # Expected value.
     mean_sal_val = np.sum(np.arange(1005,1016))/11
     expected_mean_sal = np.full([10,2,3], mean_sal_val)
@@ -446,49 +446,37 @@ def test_extract_data_correct_output_sal():
 
 def test_extract_data_correct_output_bathy():
     """
-    Test if extract_data_from_NetCDF_input_file() gives correct output
+    Test if extract_mean_bathy_from_NetCDF_file() gives correct output
     mean bathymetry, after having tested all subfunctions inside it.
     *** NOTE: This test exploits the "dataset_for_testing.nc" file. ***
     """
     
     # Output results.
     config_param = {
-        'set_paths': 
-            {'input_file_name': 'dataset_for_testing.nc', 
-             'bathy_file_name': 'dataset_for_testing.nc', 
-             'indata_path': './'}, 
-        'set_variables': 
-            {'temperature_name': 'theta', 
-             'salinity_name': 'salinity', 
-             'lat_var_name': 'latitude', 
-             'lon_var_name': 'longitude', 
-             'depth_var_name': 'depth', 
-             'time_var_name': 'time', 
-             'bathy_var_name': 'bathy'}, 
-        'set_dimensions': 
-            {'lat_name': 'latitude', 
-             'lon_name': 'longitude', 
-             'depth_name': 'depth', 
-             'time_name': 'time'}, 
+        'set_bathymetry': 
+            {'bathy_file_name': 'dataset_for_testing.nc',  
+              'bathy_path': './',
+              'lat_var_name': 'latitude', 
+              'lon_var_name': 'longitude', 
+              'bathy_var_name': 'bathy', 
+              'lat_name': 'latitude', 
+              'lon_name': 'longitude' }, 
         'set_domain': 
             {'lat_min': 2, 
-             'lat_max': 3, 
-             'lon_min': 4, 
-             'lon_max': 6}, 
-        'set_time': 
-            {'starting_time': '2021-01-05 12:00:00', 
-             'ending_time': '2021-01-15 12:00:00'},                          }    
-    [depth_xarray, mean_temperature, mean_salinity, 
-     mean_bathy] = read.extract_data_from_NetCDF_input_file(config_param)
+              'lat_max': 3, 
+              'lon_min': 4, 
+              'lon_max': 6},                                 } 
+        
+    mean_bathy = read.extract_mean_bathy_from_NetCDF_file(config_param)
     # Expected value.
-    expected_mean_bathy = int((500+750)/2)
-    
+    expected_mean_bathy = (500+750)/2
+
     assert np.array_equal(expected_mean_bathy, mean_bathy)
     
-    
+
 def test_extract_data_correct_output_depth():
     """
-    Test if extract_data_from_NetCDF_input_file() gives correct output
+    Test if extract_depth3D_from_NetCDF_file() gives correct output
     depth xarray, after having tested all subfunctions inside it.
     *** NOTE: This test exploits the "dataset_for_testing.nc" file. ***
     """
@@ -497,35 +485,22 @@ def test_extract_data_correct_output_depth():
     config_param = {
         'set_paths': 
             {'input_file_name': 'dataset_for_testing.nc', 
-             'bathy_file_name': 'dataset_for_testing.nc', 
              'indata_path': './'}, 
         'set_variables': 
-            {'temperature_name': 'theta', 
-             'salinity_name': 'salinity', 
-             'lat_var_name': 'latitude', 
+            {'lat_var_name': 'latitude', 
              'lon_var_name': 'longitude', 
-             'depth_var_name': 'depth', 
-             'time_var_name': 'time', 
-             'bathy_var_name': 'bathy'}, 
-        'set_dimensions': 
-            {'lat_name': 'latitude', 
-             'lon_name': 'longitude', 
-             'depth_name': 'depth', 
-             'time_name': 'time'}, 
+             'depth_var_name': 'depth'}, 
         'set_domain': 
             {'lat_min': 2, 
              'lat_max': 3, 
              'lon_min': 4, 
-             'lon_max': 6}, 
-        'set_time': 
-            {'starting_time': '2021-01-05 12:00:00', 
-             'ending_time': '2021-01-15 12:00:00'},                          }    
-    [depth_xarray, mean_temperature, mean_salinity, 
-     mean_bathy] = read.extract_data_from_NetCDF_input_file(config_param)
+             'lon_max': 6}                                 }  
+        
+    depth_3D = read.extract_depth3D_from_NetCDF_file(config_param)
     # Expected value.
     lat = np.arange(2)
     lon = np.arange(3)
     depth = np.arange(10)
     expected_depth = np.meshgrid(lat, depth, lon)[1]
 
-    assert np.array_equal(depth_xarray.values, expected_depth)
+    assert np.array_equal(depth_3D, expected_depth)

@@ -17,11 +17,6 @@
             "type":"string",
             "description":"name of the input NetCDF data file."
           },
-         {  "name":"bathy_file_name",
-            "value":"mask_bathy_test_case_azores.nc",
-            "type":"string",
-            "description":"name of the NetCDF file containing the bathymetry."
-          },
          {  "name":"indata_path",
             "value":"test_case/dataset_azores/",
             "value_on_windows":"test_case\\dataset_azores\\",
@@ -61,11 +56,6 @@
             "value":"time",
             "type":"string",
             "description":"name of TIME variable within NetCDF input file."
-          },
-         {  "name":"bathy_var_name",
-            "value":"deptho",
-            "type":"string",
-            "description":"name of bathymetry variable within NetCDF bathy file."
           }
       ]
    },
@@ -93,6 +83,46 @@
            }
       ]
    },
+   {"title":"set_bathymetry",
+      "items":[
+         {  "name":"bathy_file_name",
+            "value":"mask_bathy_test_case_azores.nc",
+            "type":"string",
+            "description":"name of the NetCDF file containing the bathymetry."
+          },
+         {  "name":"bathy_path",
+            "value":"test_case/dataset_azores/bathymetry/",
+            "value_on_windows":"test_case\\dataset_azores\\bathymetry\\",
+            "type":"string",
+            "description":"path leading to the NetCDF bathy file. If on WINDOWS, please substitute backslash with \\"
+          },
+         {  "name":"bathy_var_name",
+            "value":"deptho",
+            "type":"string",
+            "description":"name of bathymetry variable within NetCDF bathy file."
+          },
+         {  "name":"lat_var_name",
+            "value":"latitude",
+            "type":"string",
+            "description":"name of LATITUDE variable within NetCDF bathy file."
+          },
+         {  "name":"lon_var_name",
+             "value":"longitude",
+             "type":"string",
+             "description":"name of LONGITUDE variable within NetCDF bathy file."
+          },
+         {  "name":"lat_name",
+            "value":"latitude",
+            "type":"string",
+            "description":"name of LATITUDE dimension within NetCDF bathy file."
+          },
+         {  "name":"lon_name",
+            "value":"longitude",
+            "type":"string",
+            "description":"name of LONGITUDE dimension within NetCDF bathy file."
+          }
+      ]
+   },
    {"title":"set_domain",
       "items":[
          {  "name":"lat_min",
@@ -107,11 +137,6 @@
             "description":"value of maximum latitude in °N (°S are negative)",
             "note":"set lat_max = lat_min if punctual profile is considered."
           },
-         {  "name":"lat_step",
-            "value":"0.03",
-            "type":"float",
-            "description":"value of latitude step (to find the extremant values)."
-          },
          {  "name":"lon_min",
             "value":"-30",
             "type":"float",
@@ -123,12 +148,7 @@
             "type":"float",
             "description":"value of maximum longitude in °E (°W are negative)",
             "note":"set lon_max = lon_min if punctual profile is considered."
-          },
-         {  "name":"lon_step",
-            "value":"0.03",
-            "type":"float",
-            "description":"value of longitude step (to find the extremant values)."
-           }
+          }
       ]
    },
   { "title":"set_time",

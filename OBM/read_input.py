@@ -112,31 +112,26 @@ def extract_data_from_NetCDF_input_file(config_param):
         through subdictionaries.
         {'set_paths': 
              {'indata_path': -path to input NetCDF data file-,
-              'input_file_name': -name of input NetCDF data file-,
-              'bathy_file_name': -name of NetCDF bathymetry file- },
+              'input_file_name': -name of input NetCDF data file-},
          'set_dimensions': 
              {'lat_name': -name of latitude DIM in NetCDF file-,
               'lon_name': -name of longitude DIM in NetCDF file-,
               'depth_name': -name of depth DIM in NetCDF file-, 
-              'time_name': -name of time DIM in NetCDF file-}, 
+              'time_name': -name of time DIM in NetCDF file- }, 
          'set_domain': 
              {'lat_min': -min value of latitude-, 
               'lat_max': -max value of latitude-,
               'lon_min': -min value of longitude-, 
-              'lon_max': -max value of longitude-,
-              'lat_step': - latitude grid step-,
-              'lon_step': - longitude grid step-},
+              'lon_max': -max value of longitude- },
          'set_time': 
              {'starting_time': -averaging time period beginning-,
-              'ending_time': -averaging time period ending-},
+              'ending_time': -averaging time period ending- },
          'set_variables': 
              {'temperature_name': -name of temperature in NetCDF file-,
               'salinity_name': -name of salinity in NetCDF file-,
               'lat_var_name': -name of latitude VAR in NetCDF file-,
-               'lon__var_name': -name of longitude VAR in NetCDF file-,
-               'depth_var_name': -name of depth VAR in NetCDF file-, 
-               'time_var_name': -name of time VAR in NetCDF file-,
-               'bathy_var_name': -name of bathymetry VAR in NetCDF file-}
+              'lon__var_name': -name of longitude VAR in NetCDF file-,
+              'time_var_name': -name of time VAR in NetCDF file- }
          }
          
     Raises
@@ -151,20 +146,15 @@ def extract_data_from_NetCDF_input_file(config_param):
         
     Returns
     -------
-    depth : 'xarray.core.variable.Variable'
-        depth array which has become of same dimension of
-        temperature and salinity (one time step)
-    mean_temperature : 'xarray.core.variable.Variable'
+    mean_temperature : <class 'numpy.ndarray'>
         time-averaged temperature 3D array (one time step)
-    mean_salinity : 'xarray.core.variable.Variable'
+    mean_salinity : <class 'numpy.ndarray'>
         time-averaged salinity 3D array (one time step)
-    mean_bathy : 'int'
-                 mean sea depth in the considered region
                  
     The arrays dimensions are depth, latitude and longitude.
     """
     
-    # Define input file path from configuration parameters
+    # Define input file path from configuration parameters.
     set_paths = config_param['set_paths']
     path_to_file = set_paths['indata_path']
     file_name = set_paths['input_file_name']
@@ -184,11 +174,9 @@ def extract_data_from_NetCDF_input_file(config_param):
     set_vars = config_param['set_variables']
     lat_name = set_vars['lat_var_name']
     lon_name = set_vars['lon_var_name']
-    depth_name = set_vars['depth_var_name']
     time_name = set_vars['time_var_name']
     latitude = in_data.variables[lat_name].values
     longitude = in_data.variables[lon_name].values
-    depth = in_data.variables[depth_name].values
     time = in_data.variables[time_name].values
     
     # Call external function for setting the domain boundaries.
@@ -225,42 +213,182 @@ def extract_data_from_NetCDF_input_file(config_param):
     mean_temperature = _compute_mean_var(temperature, dimensions, indeces)
     # Mean Salinity
     mean_salinity = _compute_mean_var(salinity, dimensions, indeces)
+         
+    in_data.close()
+    
+    # Return temperature and salinity arrays (averaged in time)
+    return mean_temperature.values, mean_salinity.values
+
+
+def extract_mean_bathy_from_NetCDF_file(config_param):
+    """
+    Reads NetCDF bathymetry dataset, returns mean ocean depth.
+
+    Arguments
+    ---------
+    config_param : 'dict'
+        A dictionary containing the configuration parameters grouped
+        through subdictionaries.
+        {'set_bathymetry': 
+             {'bathy_path': -path to bathy NetCDF data file-,
+              'bathy_file_name': -name of bathy NetCDF data file-,
+              
+              'lat_name': -name of latitude DIM in NetCDF file-,
+              'lon_name': -name of longitude DIM in NetCDF file-,
+              
+              'lat_var_name': -name of latitude VAR in NetCDF file-,
+              'lon__var_name': -name of longitude VAR in NetCDF file-,
+              'bathy_var_name': -name of bathy VAR in NetCDF file- }
+            
+         'set_domain': 
+             {'lat_min': -min value of latitude-, 
+              'lat_max': -max value of latitude-,
+              'lon_min': -min value of longitude-, 
+              'lon_max': -max value of longitude- }
+         }
+         
+    Raises
+    ------
+    KeyError
+        if dictionary keys are not the expected ones.
+                           - OR -
+        if variables name in config. file does not match the ones in
+        NetCDF file.
+    FileNotFoundError
+        if NetCDF file name or path given is not found.
+        
+    Returns
+    -------
+    mean_bathymetry: <class 'numpy.ndarray'> (0-dimensional)
+        mean ocean depth of the considered region
+                 
+    """
+    
+    # Define bathy file path from configuration parameters.
+    set_bathy = config_param['set_bathymetry']
+    path_to_file = set_bathy['bathy_path']
+    file_name = set_bathy['bathy_file_name']
+    
+    # Open bathy file and extrapolates dataset.
+    full_path = path_to_file + file_name
+    bathy_data = xarray.open_dataset(full_path)
+    
+    # Store lat, lon DIMENSIONS.
+    lat_dim = set_bathy['lat_name']
+    lon_dim = set_bathy['lon_name']
+
+    # Store lat, lon variables from NetCDF bathy file.
+    lat_name = set_bathy['lat_var_name']
+    lon_name = set_bathy['lon_var_name']
+    latitude = bathy_data.variables[lat_name].values
+    longitude = bathy_data.variables[lon_name].values
+    
+    # Call external function for setting the domain boundaries.
+    set_domain = config_param['set_domain']
+    lat_min = set_domain['lat_min']
+    lat_max = set_domain['lat_max']
+    lon_min = set_domain['lon_min']
+    lon_max = set_domain['lon_max']
+    
+    lat_min_idx, lat_max_idx = _find_nearest(latitude, [lat_min, lat_max])
+    lon_min_idx, lon_max_idx = _find_nearest(longitude, [lon_min, lon_max])
     
     # ------------------------------------------------------------------
     # Compute mean bathymetry.
     # ------------------------------------------------------------------
-    # Bathy file name.
-    bathy_file_name = set_paths['bathy_file_name']
-    # Open bathymetry dataset.
-    full_path_bathy = path_to_file + bathy_file_name
-    bathy_data = xarray.open_dataset(full_path_bathy)
-    # Define bathy variable name from config_param.
-    bathy_name = set_vars['bathy_var_name']
+    bathy_name = set_bathy['bathy_var_name']
     bathymetry = bathy_data.variables[bathy_name]
-    # Mean Bathymetry
+    
     mean_bathy = _compute_mean_bathy(bathymetry, [lat_dim, lon_dim], 
                                                  [lat_min_idx, lat_max_idx, 
                                                   lon_min_idx, lon_max_idx])
+
+    return mean_bathy.values
+
+
+def extract_depth3D_from_NetCDF_file(config_param):
+    """
+    Reads NetCDF input data, returns 3D depth array.
+
+    Arguments
+    ---------
+    config_param : 'dict'
+        A dictionary containing the configuration parameters grouped
+        through subdictionaries.
+        {'set_paths': 
+             {'indata_path': -path to input NetCDF data file-,
+              'input_file_name': -name of input NetCDF data file-},
+         'set_domain': 
+             {'lat_min': -min value of latitude-, 
+              'lat_max': -max value of latitude-,
+              'lon_min': -min value of longitude-, 
+              'lon_max': -max value of longitude- },
+         'set_variables': 
+             {'lat_var_name': -name of latitude VAR in NetCDF file-,
+              'lon_var_name': -name of longitude VAR in NetCDF file-,
+              'depth_var_name': -name of depth VAR in NetCDF file- }
+         }
+         
+    Raises
+    ------
+    KeyError
+        if dictionary keys are not the expected ones.
+                           - OR -
+        if variables name in config. file does not match the ones in
+        NetCDF file.
+    FileNotFoundError
+        if NetCDF file name or path given is not found.
+        
+    Returns
+    -------
+    depth_3D : <class 'numpy.ndarray'>
+        3D depth array
+                 
+    The array dimensions are depth, latitude and longitude.
+    """
+    
+    # Define input file path from configuration parameters.
+    set_paths = config_param['set_paths']
+    path_to_file = set_paths['indata_path']
+    file_name = set_paths['input_file_name']
+    
+    # Open input file and extrapolates dataset.
+    full_path = path_to_file + file_name
+    in_data = xarray.open_dataset(full_path)
+
+    # Store lat, lon, time and depth variables from NetCDF input file.
+    set_vars = config_param['set_variables']
+    lat_name = set_vars['lat_var_name']
+    lon_name = set_vars['lon_var_name']
+    depth_name = set_vars['depth_var_name']
+    latitude = in_data.variables[lat_name].values
+    longitude = in_data.variables[lon_name].values
+    depth = in_data.variables[depth_name].values
+    
+    # Call external function for setting the domain boundaries.
+    set_domain = config_param['set_domain']
+    lat_min = set_domain['lat_min']
+    lat_max = set_domain['lat_max']
+    lon_min = set_domain['lon_min']
+    lon_max = set_domain['lon_max']
+    
+    lat_min_idx, lat_max_idx = _find_nearest(latitude, [lat_min, lat_max])
+    lon_min_idx, lon_max_idx = _find_nearest(longitude, [lon_min, lon_max])
     
     # ------------------------------------------------------------------
     # Store depth as an array with dimensions as temp and sal.
-    # (This will be useful for computing potential density)
     # ------------------------------------------------------------------
     # Compute lengths
-    lat_length = lat_max_idx + 1 - lat_min_idx
-    lon_length = lon_max_idx + 1 - lon_min_idx
-    depth_length = len(depth)
+    len_lat = lat_max_idx + 1 - lat_min_idx
+    len_lon = lon_max_idx + 1 - lon_min_idx
+    len_depth = len(depth)
     # Create empty array.
-    depth_3D = np.empty((depth_length, lat_length, lon_length))
+    depth_3D = np.empty((len_depth, len_lat, len_lon))
     # Fill empty array.
-    for i in range(depth_length):
-        depth_3D[i,:,:] = np.tile(depth[i], (lat_length, lon_length)) 
-    # Create xarray.
-    depth_xarray =  xarray.Variable(mean_temperature.dims, depth_3D)
-         
-    in_data.close()
-    # Return temperature and salinity arrays (averaged in time)
-    return depth_xarray, mean_temperature, mean_salinity, mean_bathy
+    for i in range(len_depth):
+        depth_3D[i,:,:] = np.tile(depth[i], (len_lat, len_lon)) 
+
+    return depth_3D
 
 
 def _find_time_step(time, user_time):
@@ -329,7 +457,7 @@ def _compute_mean_var(variable, dimensions, indeces):
     
     time_dim, depth_dim, lat_dim, lon_dim = dimensions
     start_tstep, end_tstep, lat_min, lat_max, lon_min, lon_max = indeces
-    
+
     # Transpose temperature and salinity arrays for rearranging indeces.
     transposed_var = variable.transpose(time_dim, 
                                         depth_dim,
@@ -355,10 +483,11 @@ def _compute_mean_bathy(bathymetry, dimensions, indeces):
     [lat_min, lat_max, lon_min, lon_max] = indeces
 
     # Store bathymetry.
+
     transposed_bathy = bathymetry.transpose(lat_dim, lon_dim, ... )
     bathymetry = transposed_bathy[lat_min:lat_max+1, lon_min:lon_max+1]
 
     # Mean sea depth.
-    mean_bathy = int(np.mean(bathymetry, axis = None))
+    mean_bathy = np.mean(bathymetry, axis = None)
     
     return mean_bathy
