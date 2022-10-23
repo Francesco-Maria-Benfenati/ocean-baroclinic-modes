@@ -15,7 +15,6 @@ Created on Fri Apr 22 10:25:22 2022
 #      Potential Density.
 # ======================================================================
 import numpy as np
-from OBM.baroclinic_modes import _interpolate_N2 as _interpolate
 
 
 def compute_density(z, temp, S):
@@ -261,18 +260,16 @@ def compute_BruntVaisala_freq_sq(z, mean_density):
     Arguments
     ---------
     z : <class 'numpy.ndarray'>
-        domain depth coordinate [m]
+        depth  [m]
     mean_density : <class 'numpy.ndarray'>
-        mean potential density vertical profile [kg/(m^3)], defined on z grid
-    NOTE:
-        input arrays must have length >= 2 along z for computing
-        Brunt-Vaisala frequency through the finite difference algorithm.
+        mean potential density vertical profile [kg/(m^3)], 
+        defined on z grid
 
     Raises
     ------
-    ValueError
-        if input density has not same length as z along depth direction
     IndexError
+        if input density has not same length as z along depth direction
+                        - or -
         if input arrays are empty
 
     Returns
@@ -287,7 +284,6 @@ def compute_BruntVaisala_freq_sq(z, mean_density):
     N = (- g/rho_0 * ∂rho_s/∂z)^1/2  with g = 9.806 m/s^2,
 
     where rho_0 is the reference density.
-    NOTE: here, dz = 1m .
     --------------------------------------------------------------------
     NOTE:
            Here, the SQUARE OF BRUNT-VAISALA FREQUENCY is computed
@@ -305,37 +301,31 @@ def compute_BruntVaisala_freq_sq(z, mean_density):
     z = abs(z)
 
     len_z = len(z)
+    
     # Defining value of gravitational acceleration.
     g = 9.806 # (m/s^2)
     # Defining value of reference density rho_0.
     rho_0 = 1025 #(kg/m^3)
-
-    # Linear Interpolation along z axis, on an equally spaced depth grid
-    # with dz = 1m (only if depth length is > 2).
-    if len_z > 2:
-        interp_mean_dens = _interpolate(z, mean_density)
-    else: 
-        interp_mean_dens = mean_density
-   
-    len_dens = len(interp_mean_dens)
   
     # Create empty array for squared Brunt-Vaisala frequency, N^2.
-    N2 = np.empty(len_dens)
+    N2 = np.empty(len_z)
     
-    dz = 1 #(m) grid step of the new interpolation grid
     # Compute  N^2 for the surface level (forward finite difference).
+    dz_0 = z[1] - z[0]
     N2[0] = ( - (g/rho_0)
-              *(interp_mean_dens[0] - interp_mean_dens[1])/dz)
-    # Compute  N^2 for the surface level (forward finite difference).
+              *(mean_density[0] - mean_density[1])/dz_0)
+    # Compute  N^2 for the surface level (backward finite difference).
+    dz_n = z[-2] - z[-1]
     N2[-1] = ( - (g/rho_0)
-              *(interp_mean_dens[-2] - interp_mean_dens[-1])/dz)
+              *(mean_density[-1] - mean_density[-2])/dz_n)
 
     if len_z > 2:
         # Compute  N^2 for the surface level (centered finite difference).
         # Do it only if len_z>2.
-        for i in range(1, len_dens-1):
+        for i in range(1, len_z-1):
+            dz = z[i+1] - z[i-1]
             N2[i] = ( - (g/rho_0)
-                      *(interp_mean_dens[i-1] - interp_mean_dens[i+1])/(2*dz))
+                      *(mean_density[i-1] - mean_density[i+1])/(dz))
 
     # Return N2 absolute value, for avoiding depth sign conventions.
     return N2

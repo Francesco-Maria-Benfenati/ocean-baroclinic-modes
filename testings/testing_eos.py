@@ -8,9 +8,7 @@ Created on Thu May  5 17:49:21 2022
 # THIS FILE INCLUDES PART OF THE TESTS FOR FUNCTIONS IMPLEMENTED
 # IN COMPUTING THE BAROCLINIC ROSSBY RADIUS ...
 # ======================================================================
-import xarray
 import numpy as np
-from scipy import interpolate
 from hypothesis import given
 import hypothesis.strategies as st
 
@@ -43,8 +41,8 @@ def test_compute_rho_pure_water():
     
     out_rho.append(eos._compute_rho(ref_Temp[0], ref_Sal))
     out_rho.append(eos._compute_rho(ref_Temp[1], ref_Sal))
-    
-    error = 3.6e-03 #kg/m^3
+
+    error = 1e-06 #kg/m^3
     assert np.allclose(ref_rho, out_rho, atol=error)
 
 
@@ -65,7 +63,7 @@ def test_compute_rho_standard_seawater():
     out_rho.append(eos._compute_rho(ref_Temp[0], ref_Sal))
     out_rho.append(eos._compute_rho(ref_Temp[1], ref_Sal))
         
-    error = 3.6e-03 #kg/m^3
+    error = 1e-06 #kg/m^3
     assert np.allclose(ref_rho, out_rho, atol=error)
 
 
@@ -102,7 +100,7 @@ def test_compute_bulk_modulus_K():
             K = K_0 + A*P + B*(P**2)
             out_K.append(K)
             
-    error = 1e-03 #kg/m^3
+    error = 1e-03 #bar
     assert np.allclose(ref_K, out_K, atol=error)
 
 
@@ -170,16 +168,20 @@ def test_compute_BV_const_dens():
     """
     
     # Theoretical case.
-    depth = np.arange(0, 100)
+    H = 1000
+    depth = - np.linspace(0, H, 50)
     len_z = len(depth)
     rho_0 = 1025 #kg/m^3
     mean_density = np.full([len_z], rho_0)
     theor_BV2 = np.full([len_z], 0.0)
     # Numerical solution.
     out_BV2 = compute_BVsq(depth, mean_density)
+    # Error
+    dz = 1/50
+    N2_0 = theor_BV2[0]
+    error = (dz**2) * N2_0 #error related to finite differences (dz**2)
+    assert np.allclose(out_BV2, theor_BV2, atol=error)
 
-    assert np.allclose(out_BV2, theor_BV2, atol=1e-08)
- 
 
 @given(a = st.floats(0, 55))
 def test_compute_BV_linear_dens(a):
@@ -191,56 +193,67 @@ def test_compute_BV_linear_dens(a):
     
     # Theoretical case.
     H = 1000
-    depth = - np.arange(0, H+1)
+    depth = np.linspace(0, H, 50)
     len_z = len(depth)
-    rho_0 = 1025 #(kg/m^3) #kg/m^3, ref. density
+    rho_0 = 1025 #(kg/m^3) ref. density
     a/=H
     mean_density = a*depth + rho_0
     g = 9.806 # (m/s^2)
-    theor_BV2 = - (g*a/rho_0) * np.ones(len_z)
+    theor_BV2 = (g*a/rho_0)* np.ones(len_z)
     # Output product.
     out_BV2 = compute_BVsq(depth, mean_density)
-    print(a,out_BV2-theor_BV2)
-    assert np.allclose(out_BV2, theor_BV2, atol=1e-08)
-
+    # Error
+    dz = 1/50
+    N2_0 = theor_BV2[0]
+    error = (dz**2) * N2_0 #error related to finite differences (dz**2)
+    assert np.allclose(out_BV2, theor_BV2, atol=error)
+   
 
 @given(a = st.floats(0, 0.05))
 def test_compute_BV_expon_dens(a):
     """
     Test if compute_BVsq() computes the BV freq. squared correctly 
     in a known exponential case 
-    rho(z) = rho_0 * exp(a*z), z < 0 --> N^2 = -g*a*exp(a*z)
+    rho(z) = rho_0 * exp(a*z), z < 0 --> N^2 = g*a*exp(a*z)
     """
     
     # Theoretical case.
     H = 1000
-    depth = - np.arange(0, H+1)
-    rho_0 = 1025 #(kg/m^3) #kg/m^3, ref. density
-    a /= - H
+    depth = np.linspace(0, H, 50)
+    rho_0 = 1025 #(kg/m^3) ref. density
+    a /= H
     mean_density = rho_0*np.exp(a*depth) 
     g = 9.806 # (m/s^2)
-    theor_BV2 = - g*a*np.exp(a*depth)
+    theor_BV2 = g*a*np.exp(a*depth)
     # Output product.
     out_BV2 = compute_BVsq(depth, mean_density)
-
-    error = 1e-08 #error related to finite differences (dx**2)
-    assert np.allclose(out_BV2, theor_BV2, atol= error)
+    # Error (boundaries and interior)
+    dz = 1/50
+    N2_0 = theor_BV2[0]
+    error_bnd = dz *  N2_0 # boundaries error: fwd/bwd fin. diff. O(dz)
+    error = (dz**2) * N2_0 #error related to centered fin. diff. O(dz^2)
+    # Boolean conditions
+    surface = np.allclose(out_BV2[0], theor_BV2[0], atol= error_bnd)
+    bottom = np.allclose(out_BV2[-1], theor_BV2[-1], atol= error_bnd)
+    boundaries = np.logical_and(surface, bottom) 
+    interior = np.allclose(out_BV2[1:-1], theor_BV2[1:-1], atol= error)
     
+    assert np.logical_and(boundaries, interior)
+  
 
 def test_compute_BVsq_NaNs_behaviour():
     """
-    Test if in compute_BVsq() values which are NaNs becomes values due
-    to interpolation.
+    Test if in compute_BVsq() behaviour is as expected when NaNs values. 
     """
     
     depth = np.arange(1, 7)
     mean_density = [1, np.nan, 3, 4, 5, np.nan]
     output_N2 = compute_BVsq(depth, mean_density)
     where_NaNs = np.where(np.isnan(output_N2))[0]
-    expected_indeces = np.array([])
-    
+    expected_indeces = np.array([0,2,4,5])
+
     assert np.array_equal(where_NaNs, expected_indeces)
-    
+  
 
 @given(arr_end = st.integers(3,100))
 def test_compute_BVsq_when_lenDepth_is_greater_than_lenDens(arr_end):
@@ -251,11 +264,9 @@ def test_compute_BVsq_when_lenDepth_is_greater_than_lenDens(arr_end):
     
     depth = np.arange(1, arr_end + 1)
     density = np.arange(1, arr_end)
-    trial_dim = ('depth')
-    trial_dens = xarray.Variable(trial_dim, density)
     try:
-        compute_BVsq(depth, trial_dens)
-    except ValueError:
+        compute_BVsq(depth, density)
+    except IndexError:
         assert True
     else:
         assert False
