@@ -21,21 +21,22 @@ def test_constN2_case():
     N2_0 = 1
     H = 1000
     n_modes = 3
+    L = 100e+03 # [km]
     # Exact Sol.
     x = np.linspace(0,1,1001)
     Phi_1 = np.cos(1 * np.pi *x)
     Phi_2 = np.cos(2 * np.pi *x)
     Phi_3 = np.cos(3 * np.pi *x)
-    R_1 = 10*np.pi/1
-    R_2 = 10*np.pi/2
-    R_3 = 10*np.pi/3
+    R_1 = L/(np.pi*1)
+    R_2 = L/(np.pi*2)
+    R_3 = L/(np.pi*3)
     expected_Phi = np.stack((Phi_1, Phi_2, Phi_3), axis=1)
     expected_R = np.array([R_1, R_2, R_3])
     # UTILS sol.
     utils_Phi, utils_R = utils.baroclModes_constN2(N2_0, H, n_modes)
     # Comparison.
-    Phi_coherence = np.allclose(utils_Phi, expected_Phi, atol = 1e-1)
-    R_coherence = np.allclose(utils_R, expected_R, atol = 0.5)
+    Phi_coherence = np.allclose(utils_Phi, expected_Phi, rtol = 1e-03)
+    R_coherence = np.allclose(utils_R, expected_R, rtol = 1e-03)
     
     assert np.logical_and(Phi_coherence, R_coherence)
 
@@ -55,4 +56,4 @@ def test_expN2_alphaNull():
     # UTILS sol.
     utils_Phi = utils.baroclModes_expN2(gamma, alpha, H)
     
-    assert np.allclose(utils_Phi, expected_Phi, atol = 1e-1)
+    assert np.allclose(utils_Phi, expected_Phi, rtol = 1e-03)

@@ -37,13 +37,13 @@ def baroclModes_constN2(N2_0, H, n_modes):
     new_z = np.linspace(0, H, H+1)# new equally spaced depth grid
     # Compute problem parameter S
     f_0 = 1e-04
-    L = 1e5
+    L = 100e+03
     S = (N2_0 * H**2)/(f_0**2 * L**2)
     # Eigenvalues
     eigenvals = (integers**2)*(np.pi**2)/S # See Pedlosky, GFD book.
     # Theoretical solution.
     theor_Phi = np.empty([H+1, n_modes])
-    theor_R = 1/np.sqrt(eigenvals)
+    theor_R = L/np.sqrt(S*eigenvals)
     for i in range(n_modes):
         theor_Phi[:,i] = np.cos(integers[i] * np.pi * new_z/H)
   
