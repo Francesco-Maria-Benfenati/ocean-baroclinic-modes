@@ -303,7 +303,7 @@ def test_compute_mean_bathy_correct_average():
     # Expected Output.
     lat_min, lat_max = 0, 10 # take all values
     lon_min, lon_max = 0, 10 # take all values
-    expected_mean_value = int(np.mean(bathy, axis=None))
+    expected_mean_value = np.mean(bathy, axis=None)
     # Compute Output.
     indeces = [lat_min, lat_max, lon_min, lon_max]
     out_mean_bathy = read._compute_mean_bathy(bathymetry, dims, indeces)
@@ -325,7 +325,7 @@ def test_compute_mean_bathy_inverted_dims():
     bathymetry = xarray.Variable(dims, bathy)
     # Expected Output.
     right_dims = 'y', 'x' # lat, lon.
-    expected_mean_value = int(np.mean(bathy, axis=None))
+    expected_mean_value = np.mean(bathy, axis=None)
     # Compute Output.
     lat_min, lat_max = 0, 10 # take all values
     lon_min, lon_max = 0, 10 # take all values
@@ -350,7 +350,7 @@ def test_compute_mean_bathy_correct_range():
     # Expected Output.
     lat_min, lat_max = 0, 4 # take few values
     lon_min, lon_max = 0, 2 # take few values
-    expected_mean_value = int(np.mean(bathy[0:5,0:3], axis=None))
+    expected_mean_value = np.mean(bathy[0:5,0:3], axis=None)
     # Compute Output.
     indeces = [lat_min, lat_max, lon_min, lon_max]
     out_mean_bathy = read._compute_mean_bathy(bathymetry, dims, indeces)
