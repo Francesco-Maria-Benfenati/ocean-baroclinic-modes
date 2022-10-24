@@ -22,12 +22,12 @@ outdata_file_name = sys.argv[2]
 data_to_plot = xarray.open_dataset(outdata_path + '/' + outdata_file_name)
 
 depth = data_to_plot.variables['depth']
-new_depth = data_to_plot.variables['nondim_depth_grid']
+new_depth = data_to_plot.variables['nondim_depth']
 time = data_to_plot.variables['time']
 variables_to_plot = [data_to_plot.variables['mean_density'], 
                      data_to_plot.variables['BVfreq'],
                      data_to_plot.variables['R'],
-                     data_to_plot.variables['phi']          ]
+                     data_to_plot.variables['Phi']          ]
 
 # -------------------------------------- 
 # Functions defined on 'depth_1D' grid.
@@ -94,7 +94,7 @@ colors = plt.cm.BuPu(np.linspace(0, 0.5, len(rows)))
 colors = colors[::-1]
 
 # Create text for the table.
-Rossby_rad = data_to_plot.variables['R'][0,0,0,:].values
+Rossby_rad = data_to_plot.variables['R'][0,0,0,:].values/1000
 cell_text = []
 for R in Rossby_rad[:]:
     cell_text.append([R])
@@ -102,7 +102,7 @@ for R in Rossby_rad[:]:
 
 # Add table.
 ax.set_axis_off()
-col_label = long_name + ' (%s)' %(units)
+col_label = long_name + ' (km)'
 the_table = ax.table(cellText = cell_text,
                      rowColours=colors,
                      colLabels=[col_label],
