@@ -95,6 +95,7 @@ colors = colors[::-1]
 
 # Create text for the table.
 Rossby_rad = data_to_plot.variables['R'][0,0,0,:].values/1000
+Rossby_rad = np.around(Rossby_rad, decimals=0, out=None)
 cell_text = []
 for R in Rossby_rad[:]:
     cell_text.append([R])
@@ -112,9 +113,8 @@ the_table = ax.table(cellText = cell_text,
                      loc = 'center')
 
 # Add title.
-ax.set_title('%s (%s)\n %s, %s'
-                             %(data_to_plot.variables['R'].attrs['long_name'], 
-                               data_to_plot.variables['R'].attrs['units'],
+ax.set_title('%s (km)\n %s, %s'
+                             %(data_to_plot.variables['R'].attrs['long_name'],
                                data_to_plot.attrs['region'], 
                                data_to_plot.attrs['period']    ), 
                                fontsize = 12, 
