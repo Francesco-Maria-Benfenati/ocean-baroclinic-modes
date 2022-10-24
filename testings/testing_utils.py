@@ -27,9 +27,9 @@ def test_constN2_case():
     Phi_1 = np.cos(1 * np.pi *x)
     Phi_2 = np.cos(2 * np.pi *x)
     Phi_3 = np.cos(3 * np.pi *x)
-    R_1 = L/(np.pi*1)
-    R_2 = L/(np.pi*2)
-    R_3 = L/(np.pi*3)
+    R_1 = L/(np.pi*1)**2
+    R_2 = L/(np.pi*2)**2
+    R_3 = L/(np.pi*3)**2
     expected_Phi = np.stack((Phi_1, Phi_2, Phi_3), axis=1)
     expected_R = np.array([R_1, R_2, R_3])
     # UTILS sol.

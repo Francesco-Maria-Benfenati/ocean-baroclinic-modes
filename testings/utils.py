@@ -43,7 +43,7 @@ def baroclModes_constN2(N2_0, H, n_modes):
     eigenvals = (integers**2)*(np.pi**2)/S # See Pedlosky, GFD book.
     # Theoretical solution.
     theor_Phi = np.empty([H+1, n_modes])
-    theor_R = L/np.sqrt(S*eigenvals)
+    theor_R = L/(S*eigenvals)
     for i in range(n_modes):
         theor_Phi[:,i] = np.cos(integers[i] * np.pi * new_z/H)
   
