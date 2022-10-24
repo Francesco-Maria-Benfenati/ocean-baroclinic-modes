@@ -15,7 +15,7 @@ import scipy as sp
 from scipy import interpolate, integrate
 
 
-def compute_barocl_modes(depth, H, N2, n_modes):
+def compute_barocl_modes(depth, mean_depth, N2, n_modes):
     """
     Computes baroclinic Rossby radius & vertical structure function.
 
@@ -23,8 +23,8 @@ def compute_barocl_modes(depth, H, N2, n_modes):
     ---------
     depth : <class 'numpy.ndarray'>
             depth variable (1D)
-    H : 'int'
-        mean depth of the considered region (m); depth scaling parameter
+    mean_depth : <class 'numpy.ndarray'> or 'float'
+        mean depth of the considered region (m)
     N2 : <class 'numpy.ndarray'>
          Brunt-Vaisala frequency squared (along depth, 1D)
     n_modes : 'int'
@@ -40,15 +40,15 @@ def compute_barocl_modes(depth, H, N2, n_modes):
     Returns
     -------
     rossby_rad : <class 'numpy.ndarray'>
-        baroclinic Rossby radius, for each mode of motion considered 
+        baroclinic Rossby radius [m], for each mode of motion considered 
     phi : <class 'numpy.ndarray'>
         vertical structure function, for each mode of motion considered 
      
         ---------------------------------------------------------------
                             About the algorithm
         ---------------------------------------------------------------
-    The scaling parameters 'f_0', 'L' and gravitational acceleration 
-    'g' are defined. 'H' is the depth scaling parameter.
+    The scaling parameters 'f_0', 'L' , 'H' and gravitational acceleration 
+    'g' are defined.
     
     1) N2 is linearly interpolated on a new equally spaced 
        nondimensional depth grid with grid step dz = 1 m.
@@ -59,7 +59,7 @@ def compute_barocl_modes(depth, H, N2, n_modes):
             
        where L and H are respectively the horizontal and vertical 
        scales of motion; f_0 is the Coriolis parameter. Depth is
-       scaled through parameter H, so that it goes from 0 to 1.
+       scaled through "mean_depth" value, so that it goes from 0 to 1.
     3) The finite difference matrix 'A' and the S matrix 'B' are
        computed and the eigenvalues problem is solved:
            
@@ -74,7 +74,7 @@ def compute_barocl_modes(depth, H, N2, n_modes):
        
     5) The baroclinic Rossby radius is obtained as 
            
-            R_n = 1/sqrt(lambda_n)
+            R_n = 1/lambda_n
        
        for each mode of motion 'n'.
                              - & - 
@@ -96,15 +96,16 @@ def compute_barocl_modes(depth, H, N2, n_modes):
     # ==================================================================
     f_0 = 1e-04 # coriolis parameter (1/s)
     L = 100e+03 # Horizontal length scale (100 km)
-    g = 9.806 # gravitational acceleration (m/s^2)
+    H = 1000 # Vertical length scale (1 km)
     
     # ==================================================================
     # 1) Interpolate values on a new equally spaced depth grid 'z' 
     #    (1 m grid step).
     # ==================================================================
     interp_N2 = _interpolate_N2(depth, N2)
-    # Take only interp_N2 part from 0 to mean depth H.
-    n = H + 1 # number of vertical levels
+    # Take only interp_N2 part from 0 to mean depth.
+    mean_depth = int(mean_depth)
+    n =  mean_depth + 1 # number of vertical levels
     interp_N2 = interp_N2[:n]
     
     # ==================================================================
@@ -119,8 +120,8 @@ def compute_barocl_modes(depth, H, N2, n_modes):
     # 3) Compute matrices of the eigenvalues/eigenvectors problem:
     #               A * v = (lambda * B) * v   .
     # ==================================================================
-    # Store new scaled z grid step (= 1m/H).
-    dz = 1/H
+    # Store new scaled z grid step (= 1m/mean_depth).
+    dz = 1/mean_depth
     
     A = _compute_matrix_A(n, dz)
     B = _compute_matrix_B(n, S)
@@ -162,7 +163,7 @@ def compute_barocl_modes(depth, H, N2, n_modes):
     # Fill rossby radius and phi.
     for i in range(n_modes):
         # Obtain Rossby radius from eigenvalues.
-        rossby_rad[i] = 1/np.sqrt(eigenvalues[i])
+        rossby_rad[i] = L/eigenvalues[i]
         # Obtain Phi integrating eigenvectors * S.
         integral_argument = S * w[:,i]
         for j in range(n):
@@ -173,7 +174,7 @@ def compute_barocl_modes(depth, H, N2, n_modes):
     # (mode 0 = barotropic mode). 
     barotr_phi = 1
     phi = np.insert(phi, 0, barotr_phi, axis=1)
-    barotr_rad = np.nan # For a barotr. ocean, it would be sqrt(g*H)/f_0
+    barotr_rad = np.nan # For a barotropic ocean it would be sqrt(g*H)/f
     rossby_rad = np.insert(rossby_rad, 0, barotr_rad)
     
     # Return newly interpolated rossby radius and phi.

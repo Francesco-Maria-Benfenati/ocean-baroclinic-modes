@@ -167,7 +167,8 @@ def test_compute_eigenvals_stationary_wave(n):
     out_eigenvals = modes._compute_eigenvals(A, B, n_modes)
     out_integers = (np.sqrt(out_eigenvals)/(np.pi))
 
-    assert np.allclose(out_integers, expected_integers, atol=1e-01)
+    assert np.allclose(out_integers, expected_integers, 
+                                                   rtol= 1e-02, atol = 1e-3)
 
 
 # ----------------------------------------------------------------------
@@ -181,48 +182,52 @@ def test_Numerov_method_harm_oscillator():
     harmonic oscillator problem.
     """
     
-    k = 6.25 #N/m
+    k = 1 #N/m
     m = 1 #kg
-    omega = np.sqrt(k/m)
+    omega = k/m #np.sqrt(k/m)
     A = 1
-    n = 100
-    L = 10
+    n = 1000
+    L = 100
     x = np.linspace(0,L,n)
     dx = abs(x[1]-x[0])
-    theor_sol = A*np.cos(omega * (x/L) * 2 * np.pi)
+    theor_sol = A*np.cos(omega * x)
     dw_0 = 0
     f = -omega*np.ones(n)
-    w_0 = 1 * A
-    w_N = -1 * A
+    w_0 = A * 1
+    w_N = A * np.cos(omega * L)
     num_sol = modes._Numerov_method(dx, f, dw_0, w_0, w_N)
+    error = (dx**4) * A # Numerov Method error O(dx^4)
+    
+    assert np.allclose(num_sol, theor_sol, atol = error)
    
-    assert np.allclose(theor_sol, num_sol ,atol=1e-01)
 
-
-def test_Numerov_method_stationary_wave():
+@given(n = st.integers(1, 4))
+def test_Numerov_method_stationary_wave(n):
     """
     Test if _Numerov_method() gives correct eigenvectors for the
-    stationary wave problem, 3rd mode of motion "n=3" .
+    stationary waves problem in a pipe (1D).
+    n is the integer corresponding to mode of motion 'n'.
     """
-    
+
     # Problem parameters
+    A = 1
     L = 9.5
     N = 1000
-    n = 3 # integer corresponding to mode of motion
-    eigenvals = np.sqrt(n * np.pi / L)
+    eigenvals = n * np.pi / L
     x = np.linspace(0,L,N)
     dx = abs(x[1]-x[0])
     # Theoretical solution
-    theor_sol_3rdmode = np.sin(n *np.pi * x/L)
+    theor_sol = np.sin(eigenvals * x)
     # Numerical solution
     w_0 = 0
     w_N = 0
-    dw_0 = n*np.pi/L 
-    f_val = - (eigenvals**2)
+    dw_0 = n*np.pi/L
+    f_val = - eigenvals**2
     f = np.full(N, f_val)
-    num_sol_3rdmode = modes._Numerov_method(dx, f, dw_0, w_0, w_N )
+    num_sol = modes._Numerov_method(dx, f, dw_0, w_0, w_N )
+    error = (dx**4) * A # Numerov Method error O(dx^4)
     
-    assert np.allclose(theor_sol_3rdmode, num_sol_3rdmode, atol=1e-01) 
+    assert np.allclose(num_sol, theor_sol, atol=error) 
 
 
 # ----------------------------------------------------------------------
@@ -231,7 +236,7 @@ def test_Numerov_method_stationary_wave():
 
 
 @settings(deadline = None, max_examples = 50)
-@given(n=st.integers(30,100), H = st.integers(1000, 3000))
+@given(n=st.integers(50,100), H = st.integers(2000, 3000))
 def test_compute_modes_N2_const(n, H):
     """
     Test if compute_barocl_modes() gives correct output when N2 is
@@ -239,50 +244,53 @@ def test_compute_modes_N2_const(n, H):
     """
     
     # Problem parameters.
+    mean_depth = int(H/2)
     n_modes = 3
-    N2_0 = 1.0
+    N2_0 = 1.0 * 1e-04
     # Theoretical Solution.
-    theor_Phi, theor_R = utils.baroclModes_constN2(N2_0, H, n_modes)
+    theor_Phi, theor_R = utils.baroclModes_constN2(N2_0, mean_depth, n_modes)
     # Numerical solution. 
     z = np.linspace(0.5, 2*H, n)
     N2 = np.full(n, N2_0)
-    num_R, num_Phi = modes.compute_barocl_modes(z, H, N2, n_modes)
+    num_R, num_Phi = modes.compute_barocl_modes(z, mean_depth, N2, n_modes)
     # Comparison.
     Phi_coherence = np.allclose(num_Phi[:,1:], theor_Phi, atol = 1e-02)
-    R_coherence = np.allclose(num_R[1:], theor_R, atol = 1e-03)
-    
+    R_coherence = np.allclose(num_R[1:], theor_R, atol = 1) # error = 1m
+        
     assert np.logical_and(Phi_coherence, R_coherence)
 
 
 @settings(deadline = None, max_examples = 50)
-@given(n=st.integers(30,100), H = st.integers(1000, 3000))
+@given(n=st.integers(50,100), H = st.integers(2000, 5000))
 def test_compute_modes_N2_exp(n, H):
     """
     Test if compute_barocl_modes() computes correct modes of motion
     when N2 is exponential of type N2 = N0 * exp(alpha*z) 
     with alpha = 2/H, z < 0 ; (see LaCasce, 2012).
+    Here, H is the region mean_depth.
     """
-    
+
     # Problem parameters.
-    alpha = 2/H
-    n_modes = 3
-    z = - np.linspace(0.5, 2*H, n)
-    N2_0 = 1.0
+    mean_depth = int(H/2)
+    alpha = 2/mean_depth
+    n_modes = 4
+    z = - np.linspace(0.5, H, n)
+    N2_0 = 1.0 
     N2 = N2_0 * np.exp(alpha*z)
-    # Theoretical solution (see LaCasce, 2012).
-    gamma = np.array([4.9107, 9.9072, 14.8875])/2 
-    theor_Phi = utils.baroclModes_expN2(gamma, alpha, H)
-    # Numerical solution.   
-    num_R, num_Phi = modes.compute_barocl_modes(z, H, N2, n_modes)
-    # Comparison.
-    Phi_coherence = np.allclose(num_Phi[:,1:], theor_Phi, 
-                                                      atol = 2e-02)
     
+    # Theoretical solution (see LaCasce, 2012).
+    gamma = np.array([4.9107, 9.9072, 14.8875, 19.8628])/2 
+    theor_Phi = utils.baroclModes_expN2(gamma, alpha, mean_depth)
+    # Numerical solution.   
+    num_R, num_Phi = modes.compute_barocl_modes(z, mean_depth, N2, n_modes)
+    # Comparison.
+    Phi_coherence = np.allclose(num_Phi[:,1:], theor_Phi, atol= 2e-02)
+
     assert Phi_coherence
 
 
 @settings(deadline = None, max_examples = 50)
-@given(n=st.integers(30,100), H = st.integers(1000, 3000))
+@given(n=st.integers(50,100), H = st.integers(2000, 5000))
 def test_compute_modes_N2_exp_strong_stratification(n, H):
     """
     Test if compute_barocl_modes() computes correct modes of motion
@@ -291,21 +299,22 @@ def test_compute_modes_N2_exp_strong_stratification(n, H):
     """
     
     # Problem parameters.
-    alpha = 10/H
-    n_modes = 3
-    z = - np.linspace(0.5, 2*H, n)
+    mean_depth = int(H/2)
+    alpha = 10/mean_depth
+    n_modes = 4
+    z = - np.linspace(0.5, H, n)
     N2_0 = 1.0
     N2 = N2_0 * np.exp(alpha*z)
     # Theoretical solution (see LaCasce, 2012).
-    gamma = np.array([2.7565, 5.9590, 9.1492])/2 
-    theor_Phi = utils.baroclModes_expN2(gamma, alpha, H)
+    gamma = np.array([2.7565, 5.9590, 9.1492, 12.334])/2 
+    theor_Phi = utils.baroclModes_expN2(gamma, alpha, mean_depth)
     # Numerical solution.   
-    num_R, num_Phi = modes.compute_barocl_modes(z, H, N2, n_modes)
+    num_R, num_Phi = modes.compute_barocl_modes(z, mean_depth, N2, n_modes)
     # Comparison.
-    Phi_coherence = np.allclose(num_Phi[:,1:], theor_Phi, atol = 5e-02)
-
+    Phi_coherence = np.allclose(num_Phi[:,1:], theor_Phi, atol= 5.2e-02)
+   
     assert Phi_coherence
-  
+
 
 def test_compute_modes_when_input_different_lengths():
     """
