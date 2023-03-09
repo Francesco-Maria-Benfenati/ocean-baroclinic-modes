@@ -177,12 +177,12 @@ def _compute_K_0(temp, S):
     # Square root of salinity.
     SR = np.sqrt(S)
     # Bulk modulus of seawater at atmospheric pressure: pure water term
-    Kw_0 = ( ( ( (- 5.155288e-5*temp + 1.360477e-2)*temp - 2.327105)
-              *temp + 148.4206)*temp + 19652.21)
+    Kw_0 = ( ( ( (- 4.190253e-05*temp + 9.648704e-03)*temp - 1.706103)
+              *temp + 1.444304e+02)*temp + 1.965933e+04)
     # Coefficients involving salinity and pot. temperature.
-    a = ( ( (- 6.1670e-05*temp + 1.09987e-02)*temp - 0.603459)
-           *temp + 54.6746)
-    b = (- 5.3009e-04*temp + 1.6483e-02)*temp + 7.944e-02
+    a = ( ( (- 5.084188e-05*temp + 6.283263e-03)*temp - 3.101089e-01)
+           *temp + 5.284855e+01)
+    b = (- 4.619924e-04*temp + 9.085835e-03)*temp + 3.886640e-01
     # Bulk modulus of seawater at atmospheric pressure.
     K_0 = Kw_0 + (a + b*SR)*S
 
@@ -214,10 +214,10 @@ def _compute_A(temp, S):
     # Square root of salinity.
     SR = np.sqrt(S)
     # Compression term.
-    Aw = ( ( (-5.77905e-7*temp + 1.16092e-04)*temp + 1.43713e-03)
-          *temp + 3.239908)
-    c = (- 1.6078e-06*temp - 1.0981e-05)*temp + 2.2838e-03
-    d = 1.91075e-04
+    Aw = ( ( (1.956415e-06*temp - 2.984642e-04)*temp + 2.212276e-02)
+          *temp + 3.186519)
+    c = (2.059331e-07*temp - 1.847318e-04)*temp + 6.704388e-03
+    d = 1.480266e-04
     A = Aw + (c + d*SR)*S
 
     return A
@@ -246,8 +246,8 @@ def _compute_B(temp, S):
     """
     
     # Compression term.
-    Bw = (+ 5.2787e-8*temp - 6.12293e-06)*temp + 8.50935e-05
-    e = (9.1697e-10*temp + 2.0816e-8)*temp - 9.9348e-07
+    Bw = (1.394680e-07*temp - 1.202016e-05)*temp + 2.102898e-04
+    e = (6.207323e-10*temp + 6.128773e-08)*temp - 2.040237e-06
     B = Bw + e*S 
 
     return B
