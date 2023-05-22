@@ -163,7 +163,7 @@ def compute_barocl_modes(depth, mean_depth, N2, n_modes):
     # Fill rossby radius and phi.
     for i in range(n_modes):
         # Obtain Rossby radius from eigenvalues.
-        rossby_rad[i] = L/eigenvalues[i]
+        rossby_rad[i] = L/np.sqrt(eigenvalues[i])
         # Obtain Phi integrating eigenvectors * S.
         integral_argument = S * w[:,i]
         for j in range(n):
