@@ -47,19 +47,17 @@ def compute_barocl_modes(depth, mean_depth, mean_lat, N2, n_modes):
         ---------------------------------------------------------------
                             About the algorithm
         ---------------------------------------------------------------
-    The scaling parameters 'f_0', 'L' , 'H' and gravitational acceleration 
-    'g' are defined.
+    Coriolis parameter (used for scaling) and region mean depth are
+    defined.
     
     1) N2 is linearly interpolated on a new equally spaced 
        nondimensional depth grid with grid step dz = 1 m.
     2) The problem parameter S is then computed as in 
        Grilli, Pinardi (1999)
     
-            S = (N2 * H^2)/(f_0^2 * L^2)
+            S = (N2)/(f^2)
             
-       where L and H are respectively the horizontal and vertical 
-       scales of motion; f_0 is the Coriolis parameter. Depth is
-       scaled through "mean_depth" value, so that it goes from 0 to 1.
+       where f is the Coriolis parameter.
     3) The finite difference matrix 'A' and the S matrix 'B' are
        computed and the eigenvalues problem is solved:
            
@@ -74,7 +72,7 @@ def compute_barocl_modes(depth, mean_depth, mean_lat, N2, n_modes):
        
     5) The baroclinic Rossby radius is obtained as 
            
-            R_n = 1/lambda_n
+            R_n = 1/sqrt(lambda_n)
        
        for each mode of motion 'n'.
                              - & - 
@@ -94,10 +92,9 @@ def compute_barocl_modes(depth, mean_depth, mean_lat, N2, n_modes):
     # ==================================================================
     # Define parameters in the QG equation.
     # ==================================================================
-    omega = 7.29 * 1e-05 # earth angular velocity (1/s)
-    f = 2 * omega * np.sin(mean_lat * np.pi /180) # coriolis parameter (1/s)
-    L = 100e+03 # Horizontal length scale (100 km)
-    H = 1000 # Vertical length scale (1 km)
+    earth_angvel = 7.29 * 1e-05 # earth angular velocity (1/s)
+    # coriolis parameter (1/s)
+    coriolis_param = 2 * earth_angvel * np.sin(mean_lat * np.pi /180) 
     
     # ==================================================================
     # 1) Interpolate values on a new equally spaced depth grid 'z' 
@@ -115,14 +112,14 @@ def compute_barocl_modes(depth, mean_depth, mean_lat, N2, n_modes):
     # ==================================================================
     
     # Compute S(z) parameter.
-    S = (interp_N2 * H**2)/(f**2 * L**2)
+    S = interp_N2 / coriolis_param**2
 
     # ==================================================================
     # 3) Compute matrices of the eigenvalues/eigenvectors problem:
     #               A * v = (lambda * B) * v   .
     # ==================================================================
-    # Store new scaled z grid step (= 1m/mean_depth).
-    dz = 1/mean_depth
+    # Store new z grid step (= 1m).
+    dz = 1 # (m)
     
     A = _compute_matrix_A(n, dz)
     B = _compute_matrix_B(n, S)
@@ -164,7 +161,7 @@ def compute_barocl_modes(depth, mean_depth, mean_lat, N2, n_modes):
     # Fill rossby radius and phi.
     for i in range(n_modes):
         # Obtain Rossby radius from eigenvalues.
-        rossby_rad[i] = L/np.sqrt(eigenvalues[i])
+        rossby_rad[i] = 1/np.sqrt(eigenvalues[i])
         # Obtain Phi integrating eigenvectors * S.
         integral_argument = S * w[:,i]
         for j in range(n):
