@@ -343,10 +343,8 @@ def _tridiag_eigenvals(M, n_modes):
     """
     Compute eigenvalues of tridiagonal matrix M.
     """
-    # Change sign to matrices (for consistency with scipy algorithm).
     n = len(M[:,0])
     # Compute smallest Eigenvalues.
-  
     val, vec = sp.sparse.linalg.eigs(M, k = n_modes, which = 'SM', 
                                 return_eigenvectors=True)
     # Take real part of eigenvalues and sort them in ascending order.
