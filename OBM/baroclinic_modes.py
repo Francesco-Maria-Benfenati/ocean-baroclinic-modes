@@ -103,9 +103,9 @@ def compute_barocl_modes(depth, mean_depth, mean_lat, N2, n_modes):
     interp_N2 = _interpolate_N2(depth, N2)
     # Take only interp_N2 part from 0 to mean depth.
     mean_depth = int(mean_depth)
-    n =  mean_depth + 1 # number of vertical levels
-    interp_N2 = interp_N2[:n]
-    
+    n = mean_depth # number of vertical levels
+    interp_N2 = interp_N2[:n-1]
+
     # ==================================================================
     # 2) Compute problem parameter S:
     #       S = (N2 * H^2)/(f_0^2 * L^2)   .
@@ -120,63 +120,15 @@ def compute_barocl_modes(depth, mean_depth, mean_lat, N2, n_modes):
     # ==================================================================
     # Store new z grid step (= 1m).
     dz = 1 # (m)
+    # compute tridiagonal matrix
+    matrix = _tridiag_matrix(n, dz, S)
     
-    A = _compute_matrix_A(n, dz)
-    B = _compute_matrix_B(n, S)
-    
     # ==================================================================
-    # Compute eigenvalues.
+    # Compute eigenvalues and eigenvectors.
     # ==================================================================
-    eigenvalues = _compute_eigenvals(A, B, n_modes)
-
-    # ==================================================================
-    # 4) Compute eigenvectors through numerical integration.
-    #     d^2/dz^2 w(z) = f(z) * w(z)
-    # ================================================================== 
-    # Define integration constant phi_0 = phi(z = 0) as BC.
-    phi_0 = np.ones(n_modes)
-    # Define f_n(z).
-    f_n = np.empty([n, n_modes])
-    for i in range(n_modes):
-        f_n[:,i] = - eigenvalues[i] * S[:]
-    # Define dw_0 = dw/dz at z=0.
-    dw_0 = - eigenvalues*phi_0
-    # Define BCs: w_0 = w(z=0) = 0 ; w_N = w(z=1) = 0.
-    w_0 = 0
-    w_N = 0
-    
-    # Compute eigenvectors through Numerov's Algortihm.
-    w = np.empty([n, n_modes])
-    for i in range(n_modes):
-        w[:,i] = _Numerov_method(dz, f_n[:,i], dw_0[i], w_0, w_N)
-        
-    # ==================================================================
-    # 5) Compute baroclinic Rossby radius and Phi.
-    # ==================================================================
-    # Store rossby radius array (only n° of modes desired).
-    rossby_rad = np.empty([n_modes])
-    # Store function phi describing vertical modes of motion.
-    phi = np.empty([n, n_modes])
-
-    # Fill rossby radius and phi.
-    for i in range(n_modes):
-        # Obtain Rossby radius from eigenvalues.
-        rossby_rad[i] = 1/np.sqrt(eigenvalues[i])
-        # Obtain Phi integrating eigenvectors * S.
-        integral_argument = S * w[:,i]
-        for j in range(n):
-            phi[j,i] = integrate.trapezoid(integral_argument[:j], 
-                                           dx=dz)                + phi_0[i]
-      
-    # Insert barotropic mode in the number of modes to be considered
-    # (mode 0 = barotropic mode). 
-    barotr_phi = 1
-    phi = np.insert(phi, 0, barotr_phi, axis=1)
-    barotr_rad = np.nan # For a barotropic ocean it would be sqrt(g*H)/f
-    rossby_rad = np.insert(rossby_rad, 0, barotr_rad)
-    
-    # Return newly interpolated rossby radius and phi.
-    return rossby_rad, phi
+    eigenvalues, eigenvectors = _tridiag_eigenvals(matrix, n_modes)
+   
+    return np.sqrt(eigenvalues), eigenvectors
 
 
 def _interpolate_N2(depth, N2):
@@ -201,10 +153,9 @@ def _interpolate_N2(depth, N2):
     N2_nan_excl = np.delete(N2, where_nan_N2, None)
     depth_nan_excl = np.delete(depth, where_nan_N2, None)
     
-    # Create new equally spaced depth array (grid step = 1 m)
+    # Create new equally spaced depth array (grid step = 1 m, starts at levels k + 1/2)
     H = int(max(depth))
-    n = H + 1 # number of vertical levels
-    z = np.linspace(0, H, n)
+    z = np.arange(0.5, H, 1)
 
     # Create new (linearly) interpolated array for N2.
     f = interpolate.interp1d(depth_nan_excl, N2_nan_excl, 
@@ -213,6 +164,29 @@ def _interpolate_N2(depth, N2):
     
     # Return grid and
     return interp_N2
+
+
+def _tridiag_matrix(n, dz, S):
+    """
+    Compute tridiagonal matrix M.
+    """
+    M = np.zeros([n,n])
+
+    for k in range(2, n):
+        M[k-1,k] = 1/S[k-1]
+        M[k-1,k-1] = - 1/S[k-2] - 1/S[k-1]
+        M[k-1,k-2] = 1/S[k-2]
+
+    #B.C.s
+    M[0,0] = -1/S[0]
+    M[0,1] = 1/S[0]
+
+    M[n-1,n-2] = 1/S[n-2]
+    M[n-1,n-1] = -1/S[n-2]
+
+    M *= -1/(dz**2)
+
+    return M
 
 
 def _compute_matrix_A(n, dz):
@@ -355,7 +329,7 @@ def _compute_eigenvals(A, B, n_modes):
     B *= -1
     # Compute smallest Eigenvalues.
     val = sp.sparse.linalg.eigs(A, k = n_modes, M=B, sigma=0, which='LM', 
-                                return_eigenvectors=False)
+                                                return_eigenvectors=False)
     
     # Take real part of eigenvalues and sort them in ascending order.
     eigenvalues = np.real(val)
@@ -363,6 +337,24 @@ def _compute_eigenvals(A, B, n_modes):
     eigenvalues = eigenvalues[sort_index]
     
     return eigenvalues
+
+
+def _tridiag_eigenvals(M, n_modes):   
+    """
+    Compute eigenvalues of tridiagonal matrix M.
+    """
+    # Change sign to matrices (for consistency with scipy algorithm).
+    n = len(M[:,0])
+    # Compute smallest Eigenvalues.
+  
+    val, vec = sp.sparse.linalg.eigs(M, k = n_modes, which = 'SM', 
+                                return_eigenvectors=True)
+    # Take real part of eigenvalues and sort them in ascending order.
+    eigenvalues = np.real(val)
+    sort_index = np.argsort(eigenvalues)
+    eigenvalues = eigenvalues[sort_index]
+    eigenvectors = vec
+    return eigenvalues, eigenvectors
 
 
 def _Numerov_method(dz, f, dw_0, w_0, w_N):

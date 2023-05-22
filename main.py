@@ -62,7 +62,8 @@ N_motion_modes = config_parameters['set_modes']['n_modes']
 # ----------------------------------------------------------------
 
 # Compute baroclinic Rossby radius and vert. struct. function Phi(z).
-R, Phi = modes(depth, mean_depth, mean_lat, BV_freq_sq, N_motion_modes)
+eigenvals, Phi = modes(depth, mean_depth, mean_lat, BV_freq_sq, N_motion_modes)
+R = 1/eigenvals # Rossby radius
 
 # ======================================================================
 #                  *  WRITE RESULTS ON OUTPUT FILE  *
@@ -113,10 +114,7 @@ out_file.createDimension('depth', len_depth)
 out_file.createDimension('nondim_depth', len(Phi[:,0]))
 del(len_depth)
 
-# Add barotropic mode to number of modes of motion to be considered.
-N_motion_modes += 1
-# Create mode of motion dimension (only for R and Phi), adding the 
-# barotropic one.
+# Create mode of motion dimension (only for R and Phi)
 out_file.createDimension('mode', N_motion_modes)
 
 # Create time variable.
