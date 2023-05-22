@@ -33,9 +33,9 @@ config_parameters = read.read_JSON_config_file(config_file_name,
                                          type_key = 'type', 
                                          value_key = 'value'      )
 
-# Store Potential Temperature & Salinity from NetCDF input file.
-[salinity,
- pot_temperature] = read.extract_data_from_NetCDF_input_file(config_parameters)
+# Store Potential Temperature, Salinity and mean latitude from NetCDF input file.
+[salinity, pot_temperature, mean_lat
+ ] = read.extract_data_from_NetCDF_input_file(config_parameters)
 # Mean depth of the considered region.
 mean_depth = read.extract_mean_bathy_from_NetCDF_file(config_parameters)
 # 3D depth array
@@ -62,7 +62,7 @@ N_motion_modes = config_parameters['set_modes']['n_modes']
 # ----------------------------------------------------------------
 
 # Compute baroclinic Rossby radius and vert. struct. function Phi(z).
-R, Phi = modes(depth, mean_depth, BV_freq_sq, N_motion_modes)
+R, Phi = modes(depth, mean_depth, mean_lat, BV_freq_sq, N_motion_modes)
 
 # ======================================================================
 #                  *  WRITE RESULTS ON OUTPUT FILE  *

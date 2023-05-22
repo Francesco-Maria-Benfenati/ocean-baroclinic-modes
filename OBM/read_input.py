@@ -213,11 +213,12 @@ def extract_data_from_NetCDF_input_file(config_param):
     mean_temperature = _compute_mean_var(temperature, dimensions, indeces)
     # Mean Salinity
     mean_salinity = _compute_mean_var(salinity, dimensions, indeces)
-         
+    # Mean latitude
+    mean_lat = np.mean(latitude, axis=None)
     in_data.close()
     
     # Return temperature and salinity arrays (averaged in time)
-    return mean_temperature.values, mean_salinity.values
+    return mean_temperature.values, mean_salinity.values, mean_lat
 
 
 def extract_mean_bathy_from_NetCDF_file(config_param):

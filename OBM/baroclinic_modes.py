@@ -15,7 +15,7 @@ import scipy as sp
 from scipy import interpolate, integrate
 
 
-def compute_barocl_modes(depth, mean_depth, N2, n_modes):
+def compute_barocl_modes(depth, mean_depth, mean_lat, N2, n_modes):
     """
     Computes baroclinic Rossby radius & vertical structure function.
 
@@ -94,7 +94,8 @@ def compute_barocl_modes(depth, mean_depth, N2, n_modes):
     # ==================================================================
     # Define parameters in the QG equation.
     # ==================================================================
-    f_0 = 1e-04 # coriolis parameter (1/s)
+    omega = 7.29 * 1e-05 # earth angular velocity (1/s)
+    f = 2 * omega * np.sin(mean_lat * np.pi /180) # coriolis parameter (1/s)
     L = 100e+03 # Horizontal length scale (100 km)
     H = 1000 # Vertical length scale (1 km)
     
@@ -114,7 +115,7 @@ def compute_barocl_modes(depth, mean_depth, N2, n_modes):
     # ==================================================================
     
     # Compute S(z) parameter.
-    S = (interp_N2 * H**2)/(f_0**2 * L**2)
+    S = (interp_N2 * H**2)/(f**2 * L**2)
 
     # ==================================================================
     # 3) Compute matrices of the eigenvalues/eigenvectors problem:
