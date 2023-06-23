@@ -48,13 +48,14 @@ depth_3D = read.extract_depth3D_from_NetCDF_file(config_parameters)
 pot_density = eos.compute_density(depth_3D, pot_temperature, salinity)
 
 # Make 3D depth a 1D array.
-depth= depth_3D[:,0,0]
+depth = depth_3D[:,0,0]
 
 # Compute Brunt-Vaisala frequency squared from Potential Density.
 # Store vertical mean potential density as used within the function
 # while computing Brunt-Vaisala frequency squared.
 mean_pot_density = np.nanmean(pot_density, axis = (1,2))
 BV_freq_sq = compute_BVsq(depth, mean_pot_density)
+BV_freq_sq[np.where(BV_freq_sq<0)]=np.nan
 
 # ----------------------------------------------------------------
 # N° of modes of motion considered (including the barotropic one).
@@ -63,7 +64,7 @@ N_motion_modes = config_parameters['set_modes']['n_modes']
 
 # Compute baroclinic Rossby radius and vert. struct. function Phi(z).
 eigenvals, Phi = modes(depth, mean_depth, mean_lat, BV_freq_sq, N_motion_modes)
-R = 1/eigenvals # Rossby radius
+R = 1/(eigenvals*2*np.pi) # Rossby radius in [m]
 
 # ======================================================================
 #                  *  WRITE RESULTS ON OUTPUT FILE  *

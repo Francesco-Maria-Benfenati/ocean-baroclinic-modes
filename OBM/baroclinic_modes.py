@@ -126,9 +126,10 @@ def compute_barocl_modes(depth, mean_depth, mean_lat, N2, n_modes):
     # ==================================================================
     # Compute eigenvalues and eigenvectors.
     # ==================================================================
-    eigenvalues, eigenvectors = _tridiag_eigenvals(matrix, n_modes)
-   
-    return np.sqrt(eigenvalues), eigenvectors
+    d = np.diagonal(matrix, offset=0).copy() 
+    e = np.diagonal(matrix, offset=1).copy()
+    eigenvalues, eigenvectors = sp.linalg.eigh_tridiagonal(d, e)
+    return np.sqrt(eigenvalues[:n_modes]), eigenvectors[:,:n_modes]
 
 
 def _interpolate_N2(depth, N2):
