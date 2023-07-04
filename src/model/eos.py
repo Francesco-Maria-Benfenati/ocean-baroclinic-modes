@@ -44,13 +44,7 @@ class Eos:
         for calculating the in situ density basing on potential temperature
         and salinity. The polinomial coefficient may be found within
         Jackett's paper (Table A1).
-        ====================================================================
-        NOTE:
-            While the original Jackett and McDougall equation is depending
-            on pressure, here pressure is expressed in terms
-            of depth. The pressure polynomial coefficients have been
-            modified coherently in NEMO function by D. J. Lea.
-        ====================================================================
+
         For reference material, see the UNESCO implementatio of Fortran
         function SVAN (Fofonoff and Millero, 1983), which may be found within
         'Algorithms for computation of fundamental properties of seawater'
