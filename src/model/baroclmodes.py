@@ -308,7 +308,7 @@ if __name__ == "__main__":
     try:
         obm.compute_baroclmodes()
     except ValueError:
-        assert True
+        pass
     else:
         assert False
 
