@@ -53,7 +53,7 @@ class BaroclModes:
         Args:
             dz (float): vertical grid step. Defaults to 1 m.
             n_modes (int, optional): Num. of modes of motion to be computed. Defaults to 4.
-            generalized_method (bool, optional): If the generalized method should be used
+            generalized_method (bool, optional): If the generalized method should be used 
                                                  instead of the standard one. Defaults to False.
 
         Returns:
@@ -61,9 +61,11 @@ class BaroclModes:
         """
 
         interp = Interpolation(self.depth, self.bvfreq_sqrd)
-        interp_bvfreq = interp.apply_interpolation(dz / 2, self.mean_depth, dz)[0]
+        interp_bvfreq = interp.apply_interpolation(dz/2, self.mean_depth, dz)[0]
         # Compute S(z) parameter.
         s_param = interp_bvfreq / self.coriolis_param**2
+        # Add S param as attribute
+        self.s_param = s_param
         # COMPUTE MATRIX & SOLVE EIGEN PROBLEM
         if generalized_method:  # generalized case
             lhs_matrix = self.lhs_matrix_generalizedprob(s_param.shape[0], dz)
@@ -80,8 +82,6 @@ class BaroclModes:
         self.eigenvals = np.sqrt(eigenprob.eigenvals)
         self.structfunc = eigenprob.eigenvecs
         self.rossbyrad = BaroclModes.compute_rossby_rad(self.eigenvals)
-        # Add S param as attribute
-        self.s_param = s_param
         return self.rossbyrad, self.structfunc
 
     @staticmethod
@@ -318,7 +318,7 @@ if __name__ == "__main__":
     """
     n_modes = 3
     len_z = 50
-    H = 3000
+    H = 1000
     z_neg = -np.linspace(0.5, H, len_z)
     z_pos = np.linspace(0.5, H, len_z)
     N2 = np.full(len_z, 2.0)
