@@ -7,15 +7,25 @@ class Eos:
     This class is for computing density through the Equation of State.
     """
 
+    def __init__(self, sal: float, temp: float, depth: float) -> None:
+        self.sal = sal
+        self.temp = temp
+        self.press = Eos.depth2press(depth)
+        # Convert pressure from dbars to bars
+        press_bars = self.press/10
+        self.density = Eos.compute_density(sal, temp, press_bars)
+
     @staticmethod
     def compute_density(sal: float, temp: float, press: float) -> float:
         """
         Compute potential density from salinity and potential temperature.
 
+        NOTE: pressure is expressed in BARS, not dbars!!!
+
         Arguments
         ---------
         press : <numpy.ndarray>
-            pressure [bars]
+            pressure [bars] !!!
         temp : <numpy.ndarray>
             sea water potential temperature [°C]
         sal : <numpy.ndarray>
@@ -97,6 +107,56 @@ class Eos:
 
         # Return density array.
         return density
+
+    @staticmethod
+    def potential_temperature(
+        sal: float, temp: float, press: float, ref_press: float = 0
+    ) -> float:
+        """
+        Compute potential temperature, from UNESCO (1983).
+
+        :params sal, temp, press, ref_press : local salinity, local temperature, local pressure, reference pressure
+        """
+
+        H = ref_press - press
+        XK = H * Eos.__adiabtempgrad(sal, temp, press)
+        temp = temp + 0.5 * XK
+        Q = XK
+        press = press + 0.5 * H
+        XK = H * Eos.__adiabtempgrad(sal, temp, press)
+        temp = temp + 0.29289322 * (XK - Q)
+        Q = 0.58578644 * XK + 0.121320344 * Q
+        XK = H * Eos.__adiabtempgrad(sal, temp, press)
+        temp = temp + 1.707106781 * (XK - Q)
+        Q = 3.414213562 * XK - 4.121320344 * Q
+        press = press + 0.5 * H
+        XK = H * Eos.__adiabtempgrad(sal, temp, press)
+        THETA = temp + (XK - 2.0 * Q) / 6.0
+        return THETA
+
+    @staticmethod
+    def press2depth(press: float, latitude: float) -> float:
+        """
+        Conversion from pressure (dbars) to depth (m), as in UNESCO, 1983.
+        """
+
+        X = np.sin(latitude / 57.29578)
+        X = X**2
+        # GRAVITY VARIATION WITH LATITUDE: ANON (1970) BULLETIN GEODESIQUE
+        GR = 9.780318 * (1.0 + (5.2788e-3 + 2.36e-5 * X) * X) + 1.092e-6 * press
+        DEPTH = (
+            ((-1.82e-15 * press + 2.279e-10) * press - 2.2512e-5) * press + 9.72659
+        ) * press
+        DEPTH = DEPTH / GR
+        return DEPTH
+
+    @staticmethod
+    def depth2press(depth: float) -> float:
+        """
+        Conversion from depth (m) to pressure (dbars).
+        As in NEMO, the pressure in decibars is approximated by the depth in meters.
+        """
+        return depth
 
     @staticmethod
     def __compute_rho(temp: float, sal: float) -> float:
@@ -249,7 +309,7 @@ class Eos:
         return B
 
     @staticmethod
-    def adiabtempgrad(sal: float, temp: float, press: float) -> float:
+    def __adiabtempgrad(sal: float, temp: float, press: float) -> float:
         """
         Compute adiabatic lapse rate (adiabatic temperature gradient), from UNESCO (1983).
 
@@ -272,32 +332,6 @@ class Eos:
             + 3.5803e-5
         )
         return ATG
-
-    @staticmethod
-    def potential_temperature(
-        sal: float, temp: float, press: float, ref_press: float = 0
-    ) -> float:
-        """
-        Compute potential temperature, from UNESCO (1983).
-
-        :params sal, temp, press, ref_press : local salinity, local temperature, local pressure, reference pressure
-        """
-
-        H = ref_press - press
-        XK = H * Eos.adiabtempgrad(sal, temp, press)
-        temp = temp + 0.5 * XK
-        Q = XK
-        press = press + 0.5 * H
-        XK = H * Eos.adiabtempgrad(sal, temp, press)
-        temp = temp + 0.29289322 * (XK - Q)
-        Q = 0.58578644 * XK + 0.121320344 * Q
-        XK = H * Eos.adiabtempgrad(sal, temp, press)
-        temp = temp + 1.707106781 * (XK - Q)
-        Q = 3.414213562 * XK - 4.121320344 * Q
-        press = press + 0.5 * H
-        XK = H * Eos.adiabtempgrad(sal, temp, press)
-        THETA = temp + (XK - 2.0 * Q) / 6.0
-        return THETA
 
 
 if __name__ == "__main__":
@@ -342,8 +376,11 @@ if __name__ == "__main__":
 
     # Test adiabatic lapse rate and potential temperature
     # From UNESCO documentation.
-    assert np.isclose(Eos.adiabtempgrad(40, 40, 10000), 3.255976e-4)
+    assert np.isclose(Eos._Eos__adiabtempgrad(40, 40, 10000), 3.255976e-4)
     assert np.isclose(Eos.potential_temperature(40, 40, 10000), 36.89073)
 
     # Test Compute density from Jackett and Mcdougall, 1995;
     assert np.isclose(Eos.compute_density(35.5, 3.0, 300), 1041.83267)
+
+    # Test conversion from pressure to depth
+    assert np.isclose(Eos.press2depth(10000, 30), 9712.653)
