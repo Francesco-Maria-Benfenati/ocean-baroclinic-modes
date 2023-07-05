@@ -1,0 +1,18 @@
+[experiment]
+    name = "myexp" # name of the simulation
+    start_datetime = "2017-04-23T00:00:00" # start date of the simulation
+    end_datetime = "2017-04-23T00:00:00" # start date of the simulation
+    n_modes = 4 # Num. of modes of motion to be computed
+    [experiment.domain]
+        lat = [35, 45] # latitude min, max
+        lon = [-35, -25] # longitude min, max
+[input_files]
+    indata_path = "./data/test_case/" # folder with data files
+    output_path = "./data/test_case/output" # folder where output files are saved
+    [input_files.oce]
+        vars = {temperature = "thetao", salinity = "so"} # Name of Salinity and Temperature variables in Netcdf files.
+        dims = {time = "time", lon = "longitude", lat = "latitude", depth = "depth"} # Name of dimensions time, longitude, latitude, depth in Netcdf files.
+    [input_files.bathy]
+        inbathy_path = "" # Path to bathymetry file
+        vars = {deptho = "deptho"}
+        dims = {lon = "longitude", lat = "latitude"}
