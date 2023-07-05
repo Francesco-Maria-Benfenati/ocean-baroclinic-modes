@@ -10,9 +10,11 @@ class Eos:
     def __init__(self, sal: float, temp: float, depth: float) -> None:
         self.sal = sal
         self.temp = temp
-        self.press = Eos.depth2press(depth)
+        self.depth = depth
+        # Convert pressure to depth
+        press = Eos.depth2press(depth)
         # Convert pressure from dbars to bars
-        press_bars = self.press/10
+        press_bars = press / 10
         self.density = Eos.compute_density(sal, temp, press_bars)
 
     @staticmethod
@@ -335,52 +337,30 @@ class Eos:
 
 
 if __name__ == "__main__":
+    # Test if _compute_rho() gives correct ref density at atm press. for
+    # pure water (Sal = 0 PSU) and standard seawater (Sal = 35 PSU),
+    # at Temperature = 5, 25 °C.
+    # Reference values may be found within
+    # 'Algorithms for computation of fundamental properties of seawater'
+    # (UNESCO, 1983. Section 3, p.19)
+    ref_sal = [0, 35]  # PSU
+    ref_temp = [5, 25]  # °C
+    ref_rho = [999.96675, 997.04796, 1027.67547, 1023.34306]  # kg/m^3
+    out_rho = []
+    for sal in ref_sal:
+        for temp in ref_temp:
+            out_rho.append(Eos._Eos__compute_rho(temp, sal))
+    error = 1e-06  # kg/m^3
+    assert np.allclose(ref_rho, out_rho, atol=error)
 
-    def test_compute_rho_pure_water():
-        """
-        Test if _compute_rho() gives correct ref density at atm press. for
-        pure water (Sal = 0 PSU) at Temperature = 5, 25 °C.
-        Reference values may be found within
-        'Algorithms for computation of fundamental properties of seawater'
-        (UNESCO, 1983. Section 3, p.19)
-        """
-        ref_Sal = 0  # PSU
-        ref_Temp = [5, 25]  # °C
-        ref_rho = [999.96675, 997.04796]  # kg/m^3
-        out_rho = []
-        out_rho.append(Eos._Eos__compute_rho(ref_Temp[0], ref_Sal))
-        out_rho.append(Eos._Eos__compute_rho(ref_Temp[1], ref_Sal))
-        error = 1e-06  # kg/m^3
-        assert np.allclose(ref_rho, out_rho, atol=error)
-
-    def test_compute_rho_standard_seawater():
-        """
-        Test if _compute_rho() gives correct ref density at atm press. for
-        standard seawater (Sal = 35 PSU) at Temperature = 5, 25 °C.
-        Reference values may be found within
-        'Algorithms for computation of fundamental properties of seawater'
-        (UNESCO, 1983. Section 3, p.19)
-        """
-        ref_Sal = 35  # PSU
-        ref_Temp = [5, 25]  # °C
-        ref_rho = [1027.67547, 1023.34306]  # kg/m^3
-        out_rho = []
-        out_rho.append(Eos._Eos__compute_rho(ref_Temp[0], ref_Sal))
-        out_rho.append(Eos._Eos__compute_rho(ref_Temp[1], ref_Sal))
-        error = 1e-06  # kg/m^3
-        assert np.allclose(ref_rho, out_rho, atol=error)
-
-    # Test compute density at atmospheric pressure, from UNESCO documentation.
-    test_compute_rho_pure_water()
-    test_compute_rho_standard_seawater()
-
-    # Test adiabatic lapse rate and potential temperature
+    # Test adiabatic lapse rate and potential temperature.
     # From UNESCO documentation.
     assert np.isclose(Eos._Eos__adiabtempgrad(40, 40, 10000), 3.255976e-4)
     assert np.isclose(Eos.potential_temperature(40, 40, 10000), 36.89073)
 
-    # Test Compute density from Jackett and Mcdougall, 1995;
+    # Test Compute density from Jackett and Mcdougall (1995).
     assert np.isclose(Eos.compute_density(35.5, 3.0, 300), 1041.83267)
 
-    # Test conversion from pressure to depth
+    # Test conversion from pressure to depth.
+    # From UNESCO documentation.
     assert np.isclose(Eos.press2depth(10000, 30), 9712.653)

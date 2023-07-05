@@ -209,8 +209,8 @@ if __name__ == "__main__":
         """
         n = 1000
         L = 1000
-        expected_eigenvals = (np.arange(0, 5) * np.pi/L) ** 2
-        dx = L/n
+        expected_eigenvals = (np.arange(0, 5) * np.pi / L) ** 2
+        dx = L / n
         obm = BaroclModes(0, 0)
         A = obm.tridiag_matrix_standardprob(np.ones(n), dx)
         eigenprob = EigenProblem(A, n_modes=5)
@@ -237,7 +237,7 @@ if __name__ == "__main__":
         w_n = A * np.cos(omega * L)
         num_sol = EigenProblem.numerov_method(dx, f, dw_0, w_0, w_n)
         error = (dx**4) * A  # Numerov Method error O(dx^4)
-        assert np.allclose(num_sol, theor_sol, atol=error, rtol = 1e-12)
+        assert np.allclose(num_sol, theor_sol, atol=error, rtol=1e-12)
 
     def test_stationary_wave_inapipe():
         """
@@ -262,7 +262,7 @@ if __name__ == "__main__":
             f = np.full(N, f_val)
             num_sol = EigenProblem.numerov_method(dx, f, dw_0, w_0, w_n)
             error = (dx**4) * A  # Numerov Method error O(dx^4)
-            assert np.allclose(num_sol, theor_sol, atol=error, rtol = 1e-12)
+            assert np.allclose(num_sol, theor_sol, atol=error, rtol=1e-12)
 
     # Run tests
     try:

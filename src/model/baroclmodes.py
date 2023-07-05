@@ -18,7 +18,7 @@ class BaroclModes:
     def __init__(
         self,
         depth: NDArray,
-        bvfreq_sqrd: NDArray,
+        bvfreq: NDArray,
         mean_lat: float = None,
         mean_depth: float = None,
     ) -> None:
@@ -27,14 +27,14 @@ class BaroclModes:
 
         Args:
             depth (NDArray): region depth array
-            bvfreq_sqrd (NDArray): brunt vaisala frequency squared profile
+            bvfreq (NDArray): brunt vaisala frequency profile
             mean_lat (float): region mean latitude. Defaults to None
             mean_depth (float, optional): region mean depth. Defaults to None
             n_modes (int, optional): Num. of baroclinic modes to be computed. Defaults to 4
         """
 
         self.depth = np.abs(depth)
-        self.bvfreq_sqrd = bvfreq_sqrd
+        self.bvfreq = bvfreq
         if mean_lat is not None:
             self.coriolis_param = self.__coriolis_param(mean_lat)
         else:
@@ -60,10 +60,10 @@ class BaroclModes:
             rossby radii, vertical structure functions
         """
 
-        interp = Interpolation(self.depth, self.bvfreq_sqrd)
-        interp_bvfreq = interp.apply_interpolation(dz/2, self.mean_depth, dz)[0]
+        interp = Interpolation(self.depth, self.bvfreq)
+        interp_bvfreq = interp.apply_interpolation(0, self.mean_depth, dz)[0]
         # Compute S(z) parameter.
-        s_param = interp_bvfreq / self.coriolis_param**2
+        s_param = interp_bvfreq**2 / self.coriolis_param**2
         # Add S param as attribute
         self.s_param = s_param
         # COMPUTE MATRIX & SOLVE EIGEN PROBLEM

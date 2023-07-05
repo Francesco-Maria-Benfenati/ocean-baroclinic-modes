@@ -1,6 +1,7 @@
 import numpy as np
 import scipy as sp
 from numpy.typing import NDArray
+from scipy.interpolate import RegularGridInterpolator
 
 
 class Interpolation:
@@ -21,7 +22,10 @@ class Interpolation:
         self.fields = fields
 
     def apply_interpolation(
-        self, start: float, stop: float, step: float
+        self,
+        start: float,
+        stop: float,
+        step: float,
     ) -> tuple[NDArray]:
         """
         Apply interpolaiton to fields.
@@ -34,12 +38,16 @@ class Interpolation:
 
         interp_fields = ()
         for field in self.fields:
-            interp_field = self.interpolate(field, start, stop, step)
+            interp_field = self.vert_interp(field, start, stop, step)
             interp_fields += (interp_field,)
         return interp_fields
 
-    def interpolate(
-        self, field: NDArray, start: float, stop: float, step: float
+    def vert_interp(
+        self,
+        field: NDArray,
+        start: float,
+        stop: float,
+        step: float,
     ) -> NDArray:
         """
         Interpolate B-V freq. squared on a new equally spaced depth grid.
@@ -58,13 +66,54 @@ class Interpolation:
         # Create new equally spaced depth array.
         z = np.arange(start=start, stop=stop, step=step)
 
-        # Create new (linearly) interpolated array for field.
-        f = sp.interpolate.interp1d(
-            depth_nan_excl, field_nan_excl, fill_value="extrapolate", kind="linear"
-        )
-        interp_profile = f(z)
+        # Interpolate (distinguish between 3d and 1d fields)
+        if field.ndim == 3:
+            x = np.arange(field.shape[0])
+            y = np.arange(field.shape[1])
+            interp = RegularGridInterpolator(
+                (x, y, self.depth), field, bounds_error=False, fill_value=None
+            )
+            X, Y, Z = np.meshgrid(x, y, z, indexing="ij")
+            interp_profile = interp((X, Y, Z))
+        else:
+            f = sp.interpolate.interp1d(
+                depth_nan_excl,
+                field_nan_excl,
+                fill_value="extrapolate",
+                kind="linear",
+            )
+            interp_profile = f(z)
         # Return interpolated profile
         return interp_profile
+
+    @staticmethod
+    def interpolate_at_interface(depth: NDArray, field: NDArray) -> NDArray:
+        """
+        Interpolate vertically at interfaces +/- 1/2.
+
+        :returns : interface depths and interpolated field
+        """
+
+        depth_levels = np.arange(len(depth))
+        interface_levels = np.arange(len(depth) + 1)
+        f1 = sp.interpolate.interp1d(
+            depth_levels, depth, fill_value="extrapolate", kind="linear"
+        )
+        interface_depth = f1(interface_levels)
+        if field.ndim == 3:
+            x = np.arange(field.shape[0])
+            y = np.arange(field.shape[1])
+            f2 = RegularGridInterpolator(
+                (x, y, depth_levels), field, bounds_error=False, fill_value=None
+            )
+            X, Y, Z = np.meshgrid(x, y, interface_levels, indexing="ij")
+            interface_field = f2((X, Y, Z))
+        else:
+            f2 = sp.interpolate.interp1d(
+                depth_levels, field, fill_value="extrapolate", kind="linear"
+            )
+            interface_field = f2(interface_levels)
+        return interface_depth, interface_field
 
 
 if __name__ == "__main__":
@@ -105,3 +154,12 @@ if __name__ == "__main__":
     print(
         f"OK: if mean depth diff {H_4-H_3} is less than step {step}, output arrays have same lengths."
     )
+    # Test 3D array
+    arr3d = np.ones((12, 13, n_steps))
+    interp3d = Interpolation(z, arr3d)
+    interp_result = interp3d.apply_interpolation(0, 100, 1)[0]
+    assert interp_result.shape == (12, 13, 100)
+    print("OK: vertical interpolation works for 3D array.")
+    interface_depth, interface_field = Interpolation.interpolate_at_interface(z, arr3d)
+    assert interface_field.shape == (12, 13, n_steps + 1)
+    print("OK: vertical interpolation *at interfaces* works for 3D array.")
