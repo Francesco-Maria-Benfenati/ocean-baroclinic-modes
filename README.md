@@ -7,8 +7,8 @@ This project is for computing the *baroclinic vertical structure function* and t
 2. [Numerical Method Implemented](https://github.com/Francesco-Maria-Benfenati/ocean-baroclinic-modes-1.0/blob/main/doc/numerical_method.md)
 3. [Project Structure](https://github.com/Francesco-Maria-Benfenati/ocean-baroclinic-modes-1.0/blob/main/doc/project_structure.md)
 4. [User Interface](https://github.com/Francesco-Maria-Benfenati/ocean-baroclinic-modes-1.0/blob/main/doc/user_interface.md)
-	- [JSON configuration file]
-	- [Dataset Requirements]
+	- [JSON configuration file](https://github.com/Francesco-Maria-Benfenati/ocean-baroclinic-modes-1.0/blob/main/doc/user_interface.md#json-configuration-file)
+	- [Dataset Requirements](https://github.com/Francesco-Maria-Benfenati/ocean-baroclinic-modes-1.0/blob/main/doc/user_interface.md#dataset-requirements)
 
 # Get Started!
 
