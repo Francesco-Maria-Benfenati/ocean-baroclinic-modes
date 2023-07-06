@@ -1,4 +1,4 @@
-class ReadData:
+class ncRead:
     """
     This Class is for reading data from NetCDF input files.
     """
