@@ -10,9 +10,9 @@ except ImportError:
     from eigenproblem import EigenProblem
 
 
-class BaroclModes:
+class BaroclinicModes:
     """
-    This class is for computing the ocean Baroclinic Modes of motion and rossby radius.
+    This class is for computing the ocean QG Baroclinic Modes of motion and rossby radius.
     """
 
     def __init__(
