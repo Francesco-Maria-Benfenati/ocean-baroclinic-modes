@@ -72,8 +72,8 @@ class EigenProblem:
         eigenvalues = np.real(eigenvalues)
         sort_index = np.argsort(eigenvalues)
         eigenvals = eigenvalues[sort_index]
-        eigenvecs = eigenvectors[sort_index]
-        return eigenvals[:n_modes], eigenvecs[:n_modes]
+        eigenvecs = eigenvectors[:, sort_index]
+        return eigenvals[:n_modes], eigenvecs[:, :n_modes]
 
     def eigenvals_generalizedprob(self) -> NDArray:
         """
@@ -96,12 +96,14 @@ class EigenProblem:
         B *= -1
         # Compute smallest Eigenvalues.
         val = sp.sparse.linalg.eigs(
-            A, k=n_modes, M=B, sigma=0, which="LM", return_eigenvectors=False
+            A, k=n_modes-1, M=B, sigma=0, which="LM", return_eigenvectors=False
         )
         # Take real part of eigenvalues and sort them in ascending order.
         eigenvalues = np.real(val)
         sort_index = np.argsort(eigenvalues)
         eigenvalues = eigenvalues[sort_index]
+        # Add null eigenvalue, not obtained using shift-invert mode
+        eigenvalues = np.insert(eigenvalues, 0, 0.0)
         return eigenvalues
 
     def eigenvecs_with_numerov(self) -> NDArray:
@@ -188,7 +190,7 @@ class EigenProblem:
 
 
 if __name__ == "__main__":
-    from baroclmodes import BaroclModes
+    from baroclinicmodes import BaroclinicModes
 
     def test_compute_eigenvals_simple_problem():
         """
@@ -211,8 +213,7 @@ if __name__ == "__main__":
         L = 1000
         expected_eigenvals = (np.arange(0, 5) * np.pi / L) ** 2
         dx = L / n
-        obm = BaroclModes(0, 0)
-        A = obm.tridiag_matrix_standardprob(np.ones(n), dx)
+        A = BaroclinicModes.tridiag_matrix_standardprob(np.ones(n), dx)
         eigenprob = EigenProblem(A, n_modes=5)
         out_eigenvals = eigenprob.eigenvals
         assert np.allclose(out_eigenvals, expected_eigenvals)
