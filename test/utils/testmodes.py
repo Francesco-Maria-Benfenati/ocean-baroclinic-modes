@@ -2,17 +2,24 @@ import numpy as np
 import scipy as sp
 from numpy.typing import NDArray
 
-try: 
+try:
     from .utils import Utils
 except ImportError:
     from utils import Utils
 
-class TestModes (Utils):
+
+class TestModes(Utils):
     """
     This Class contains analytical solutions from LaCasce (2012), for constant, expontential and Lindzen stratification profiles.
     """
 
-    def __init__(self,  n_levels: int, bvsqrd_0: float = 1, H: float = 1, coriolis_param: float = 1) -> None:
+    def __init__(
+        self,
+        n_levels: int,
+        bvsqrd_0: float = 1,
+        H: float = 1,
+        coriolis_param: float = 1,
+    ) -> None:
         """
         Class Constructor.
 
@@ -27,39 +34,59 @@ class TestModes (Utils):
         self.n_levels = n_levels
         self.H = abs(H)
         self.coriolis_param = coriolis_param
-    
+
     def LaCasce_eigenvals(self, profile: str) -> NDArray:
         """
         Theoretical result as in Table 1, from LaCasce (2012).
+
+        NOTE: the values are treated to be used also in DIMENSIONAL case.
         """
 
-        dimensional_coeff = self.bvsqrd_0/(self.coriolis_param**2 / self.H)
-
+        # coefficient for dimensionalization of eigenvalues/gamma values
+        dim_coeff = ((np.sqrt(self.bvsqrd_0)*self.H)/(self.coriolis_param))
         match profile:
             case "const":
-                return np.arange(5) * np.pi
+                eigenvals = np.arange(5) * np.pi
+                return eigenvals/dim_coeff
             case "exp2":
-                return  np.array([0, 4.9107, 9.9072, 14.8875, 19.8628]) * dimensional_coeff
+                gamma =  np.array([0, 4.9107, 9.9072, 14.8875, 19.8628])/2
+                return gamma/dim_coeff
             case "exp10":
-                return np.array([0, 2.7565, 5.9590, 9.1492, 12.3340]) * dimensional_coeff
+                gamma = (
+                    np.array([0, 2.7565, 5.9590, 9.1492, 12.3340])/2
+                )
+                return gamma/dim_coeff
             case "lindzen":
-                return np.array([0, 1.4214, 2.7506, 4.0950, 5.4448]) * dimensional_coeff
+                gamma = np.array([0, 1.4214, 2.7506, 4.0950, 5.4448])/2
+                return gamma/dim_coeff
             case _:
-                return None
-        
+                return None              
+    
+    def from_eigenvals_to_gamma(self, eigenval: float, alpha: float) -> float:
+        """
+        Given coeff alpha and eigenvalues, compute gamma.
+        """
+        dim_coeff = ((np.sqrt(self.bvsqrd_0)*self.H)/(self.coriolis_param))
+        gamma = np.sqrt(eigenval)*dim_coeff/alpha
+        return gamma
+
     def const_profile(self, n_modes: int = 5) -> NDArray:
         """
         Computes vertical structure func. for N^2(z) = const.
         """
-        
+
         n_levels = self.n_levels
-        depth = - np.linspace(0, self.H, n_levels) # new equally spaced depth grid
+        depth = -np.linspace(0, self.H, n_levels)  # new equally spaced depth grid
         # Eigenvalues
-        eigenvals = self.LaCasce_eigenvals("const") * self.bvsqrd_0/(self.coriolis_param**2)
+        eigenvals = (
+            self.LaCasce_eigenvals("const") * self.bvsqrd_0 / (self.coriolis_param**2)
+        )
         # Theoretical solution.
         struct_func = np.empty([n_levels, n_modes])
+        # amplitude
+        A = 1
         for i in range(n_modes):
-            struct_func[:,i] = np.cos(eigenvals[i] * depth/self.H)
+            struct_func[:, i] = A * np.cos(eigenvals[i] * depth / self.H)
         return struct_func
 
     def expon_profile(self, alpha: float) -> NDArray:
@@ -73,22 +100,26 @@ class TestModes (Utils):
                 gamma = self.LaCasce_eigenvals("exp2")
             case 10.0:
                 gamma = self.LaCasce_eigenvals("exp10")
-            case _: 
+            case _:
                 return None
         n_modes = len(gamma)
-        A = 1 # amplitude
+        A = 1  # amplitude
         n_levels = self.n_levels
         alpha /= self.H
-        depth = - np.linspace(0, self.H, n_levels) # new equally spaced depth grid
+        depth = -np.linspace(0, self.H, n_levels)  # new equally spaced depth grid
         # Theoretical Vertical Structure Function Phi(z)
         struct_func = np.empty([n_levels, n_modes])
         for i in range(n_modes):
-            struct_func[:,i] = (A * np.exp(alpha*depth/2)
-                            * (sp.special.yv(0, gamma[i])
-                            *  sp.special.jv(1, gamma[i]*np.exp(alpha*depth/2)) 
-                            -  sp.special.jv(0, gamma[i]) 
-                            *  sp.special.yv(1, gamma[i]*np.exp(alpha*depth/2))
-                                ) )
+            struct_func[:, i] = (
+                A
+                * np.exp(alpha * depth / 2)
+                * (
+                    sp.special.yv(0, 2*gamma[i])
+                    * sp.special.jv(1, 2*gamma[i] * np.exp(alpha * depth / 2))
+                    - sp.special.jv(0, 2*gamma[i])
+                    * sp.special.yv(1, 2*gamma[i] * np.exp(alpha * depth / 2))
+                )
+            )
         return struct_func
 
     def lindzen_profile(self, D: float) -> NDArray:
@@ -103,19 +134,19 @@ class TestModes (Utils):
             case _:
                 return None
         n_modes = len(gamma)
-        A = 1 # amplitude
+        A = 1  # amplitude
         D /= self.H
         n_levels = self.n_levels
-        depth = - np.linspace(0, self.H, n_levels) # new equally spaced depth grid
+        depth = -np.linspace(0, self.H, n_levels)  # new equally spaced depth grid
         # Theoretical Vertical Structure Function Phi(z)
         struct_func = np.empty([n_levels, n_modes])
         for i in range(n_modes):
-            struct_func[:,i] = A * (sp.special.yn(1, gamma[i])
-                            *  sp.special.jv(0, gamma[i]*np.sqrt(1-D*depth))
-                            -  sp.special.jv(1, gamma[i]) 
-                            *  sp.special.yn(0, gamma[i]*np.sqrt(1-D*depth))
-                                ) 
-            struct_func[:,i]/=np.linalg.norm(struct_func[:,i])
+            struct_func[:, i] = A * (
+                sp.special.yn(1, 2*gamma[i])
+                * sp.special.jv(0, 2*gamma[i] * np.sqrt(1 - D * depth))
+                - sp.special.jv(1, 2*gamma[i])
+                * sp.special.yn(0, 2*gamma[i] * np.sqrt(1 - D * depth))
+            )
         return struct_func
 
 
@@ -126,26 +157,22 @@ if __name__ == "__main__":
         from ...src.model.baroclinicmodes import BaroclinicModes
     except ImportError:
         import sys, os
-        sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
+        sys.path.append(
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        )
         from src.model.baroclinicmodes import BaroclinicModes
 
-    H = 2000
-    z = -np.linspace(0,H,H+1)
-    #S = 1/(1-10*z)
-   # S = 4.6e-04*np.exp(10*z/H)/BaroclinicModes.coriolis_param(45)**2
-    #S = np.exp(10*z/H)
-    S = np.ones(H+1) * 4.6e-04/BaroclinicModes.coriolis_param(45)**2
-    testmodes = TestModes(1000)#, 4e-04, 1000, 1e-04)
+    H = 3000
+    z = -np.linspace(0, H, H + 1)
+    f = BaroclinicModes.coriolis_param(42.6)
+    S = 1.0e+04*np.exp(10*z/H)
+    #S = np.exp(10 * z / H)
+    #S = np.ones(H+1)*1e+04
+    # S = 4.6e-04/BaroclinicModes.coriolis_param(45)**2 * np.ones(H+1)
+    testmodes = TestModes(1000, 1e-04, H, 1e-04)
     profile = testmodes.expon_profile(10)
     eigenvals, structfunc = BaroclinicModes.compute_baroclinicmodes(S, grid_step = 1)
-    depth = - np.linspace(0, testmodes.H, testmodes.n_levels)
-    structfunc /= np.linalg.norm(structfunc, axis=0)
-    print(sp.integrate.trapezoid(structfunc[:,4]*structfunc[:,4], x=-z)/H)
-    #print((eigenvals-testmodes.LaCasce_eigenvals("const")/np.sqrt(S[0]))/(testmodes.LaCasce_eigenvals("const")/np.sqrt(S[0])), eigenvals)
-    #print(testmodes.LaCasce_eigenvals("const")/np.sqrt(S[0]))
-    plt.figure(figsize=(7,8))
-    plt.plot(structfunc, z)
-    #plt.plot(profile,depth)
-    plt.show()
-    plt.close()
-    
+    gamma = testmodes.LaCasce_eigenvals("const")
+    print(testmodes.from_eigenvals_to_gamma(eigenvals, 10), gamma)
+    depth = -np.linspace(0, testmodes.H, testmodes.n_levels)

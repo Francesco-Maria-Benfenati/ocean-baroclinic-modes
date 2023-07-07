@@ -28,18 +28,23 @@ class BaroclinicModes:
             bvfreq (NDArray): brunt vaisala frequency profile
             mean_lat (float): region mean latitude. Defaults to None
         """
-        
+
         if mean_lat is None:
             s_param = bvfreq**2
         else:
             s_param = BaroclinicModes.compute_problem_sparam(bvfreq, mean_lat)
-        self.eigenvalues, self.structurefunc = BaroclinicModes.compute_baroclinicmodes(s_param, grid_step)
+        self.eigenvalues, self.structurefunc = BaroclinicModes.compute_baroclinicmodes(
+            s_param, grid_step
+        )
         # Rossby deformation radius
         self.deformrad = BaroclinicModes.rossby_rad(self.eigenvalues)
 
     @staticmethod
     def compute_baroclinicmodes(
-        s_param: NDArray, grid_step: float = None, n_modes: int = 5, generalized_method: bool = False
+        s_param: NDArray,
+        grid_step: float = None,
+        n_modes: int = 5,
+        generalized_method: bool = False,
     ) -> tuple[NDArray]:
         """
         Compute Baroclinic Rossby rad and vertical structure function.
@@ -47,7 +52,7 @@ class BaroclinicModes:
         Args:
             grid_step (float): vertical grid step 'dz'. Defaults to None.
             n_modes (int, optional): Num. of modes of motion to be computed. Defaults to 5.
-            generalized_method (bool, optional): If the generalized method should be used 
+            generalized_method (bool, optional): If the generalized method should be used
                                                  instead of the standard one. Defaults to False.
 
         Returns:
@@ -57,21 +62,30 @@ class BaroclinicModes:
         # Number of vertical levels
         n_levels = s_param.shape[0]
         if grid_step is None:
-            dz = 1/n_levels
-        else: 
+            dz = 1 / n_levels
+        else:
             dz = grid_step
         # COMPUTE MATRIX & SOLVE EIGEN PROBLEM
         if generalized_method:  # generalized case
             lhs_matrix = BaroclinicModes.lhs_matrix_generalizedprob(n_levels, dz)
             rhs_matrix = BaroclinicModes.rhs_matrix_generalizedprob(s_param)
-            eigenprob = EigenProblem(lhs_matrix, rhs_matrix, grid_step=dz, n_modes=n_modes)
+            eigenprob = EigenProblem(
+                lhs_matrix, rhs_matrix, grid_step=dz, n_modes=n_modes
+            )
         else:
             # compute tridiagonal matrix (standard case)
             matrix = BaroclinicModes.tridiag_matrix_standardprob(s_param, dz)
             eigenprob = EigenProblem(matrix, n_modes=n_modes)
         # Return eigenvalues and vertical structure function
-        eigenvalues = np.sqrt(eigenprob.eigenvals)
+        eigenvalues = eigenprob.eigenvals
         vert_structurefunc = eigenprob.eigenvecs
+        # Normalization of vertical structure function
+        mean_depth = dz * n_levels
+        for i in range(n_modes):
+            vert_structurefunc[:, i] /= np.sqrt(
+                sp.integrate.trapezoid(vert_structurefunc[:, i] ** 2, dx=dz)
+                / mean_depth
+            )
         return eigenvalues, vert_structurefunc
 
     @staticmethod
@@ -86,14 +100,14 @@ class BaroclinicModes:
             coriolis_param = BaroclinicModes.coriolis_param(mean_lat)
         s_param = bvfreq**2 / coriolis_param**2
         return s_param
-    
+
     @staticmethod
     def rossby_rad(eigenvalue: float) -> float:
         """
         Compute Rossby Radius given the eigenvalue(s).
         """
 
-        rossby_rad = 1 / (eigenvalue * 2 * np.pi)
+        rossby_rad = 1 / (np.sqrt(eigenvalue) * 2 * np.pi)
         return rossby_rad
 
     @staticmethod
@@ -129,7 +143,7 @@ class BaroclinicModes:
         M[0, 0] = -1 / S[0]
         M[0, 1] = 1 / S[0]
         M[n - 1, n - 2] = 1 / S[n - 2]
-        M[n - 1, n - 1] = - 1 / S[n - 2]
+        M[n - 1, n - 1] = -1 / S[n - 2]
         # Multiply for coefficient
         M *= -1 / (dz**2)
         return M
@@ -319,7 +333,11 @@ if __name__ == "__main__":
     assert np.array_equal(eigval_pos, eigval_neg)
 
     # Test eigenvalues for nondim constant profile
-    expected_eigenvals = np.arange(0,4)*np.pi
-    assert np.allclose(eigval_pos, expected_eigenvals)
+    expected_eigenvals = (np.arange(0, 5) * np.pi) ** 2
+    assert np.allclose(
+        eigval_pos[:-1], expected_eigenvals[:-1]
+    )  # remove 5th mode, less accurate
     print("For const nondimensional case, eigenvalues are lambda = n*pi (n=0,1,2...).")
-    print(f"Computed lambdas are {eigval_pos}, with relative errors {(eigval_pos-expected_eigenvals)/expected_eigenvals}")
+    print(
+        f"Computed lambdas are {eigval_pos}, with relative errors {(eigval_pos-expected_eigenvals)/expected_eigenvals}"
+    )
