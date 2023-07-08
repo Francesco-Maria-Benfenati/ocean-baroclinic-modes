@@ -82,10 +82,13 @@ class BaroclinicModes:
         # Normalization of vertical structure function
         mean_depth = dz * n_levels
         for i in range(n_modes):
-            vert_structurefunc[:, i] /= np.sqrt(
+            norm = np.sqrt(
                 sp.integrate.trapezoid(vert_structurefunc[:, i] ** 2, dx=dz)
                 / mean_depth
             )
+            vert_structurefunc[:, i] /= norm
+            if vert_structurefunc[0,i] < 0:
+                vert_structurefunc[:,i] *= -1 # Check all eigenvectors are > 0 at the surface
         return eigenvalues, vert_structurefunc
 
     @staticmethod

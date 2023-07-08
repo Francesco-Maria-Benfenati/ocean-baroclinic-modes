@@ -67,7 +67,7 @@ class EigenProblem:
         d = np.diagonal(tridiagmatrix, offset=0).copy()
         e = np.diagonal(tridiagmatrix, offset=1).copy()
         # Compute eigenvalues using scipy
-        eigenvalues, eigenvectors = sp.linalg.eigh_tridiagonal(d, e)
+        eigenvalues, eigenvectors = sp.linalg.eigh_tridiagonal(d, e, lapack_driver="auto")
         # Take real part of eigenvalues and sort them in ascending order.
         eigenvalues = np.real(eigenvalues)
         sort_index = np.argsort(eigenvalues)
