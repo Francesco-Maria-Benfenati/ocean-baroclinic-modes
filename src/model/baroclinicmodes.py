@@ -78,18 +78,53 @@ class BaroclinicModes:
             eigenprob = EigenProblem(matrix, n_modes=n_modes)
         # Return eigenvalues and vertical structure function
         eigenvalues = eigenprob.eigenvals
-        vert_structurefunc = eigenprob.eigenvecs
-        # Normalization of vertical structure function
-        mean_depth = dz * n_levels
-        for i in range(n_modes):
-            norm = np.sqrt(
-                sp.integrate.trapezoid(vert_structurefunc[:, i] ** 2, dx=dz)
-                / mean_depth
+        if generalized_method:
+            vert_structurefunc = BaroclinicModes.from_w_to_structfunc(
+                eigenprob.eigenvecs, s_param, dz
             )
-            vert_structurefunc[:, i] /= norm
-            if vert_structurefunc[0,i] < 0:
-                vert_structurefunc[:,i] *= -1 # Check all eigenvectors are > 0 at the surface
-        return eigenvalues, vert_structurefunc
+        else:
+            vert_structurefunc = eigenprob.eigenvecs
+        # Normalization of vertical structure function
+        normalized_vert_structurefunc = BaroclinicModes.normalize_eigenfunc(
+            vert_structurefunc, dz
+        )
+        return eigenvalues, normalized_vert_structurefunc
+
+    @staticmethod
+    def normalize_eigenfunc(eigenfunc: NDArray, dz: float) -> NDArray:
+        """
+        Normalize eigenfunction(s) so that (1/H)* integral_0^H(funf*func dz) = 1.
+        """
+
+        H = dz * eigenfunc.shape[0]  # depth
+        norm = np.sqrt(sp.integrate.trapezoid(eigenfunc * eigenfunc, dx=dz, axis=0) / H)
+        normalized_eigenfuncs = eigenfunc / norm
+        return normalized_eigenfuncs
+
+    @staticmethod
+    def from_w_to_structfunc(
+        eigenvectors: NDArray, s_param: NDArray, dz: float
+    ) -> NDArray:
+        """
+        Compute structure function from eigenvectors
+        """
+
+        n_modes = eigenvectors.shape[1]
+        # Add BC values to eigenvectors
+        eigenvectors = np.insert(eigenvectors, 0, np.zeros(n_modes), axis=0)
+        eigenvectors = np.insert(eigenvectors, -1, np.zeros(n_modes), axis=0)
+        # Define integration constant phi_0 = phi(z = 0) = 1 as BC.
+        phi_barotropic = 1
+        phi_0 = np.ones(n_modes) * phi_barotropic
+        struct_func = np.empty_like(eigenvectors)
+        for i in range(n_modes):
+            # Obtain Phi integrating eigenvectors * S.
+            integral_argument = s_param * eigenvectors[:, i]
+            for j in range(struct_func.shape[0]):
+                struct_func[j, i] = (
+                    sp.integrate.trapezoid(integral_argument[:j], dx=dz) + phi_0[i]
+                )
+        return struct_func
 
     @staticmethod
     def compute_problem_sparam(bvfreq: NDArray, mean_lat: float) -> NDArray:
@@ -327,7 +362,7 @@ if __name__ == "__main__":
     negative sign convention.
     """
     n_modes = 3
-    H = 1000
+    H = 2000
     N2_const = np.full(H, 1.0)
     obm1 = BaroclinicModes(N2_const)
     obm2 = BaroclinicModes(N2_const)
@@ -344,3 +379,9 @@ if __name__ == "__main__":
     print(
         f"Computed lambdas are {eigval_pos}, with relative errors {(eigval_pos-expected_eigenvals)/expected_eigenvals}"
     )
+    # Test generalized method
+    eigvals_generalized_case, struct_func = BaroclinicModes.compute_baroclinicmodes(
+        N2_const, generalized_method=True
+    )
+    print("On the other hans, solving generalized leads to relative error:")
+    print((eigvals_generalized_case - expected_eigenvals) / expected_eigenvals)

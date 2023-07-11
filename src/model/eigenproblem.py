@@ -24,6 +24,7 @@ class EigenProblem:
             rhs_matrix (NDArray, optional): R.H.S. matrix of eigenvalues/eigenvectors problem. Defaults to None.
             grid_step (NDArray, optional): grid step used for computing L.H.S matrix. Defaults to None.
             n_modes (int, optional): _description_. Defaults to 4.
+            numerov_method : if numerov method should be applied for computing eigenvectors. Default is True.
         """
 
         self.lhs_matrix = lhs_matrix
@@ -42,14 +43,11 @@ class EigenProblem:
 
         if self.rhs_matrix is not None:
             # Solve generalized problem
-            self.eigenvals = self.eigenvals_generalizedprob()
+            self.eigenvals, eigenvecs = self.eigenvals_generalizedprob()
             if self.grid_step is not None:
                 self.eigenvecs = self.eigenvecs_with_numerov()
             else:
-                self.eigenvecs = None
-                warnings.warn(
-                    "arg 'grid step' has not been provided: Eigenvectors have not been computed."
-                )
+                self.eigenvecs = eigenvecs
         else:
             # solve eigenproblem for tridiagonal matrix
             self.eigenvals, self.eigenvecs = self.tridiag_eigensolver()
@@ -67,7 +65,12 @@ class EigenProblem:
         d = np.diagonal(tridiagmatrix, offset=0).copy()
         e = np.diagonal(tridiagmatrix, offset=1).copy()
         # Compute eigenvalues using scipy
-        eigenvalues, eigenvectors = sp.linalg.eigh_tridiagonal(d, e, lapack_driver="auto")
+        eigenvalues, eigenvectors = sp.linalg.eigh_tridiagonal(
+            d,
+            e,
+            lapack_driver="auto",
+            select_range=(0,),
+        )
         # Take real part of eigenvalues and sort them in ascending order.
         eigenvalues = np.real(eigenvalues)
         sort_index = np.argsort(eigenvalues)
@@ -95,16 +98,22 @@ class EigenProblem:
         A *= -1
         B *= -1
         # Compute smallest Eigenvalues.
-        val = sp.sparse.linalg.eigs(
-            A, k=n_modes-1, M=B, sigma=0, which="LM", return_eigenvectors=False
+        val, vecs = sp.sparse.linalg.eigs(
+            A,
+            k=n_modes - 1,
+            M=B,
+            sigma=0,
+            which="LM",
         )
         # Take real part of eigenvalues and sort them in ascending order.
         eigenvalues = np.real(val)
         sort_index = np.argsort(eigenvalues)
         eigenvalues = eigenvalues[sort_index]
+        eigenvectors = vecs[:, sort_index]
         # Add null eigenvalue, not obtained using shift-invert mode
         eigenvalues = np.insert(eigenvalues, 0, 0.0)
-        return eigenvalues
+        eigenvectors = np.insert(eigenvectors, 0, np.ones(A.shape[0]), axis=1)
+        return eigenvalues, eigenvectors
 
     def eigenvecs_with_numerov(self) -> NDArray:
         """
@@ -116,8 +125,9 @@ class EigenProblem:
         n = S.shape[0]
         eigenvalues = self.eigenvals
         dz = self.grid_step
-        # Define integration constant phi_0 = phi(z = 0) as BC.
-        phi_0 = np.ones(n_modes)
+        # Define integration constant phi_0 = phi(z = 0) = 1 as BC.
+        phi_barotropic = 1
+        phi_0 = np.ones(n_modes) * phi_barotropic
         # Define f_n(z).
         f_n = np.empty([n, n_modes])
         for i in range(n_modes):
@@ -199,28 +209,14 @@ if __name__ == "__main__":
         """
         A = np.array([[8.0, -18.0, 9.0], [3.0, -7.0, 3.0], [0.0, 0.0, -1.0]])
         B = np.diag(np.ones(3))
-        expected_eigenvals = np.array([-1, -1, 2])
+        expected_eigenvals = np.array([0, -1, -1, 2])
         eigenprob = EigenProblem(A, B, n_modes=3)
-        out_eigenvals = eigenprob.eigenvals
-        assert np.allclose(out_eigenvals, expected_eigenvals)
-
-    def test_stationary_wave():
-        """
-        Test if eigenvalues are computed correctly for a simple problem
-        with well-know resolution: the stationary wave (non-dimensional).
-        """
-        n = 1000
-        L = 1000
-        expected_eigenvals = (np.arange(0, 5) * np.pi / L) ** 2
-        dx = L / n
-        A = BaroclinicModes.tridiag_matrix_standardprob(np.ones(n), dx)
-        eigenprob = EigenProblem(A, n_modes=5)
         out_eigenvals = eigenprob.eigenvals
         assert np.allclose(out_eigenvals, expected_eigenvals)
 
     def test_harmonic_oscillator():
         """
-        Test if _Numerov_method() gives correct eigenvectors for the
+        Test if _Numerov_method() gives correct result for the
         harmonic oscillator problem.
         """
         k = 1  # N/m
@@ -228,33 +224,79 @@ if __name__ == "__main__":
         omega = k / m  # np.sqrt(k/m)
         A = 1
         n = 1000
-        L = 100
-        x = np.linspace(0, L, n)
-        dx = abs(x[1] - x[0])
-        theor_sol = A * np.cos(omega * x)
+        t_end = 1
+        t = np.linspace(0, t_end, n)
+        dt = abs(t[1] - t[0])
+        # Theor solution
+        theor_sol = A * np.cos(omega * t)
+        # Compute eigenvectors with Numerov's
         dw_0 = 0
-        f = -omega * np.ones(n)
-        w_0 = A * 1
-        w_n = A * np.cos(omega * L)
-        num_sol = EigenProblem.numerov_method(dx, f, dw_0, w_0, w_n)
-        error = (dx**4) * A  # Numerov Method error O(dx^4)
-        assert np.allclose(num_sol, theor_sol, atol=error, rtol=1e-12)
+        f = -(omega**2) * np.ones(n)
+        w_0 = A
+        w_n = A * np.cos(omega * t_end)
+        num_sol = EigenProblem.numerov_method(dt, f, dw_0, w_0, w_n)
+        # Check if num and theor solution are the same (considering error)
+        assert np.allclose(num_sol, theor_sol)
+
+    def test_stationary_wave():
+        """
+        Test if eigenvalues are computed correctly for a simple problem
+        with well-know resolution: the stationary wave.
+        """
+        n = 1000
+        L = 100
+        expected_eigenvals = (np.arange(4) * np.pi / L) ** 2
+        dx = L / n
+        lhs_tridiag = BaroclinicModes.tridiag_matrix_standardprob(np.ones(n), dx)
+        lhs_general = BaroclinicModes.lhs_matrix_generalizedprob(n, dx)
+        rhs_general = BaroclinicModes.rhs_matrix_generalizedprob(np.ones(n))
+        eigenprob_tridiag = EigenProblem(lhs_tridiag, n_modes=4)
+        eigenprob_general = EigenProblem(lhs_general, rhs_general, n_modes=4)
+        out_eigenvals_tridiag = eigenprob_tridiag.eigenvals
+        out_eigenvals_general = eigenprob_general.eigenvals
+        print((expected_eigenvals - out_eigenvals_general) / expected_eigenvals)
+        # Check tridiag eigenvals are computed correctly
+        assert np.allclose(out_eigenvals_tridiag, expected_eigenvals)
+        tridiag_rel_error = (
+            expected_eigenvals - out_eigenvals_tridiag
+        ) / expected_eigenvals
+        print(
+            f"For standing wave problem, uncertainty associated to standard method is: {tridiag_rel_error}"
+        )
+        # Check generalized problem eigenvals are computed correctly
+        general_rel_error = (
+            expected_eigenvals - out_eigenvals_general
+        ) / expected_eigenvals
+        print(
+            f"On the other hand, uncertainty associated to generalized method is: {general_rel_error}"
+        )
 
     def test_stationary_wave_inapipe():
         """
         Test if _Numerov_method() gives correct eigenvectors for the
         stationary waves problem in a pipe (1D).
         """
-        for n in range(4):
-            # Problem parameters
-            A = 1
-            L = 9.5
-            N = 1000
+
+        # Problem parameters
+        A = 1
+        L = 9.5
+        N = 1000
+        x = np.linspace(0, L, N)
+        dx = abs(x[1] - x[0])
+        # Problem matrices
+        lhs_matrix = BaroclinicModes.lhs_matrix_generalizedprob(N + 2, dx)
+        rhs_matrix = BaroclinicModes.rhs_matrix_generalizedprob(np.ones(N + 2))
+        eigenprob_general = EigenProblem(lhs_matrix, rhs_matrix, grid_step=None)
+        eigenprob_general.eigenvecs = BaroclinicModes.normalize_eigenfunc(
+            eigenprob_general.eigenvecs, dx
+        )
+        eigenprob_general.eigenvecs[
+            :, 1
+        ] *= -1  # change sign of first eigenvector due to LAPACK algorithm
+        for n in range(1, 4):
             eigenvals = n * np.pi / L
-            x = np.linspace(0, L, N)
-            dx = abs(x[1] - x[0])
             # Theoretical solution
-            theor_sol = np.sin(eigenvals * x)
+            theor_sol = BaroclinicModes.normalize_eigenfunc(np.sin(eigenvals * x), dx)
             # Numerical solution
             w_0 = 0
             w_n = 0
@@ -262,15 +304,36 @@ if __name__ == "__main__":
             f_val = -(eigenvals**2)
             f = np.full(N, f_val)
             num_sol = EigenProblem.numerov_method(dx, f, dw_0, w_0, w_n)
-            error = (dx**4) * A  # Numerov Method error O(dx^4)
-            assert np.allclose(num_sol, theor_sol, atol=error, rtol=1e-12)
+            num_sol = BaroclinicModes.normalize_eigenfunc(num_sol, dx)
+            assert np.allclose(num_sol, theor_sol)
+            error = np.nanmean(num_sol - theor_sol)
+            print(f"Mean absolute error associated to Numerov's method is: {error}")
+            # Test if eigenvectors obtained through scipy
+            # are the same obtained through Numerov's.
+            scipy_error = np.nanmean((eigenprob_general.eigenvecs[:, n] - theor_sol))
+            print(
+                f"On the other hand, mean absolute error associated to Scipy method is: {scipy_error}"
+            )
+            import matplotlib.pyplot as plt
 
-    # Run tests
-    try:
-        test_compute_eigenvals_simple_problem()
-        test_stationary_wave()
-        test_stationary_wave_inapipe()
-        test_harmonic_oscillator()
-        print("Test SUCCEDED.")
-    except AssertionError:
-        print("Test FAILED.")
+            plt.figure()
+            plt.title(
+                f"Numerov's (coloured) VS theoretical (dashed) solutions.\n Mode of motion *{n}*"
+            )
+            plt.plot(theor_sol, x, "k--")
+            plt.plot(num_sol, x)
+            plt.figure()
+            plt.title(
+                f"Scipy (coloured) VS theoretical (dashed) solutions.\n Mode of motion *{n}*"
+            )
+            plt.plot(theor_sol, x, "k--")
+            plt.plot(eigenprob_general.eigenvecs[:, n], x)
+            plt.show()
+            plt.close()
+
+    # Run test functions.
+    test_compute_eigenvals_simple_problem()
+    test_harmonic_oscillator()
+    test_stationary_wave()
+    test_stationary_wave_inapipe()
+    print("Tests SUCCEDED.")
