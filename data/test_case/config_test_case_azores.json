@@ -1,0 +1,185 @@
+{"project_name": "ocean baroclinic modes of motion",
+ "sections": [
+   {"title":"set_paths",
+      "items": [
+        {  "name":"experiment_name",
+           "value":"Azores_JAN21",
+           "type":"string",
+           "description":"experiment name characterizing output products name."
+         },
+        {  "name":"region_name",
+            "value":"Azores",
+            "type":"string",
+            "description":"region name characterizing output products."
+          },
+         {  "name":"input_file_name",
+            "value":"azores_Jan2021.nc",
+            "type":"string",
+            "description":"name of the input NetCDF data file."
+          },
+         {  "name":"indata_path",
+            "value":"data/test_case/dataset_azores/",
+            "value_on_windows":"test_case\\dataset_azores\\",
+            "type":"string",
+            "description":"path leading to the input NetCDF data file. If on WINDOWS, please substitute backslash with \\"
+          }
+      ]
+   },
+   {"title":"set_variables",
+      "items":[
+         {  "name":"temperature_name",
+            "value":"thetao",
+            "type":"string",
+            "description":"name of TEMPERATURE variable within NetCDF input file."
+          },
+         {  "name":"salinity_name",
+            "value":"so",
+            "type":"string",
+            "description":"name of SALINITY variable within NetCDF input file."
+          },
+         {  "name":"lat_var_name",
+            "value":"latitude",
+            "type":"string",
+            "description":"name of LATITUDE variable within NetCDF input file."
+          },
+         {  "name":"lon_var_name",
+            "value":"longitude",
+            "type":"string",
+            "description":"name of LONGITUDE variable within NetCDF input file."
+          },
+         {  "name":"depth_var_name",
+            "value":"depth",
+            "type":"string",
+            "description":"name of DEPTH variable within NetCDF input file."
+          },
+         {  "name":"time_var_name",
+            "value":"time",
+            "type":"string",
+            "description":"name of TIME variable within NetCDF input file."
+          }
+      ]
+   },
+   {"title":"set_dimensions",
+      "items":[
+         {  "name":"lat_name",
+            "value":"latitude",
+            "type":"string",
+            "description":"name of LATITUDE dimension within NetCDF input file."
+           },
+          { "name":"lon_name",
+            "value":"longitude",
+            "type":"string",
+            "description":"name of LONGITUDE dimension within NetCDF input file."
+           },
+          { "name":"depth_name",
+            "value":"depth",
+            "type":"string",
+            "description":"name of DEPTH dimension within NetCDF input file."
+           },
+          { "name":"time_name",
+            "value":"time",
+            "type":"string",
+            "description":"name of TIME dimension within NetCDF input file."
+           }
+      ]
+   },
+   {"title":"set_bathymetry",
+      "items":[
+         {  "name":"bathy_file_name",
+            "value":"mask_bathy_test_case_azores.nc",
+            "type":"string",
+            "description":"name of the NetCDF file containing the bathymetry."
+          },
+         {  "name":"bathy_path",
+            "value":"data/test_case/dataset_azores/bathymetry/",
+            "value_on_windows":"test_case\\dataset_azores\\bathymetry\\",
+            "type":"string",
+            "description":"path leading to the NetCDF bathy file. If on WINDOWS, please substitute backslash with \\"
+          },
+         {  "name":"bathy_var_name",
+            "value":"deptho",
+            "type":"string",
+            "description":"name of bathymetry variable within NetCDF bathy file."
+          },
+         {  "name":"lat_var_name",
+            "value":"latitude",
+            "type":"string",
+            "description":"name of LATITUDE variable within NetCDF bathy file."
+          },
+         {  "name":"lon_var_name",
+             "value":"longitude",
+             "type":"string",
+             "description":"name of LONGITUDE variable within NetCDF bathy file."
+          },
+         {  "name":"lat_name",
+            "value":"latitude",
+            "type":"string",
+            "description":"name of LATITUDE dimension within NetCDF bathy file."
+          },
+         {  "name":"lon_name",
+            "value":"longitude",
+            "type":"string",
+            "description":"name of LONGITUDE dimension within NetCDF bathy file."
+          }
+      ]
+   },
+   {"title":"set_domain",
+      "items":[
+         {  "name":"lat_min",
+            "value":"35",
+            "type":"float",
+            "description":"value of minimum latitude in °N (°S are negative)",
+            "note":"set lat_min = lat_max if punctual profile is considered."
+          },
+         {  "name":"lat_max",
+            "value":"45",
+            "type":"float",
+            "description":"value of maximum latitude in °N (°S are negative)",
+            "note":"set lat_max = lat_min if punctual profile is considered."
+          },
+         {  "name":"lon_min",
+            "value":"-35",
+            "type":"float",
+            "description":"value of minimum longitude in °E (°W are negative)",
+            "note":"set lon_min = lon_max if punctual profile is considered."
+          },
+         {  "name":"lon_max",
+            "value":"-25",
+            "type":"float",
+            "description":"value of maximum longitude in °E (°W are negative)",
+            "note":"set lon_max = lon_min if punctual profile is considered."
+          }
+      ]
+   },
+  { "title":"set_time",
+      "items": [
+         {  "name": "period_name",
+            "value":"January 2021",
+            "type":"string",
+            "description":"name of time period considered (to be shown within output files)."
+          },
+         {  "name": "starting_time",
+            "value":"2021-01-01 12:00:00",
+            "type":"string",
+            "description":"starting value of time period during which temp and sal averages must be computed.",
+            "note":"set starting_time = ending_time if only one time step is considered."
+          },
+         {  "name": "ending_time",
+            "value":"2021-01-31 12:00:00",
+            "type":"string",
+            "description":"ending value of time period during which temp and sal averages must be computed.",
+            "note":"set ending_time = starting_time if only one time step is considered."
+          }
+      ]
+   },
+  { "title": "set_modes",
+      "items": [
+         {   "name": "n_modes",
+             "value": "4",
+             "type": "int",
+             "description": "number of vertical baroclinic modes of motion to be computed."
+          }
+      ]
+   }
+ ]
+}
