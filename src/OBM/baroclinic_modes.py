@@ -15,7 +15,7 @@ import scipy as sp
 from scipy import interpolate, integrate
 
 
-def compute_barocl_modes(depth, mean_depth, mean_lat, N2, n_modes):
+def compute_barocl_modes(depth, mean_lat, N2, n_modes):
     """
     Computes baroclinic Rossby radius & vertical structure function.
 
@@ -80,32 +80,24 @@ def compute_barocl_modes(depth, mean_depth, mean_lat, N2, n_modes):
        S*w between 0 and z (for each mode of motion).
     """
 
-    # Check if depth and BV freq. squared (N2) have the same length.
-    if len(N2) == len(depth):
-        pass
-    else:
-        raise ValueError("length mismatch between BVfreq and depth.")
-    # Take absolute value of depth, so that to avoid trouble with depth
-    # sign convention.
-    depth = abs(depth)
-
     # ==================================================================
     # Define parameters in the QG equation.
     # ==================================================================
     earth_angvel = 7.29 * 1e-05  # earth angular velocity (1/s)
     # coriolis parameter (1/s)
-    coriolis_param = 2 * earth_angvel * np.sin(mean_lat * np.pi / 180)
-
+    if mean_lat is not None:
+        coriolis_param = 2 * earth_angvel * np.sin(mean_lat * np.pi / 180)
+    else:
+        coriolis_param = 1e-04
     # ==================================================================
     # 1) Interpolate values on a new equally spaced depth grid 'z'
     #    (1 m grid step).
     # ==================================================================
-    interp_N2 = _interpolate_N2(depth, N2)
-    # Take only interp_N2 part from 0 to mean depth.
-    mean_depth = int(mean_depth)
-    n = mean_depth  # number of vertical levels
-    interp_N2 = interp_N2[: n - 1]
-
+    if depth is not None:
+        depth = abs(depth)
+        interp_N2 = _interpolate_N2(depth, N2)
+    else:
+        interp_N2 = N2
     # ==================================================================
     # 2) Compute problem parameter S:
     #       S = (N2 * H^2)/(f_0^2 * L^2)   .
@@ -113,7 +105,6 @@ def compute_barocl_modes(depth, mean_depth, mean_lat, N2, n_modes):
 
     # Compute S(z) parameter.
     S = interp_N2 / coriolis_param**2
-
     # ==================================================================
     # 3) Compute matrices of the eigenvalues/eigenvectors problem:
     #               A * v = (lambda * B) * v   .
@@ -121,21 +112,20 @@ def compute_barocl_modes(depth, mean_depth, mean_lat, N2, n_modes):
     # Store new z grid step (= 1m).
     dz = 1  # (m)
     # compute tridiagonal matrix
-    matrix = _tridiag_matrix(n, dz, S)
+    matrix = _tridiag_matrix(dz, S)
 
     # ==================================================================
     # Compute eigenvalues and eigenvectors.
     # ==================================================================
-    d = np.diagonal(matrix, offset=0).copy()
-    e = np.diagonal(matrix, offset=1).copy()
-    eigenvalues, eigenvectors = sp.linalg.eigh_tridiagonal(d, e)
-    eigenvectors = eigenvectors[:, :n_modes]
+    eigenvalues, eigenvectors = _tridiag_eigenvals(matrix, n_modes)
     for i in range(n_modes):
         eigenvectors[:, i] /= np.sqrt(
             sp.integrate.trapezoid(eigenvectors[:, i] * eigenvectors[:, i], dx=dz)
-            / mean_depth
+            / np.max(depth)
         )
-    return np.sqrt(eigenvalues[:n_modes]), eigenvectors
+        if eigenvectors[0, i] < 0:
+            eigenvectors[:, i] *= -1
+    return eigenvalues, eigenvectors
 
 
 def _interpolate_N2(depth, N2):
@@ -160,39 +150,38 @@ def _interpolate_N2(depth, N2):
     N2_nan_excl = np.delete(N2, where_nan_N2, None)
     depth_nan_excl = np.delete(depth, where_nan_N2, None)
 
-    # Create new equally spaced depth array (grid step = 1 m, starts at levels k + 1/2)
-    H = int(max(depth))
-    z = np.arange(0.5, H, 1)
-
+    H = np.max(depth)
+    # Create new equally spaced depth array (grid step = 1 m, starts at levels z = 0)
+    z = np.arange(0, H + 1.5, 1)
     # Create new (linearly) interpolated array for N2.
     f = interpolate.interp1d(
         depth_nan_excl, N2_nan_excl, fill_value="extrapolate", kind="linear"
     )
     interp_N2 = f(z)
-
     # Return grid and
     return interp_N2
 
 
-def _tridiag_matrix(n, dz, S):
+def _tridiag_matrix(dz, S):
     """
     Compute tridiagonal matrix M.
     """
+    n = len(S) - 1
     M = np.zeros([n, n])
 
     for k in range(2, n):
-        M[k - 1, k] = 1 / S[k - 1]
-        M[k - 1, k - 1] = -1 / S[k - 2] - 1 / S[k - 1]
-        M[k - 1, k - 2] = 1 / S[k - 2]
+        M[k - 1, k] = 1 / S[k] * (-1)
+        M[k - 1, k - 1] = (-1 / S[k - 1] - 1 / S[k]) * (-1)
+        M[k - 1, k - 2] = 1 / S[k - 1] * (-1)
 
     # B.C.s
-    M[0, 0] = -1 / S[0]
-    M[0, 1] = 1 / S[0]
+    M[0, 0] = -1 / S[1] * (-1)
+    M[0, 1] = 1 / S[1] * (-1)
 
-    M[n - 1, n - 2] = 1 / S[n - 2]
-    M[n - 1, n - 1] = -1 / S[n - 2]
+    M[-1, -2] = 1 / S[-2] * (-1)
+    M[-1, -1] = -1 / S[-2] * (-1)
 
-    M *= -1 / (dz**2)
+    M *= 1 / (dz**2)
 
     return M
 
@@ -352,13 +341,19 @@ def _tridiag_eigenvals(M, n_modes):
     """
     Compute eigenvalues of tridiagonal matrix M.
     """
-    n = len(M[:, 0])
+
     # Compute Eigenvalues.
     d = np.diagonal(M, offset=0).copy()
     e = np.diagonal(M, offset=1).copy()
-    vals = sp.linalg.eigh_tridiagonal(d, e, eigvals_only=True, select_range=(0,))
-    eigenvalues = vals[: n_modes + 1]
-    return eigenvalues
+    vals, vecs = sp.linalg.eigh_tridiagonal(d, e, eigvals_only=False, select_range=(0,))
+    # Take real part of eigenvalues and sort them in ascending order.
+    eigenvalues = np.real(vals)
+    sort_index = np.argsort(eigenvalues)
+    eigenvalues = eigenvalues[sort_index]
+    eigenvalues = eigenvalues[: n_modes]
+    eigenvectors = vecs[:, sort_index]
+    eigenvectors = eigenvectors[:, : n_modes]
+    return eigenvalues, eigenvectors
 
 
 def _Numerov_method(dz, f, dw_0, w_0, w_N):
@@ -416,7 +411,9 @@ def _Numerov_method(dz, f, dw_0, w_0, w_N):
 
 
 if __name__ == "__main__":
-    n_levels = 2000
+    test_matrix = _tridiag_matrix(1, np.ones(10))
+    print(test_matrix)
+    n_levels = 3000
     H = 2000
     dz = H / n_levels
     f = 1e-04
@@ -424,12 +421,219 @@ if __name__ == "__main__":
     S = (N2_0 / f**2) * np.ones(n_levels)
     A = _compute_matrix_A(n_levels, dz)
     B = _compute_matrix_B(n_levels, S)
-    tridiag = _tridiag_matrix(n_levels, dz, S)
+    tridiag = _tridiag_matrix(dz, S)
     eigenvals = _compute_eigenvals(A, B, 4)
-    tridiag_eigenvals = _tridiag_eigenvals(tridiag, 4)
+    tridiag_eigenvals, eigenvecs = _tridiag_eigenvals(tridiag, 5)
     dim_coeff = (N2_0 * H**2) / (f**2)
     expected_eigenvals = ((np.arange(0, 5) * np.pi) ** 2) / dim_coeff
     error = (eigenvals - expected_eigenvals) / expected_eigenvals
     tridiag_error = (tridiag_eigenvals - expected_eigenvals) / expected_eigenvals
+    print(f"Expected sqrt(eigenvalues) are: {np.sqrt(expected_eigenvals)}")
     print(f"Eigenvalues error associated to w-transform method is :{error}")
     print(f"Eigenvalues error associated to tridiagonal method is :{tridiag_error}")
+
+    # Test Kundu (1975)
+    Z = -np.array(
+        [
+            0,
+            3,
+            5,
+            6,
+            8,
+            10,
+            12,
+            13,
+            15,
+            20,
+            25,
+            30,
+            35,
+            40,
+            45,
+            50,
+            55,
+            60,
+            65,
+            70,
+            75,
+            80,
+            85,
+            90,
+            95,
+            100,
+        ]
+    )
+    N_carnation = np.array(
+        [
+            0.135,
+            0.18,
+            0.25,
+            0.47,
+            0.5,
+            0.47,
+            0.40,
+            0.36,
+            0.3,
+            0.22,
+            0.185,
+            0.165,
+            0.145,
+            0.13,
+            0.12,
+            0.105,
+            0.095,
+            0.085,
+            0.077,
+            0.069,
+            0.067,
+            0.06,
+            0.05,
+            0.045,
+            0.0425,
+            0.04,
+        ]
+    )
+    N_db7 = np.array(
+        [
+            0.1,
+            0.12,
+            0.15,
+            0.17,
+            0.24,
+            0.32,
+            0.36,
+            0.37,
+            0.34,
+            0.25,
+            0.185,
+            0.15,
+            0.135,
+            0.125,
+            0.11,
+            0.105,
+            0.095,
+            0.085,
+            0.077,
+            0.069,
+            0.067,
+            0.06,
+            0.055,
+            0.055,
+            0.05,
+            0.045,
+        ]
+    )
+    mean_depth = 100
+    N2_carnation = (N_carnation * 2 * np.pi / 60) ** 2
+    N2_db7 = (N_db7 * 2 * np.pi / 60) ** 2
+    print(f"Max BV frequency is: {np.sqrt(np.max(N2_carnation))}")
+    eigenvals_carnation, struct_func_carnation = compute_barocl_modes(
+        Z,
+        None,
+        N2_carnation,
+        n_modes=5,
+    )
+    eigenvals_db7, struct_func_db7 = compute_barocl_modes(
+        Z,
+        None,
+        N2_db7,
+        n_modes=5,
+    )
+
+    print(f"Eigenvalues at CARNATION [km^-1]:{np.sqrt(eigenvals_carnation)*1000}")
+    print(f"Eigenvalues at DB-7 [km^-1]:{np.sqrt(eigenvals_db7)*1000}")
+
+    import matplotlib.pyplot as plt
+
+    fig, ax = plt.subplots(figsize=(7, 8))
+    plt.rcParams["figure.figsize"] = [7.00, 8]
+    plt.rcParams["figure.autolayout"] = True
+    im = plt.imread("/mnt/d/Physics/ocean-baroclinic-modes/src/OBM/kundu_BVfreq.png")
+    im = ax.imshow(im, extent=[0, 100, -100, 0])
+    ax.grid(visible=True)
+    ax.set_title(
+        "Vertical profiles of Brunt-Vaisala frequency,\n from Kundu, Allen, Smith (1975)",
+        pad=20,
+        fontsize=16,
+    )
+    ax.plot(np.nan, 0, "k")
+    ax.plot(np.nan, 0, "k--")
+    z = -np.linspace(0, mean_depth, mean_depth + 1)
+    interp_func_carn = sp.interpolate.interp1d(Z, N_carnation, fill_value="extrapolate")
+    interp_func_db7 = sp.interpolate.interp1d(Z, N_db7, fill_value="extrapolate")
+    interp_N_carn = interp_func_carn(z)
+    interp_N_db7 = interp_func_db7(z)
+    interp_N_carn /= 0.5
+    interp_N_db7 /= 0.5
+    ax.plot(interp_N_carn * 100, z, "r")
+    ax.plot(interp_N_db7 * 100, z, "b--")
+    ax.legend(
+        [
+            "Carnation from Kundu (1975)",
+            "DB-7 from Kundu (1975)",
+            "Carnation replica",
+            "DB-7 replica",
+        ]
+    )
+    ax.set_xlabel(r"N (cycles/s)", labelpad=15, fontsize=14)
+    ax.set_ylabel("DEPTH (meters)", fontsize=14)
+    ax.xaxis.set_label_position("top")
+    ax.xaxis.tick_top()
+    ax.set_yticks(np.linspace(-100, 0, 11))
+    ax.set_xticks(np.linspace(0, 100, 11))
+    ax.set_xticklabels(
+        ["0", None, "0.01", None, "0.02", None, "0.03", None, "0.04", None, "0.05"]
+    )
+    ax.yaxis.set_tick_params(width=1, length=7)
+    ax.xaxis.set_tick_params(width=1, length=7)
+    ax.tick_params(axis="y", direction="in")
+    ax.tick_params(axis="x", direction="in")
+    ax.set_yticklabels(
+        ["-100", None, "-80", None, "-60", None, "-40", None, "-20", None, "0"]
+    )
+    ax.set_ylim(-100, 0)
+    ax.set_xlim(0, 105)
+    plt.show()
+    plt.close()
+
+    # BAROCLINIC MODES
+    fig1, ax1 = plt.subplots(figsize=(7, 8))
+    im1 = plt.imread("/mnt/d/Physics/ocean-baroclinic-modes/src/OBM/kundu_modes.png")
+    im1 = ax1.imshow(im1, extent=[-50, 50, -100, 0])
+    ax1.grid(visible=True)
+    ax.plot(np.nan, 0, "k")
+    ax1.plot(struct_func_carnation[:, :3] / 3 * 50, z, "r")
+    ax1.plot(struct_func_carnation[:, 3] / 3 * 50, z, "r--")
+    ax1.set_xlabel(
+        "NORMALIZED MODE AMPLITUDE AT CARNATION,\n from Kundu, Allen, Smith (1975)",
+        labelpad=15,
+        fontsize=14,
+    )
+    ax1.set_yticks(np.linspace(-100, 0, 11))
+    ax1.set_yticklabels(
+        ["-100", None, "-80", None, "-60", None, "-40", None, "-20", None, "0"]
+    )
+    ax1.set_xticks(np.linspace(-50, 50, 7))
+    ax1.set_xticklabels(["-3", "-2", "1", "0", "1", "2", "3"])
+    ax1.yaxis.set_tick_params(width=1, length=7)
+    ax1.xaxis.set_tick_params(width=1, length=7)
+    ax1.tick_params(axis="y", direction="in")
+    ax1.tick_params(axis="x", direction="in")
+    ax1.set_ylabel("DEPTH (m)", fontsize=14)
+    ax1.set_xlim(-55, 55)
+    ax1.set_ylim(-100, 0)
+    ax1.xaxis.tick_top()
+    ax1.xaxis.set_label_position("top")
+    ax1.spines["left"].set_position("center")
+    ax1.spines["right"].set_color("none")
+    ax1.legend(["Kundu (1975)", "numerical results REPLICA"])
+    # plt.figtext(0.66,0.3,"1",
+    #         bbox={"boxstyle" : "circle", "facecolor":"None", "edgecolor": "black"})
+    # plt.figtext(0.57,0.3,"3",
+    #         bbox={"boxstyle" : "circle", "facecolor":"None", "edgecolor": "black"})
+    # plt.figtext(0.47,0.3,"4",
+    #         bbox={"boxstyle" : "circle", "facecolor":"None", "edgecolor": "black"})
+    # plt.figtext(0.4,0.3,"2",
+    #         bbox={"boxstyle" : "circle", "facecolor":"None", "edgecolor": "black"})
+    plt.show()
+    plt.close()

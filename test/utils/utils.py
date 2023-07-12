@@ -6,7 +6,8 @@ class Utils:
     This Class contains utils for testings.
     """
 
-    def __init__(self, bvfreq_sq: NDArray, mean_depth: float, mean_lat: float)
+    def __init__(self, bvfreq_sq: NDArray, mean_depth: float, mean_lat: float):
+        pass
 
     def test_eigenvals():
         pass

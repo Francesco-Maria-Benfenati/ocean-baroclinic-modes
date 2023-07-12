@@ -170,19 +170,19 @@ class BaroclinicModes:
         """
 
         S = s_param
-        n = S.shape[0]
+        n = S.shape[0] - 1
         M = np.zeros([n, n])
-        # Fill diagonal and subdiagonals
+
         for k in range(2, n):
-            M[k - 1, k] = 1 / S[k - 1]
-            M[k - 1, k - 1] = -1 / S[k - 2] - 1 / S[k - 1]
-            M[k - 1, k - 2] = 1 / S[k - 2]
+            M[k - 1, k] = 1 / S[k]
+            M[k - 1, k - 1] = -1 / S[k - 1] - 1 / S[k]
+            M[k - 1, k - 2] = 1 / S[k - 1]
         # B.C.s
-        M[0, 0] = -1 / S[0]
-        M[0, 1] = 1 / S[0]
-        M[n - 1, n - 2] = 1 / S[n - 2]
-        M[n - 1, n - 1] = -1 / S[n - 2]
-        # Multiply for coefficient
+        M[0, 0] = -1 / S[1]
+        M[0, 1] = 1 / S[1]
+        M[-1, -2] = 1 / S[-2]
+        M[-1, -1] = -1 / S[-2]
+
         M *= -1 / (dz**2)
         return M
 

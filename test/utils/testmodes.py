@@ -173,18 +173,23 @@ if __name__ == "__main__":
         )
         from src.model.baroclinicmodes import BaroclinicModes
 
-    H = 1
-    n = 5000
+    H = 100
+    n = 1000
     z = -np.linspace(0, H, n)
-    f = BaroclinicModes.coriolis_param(42.6)
+    f_0 = BaroclinicModes.coriolis_param(42.6)
+    print(f_0)
     #S = 1.0e04 * np.exp(10 * z / H)
+     # Test Kundu (1975)
     Z = -np.array(
         [
             0,
+            3,
             5,
+            6,
             8,
             10,
             12,
+            13,
             15,
             20,
             25,
@@ -205,40 +210,73 @@ if __name__ == "__main__":
             100,
         ]
     )
-    N = np.array(
+    N_carnation = np.array(
         [
-            0.13,
+            0.135,
+            0.18,
             0.25,
-            0.45,
+            0.47,
             0.5,
-            0.45,
+            0.47,
+            0.40,
+            0.36,
             0.3,
-            0.2,
-            0.17,
-            0.15,
-            0.14,
+            0.22,
+            0.185,
+            0.165,
+            0.145,
             0.13,
             0.12,
-            0.1,
-            0.09,
-            0.08,
-            0.07,
+            0.105,
+            0.095,
+            0.085,
+            0.077,
+            0.069,
+            0.067,
             0.06,
-            0.065,
             0.05,
-            0.0475,
             0.045,
             0.0425,
             0.04,
         ]
     )
-    f = sp.interpolate.interp1d(Z, N, fill_value="extrapolate")
+    N_db7 = np.array(
+        [
+            0.1,
+            0.12,
+            0.15,
+            0.17,
+            0.24,
+            0.32,
+            0.36,
+            0.37,
+            0.34,
+            0.25,
+            0.185,
+            0.15,
+            0.135,
+            0.125,
+            0.11,
+            0.105,
+            0.095,
+            0.085,
+            0.077,
+            0.069,
+            0.067,
+            0.06,
+            0.055,
+            0.055,
+            0.05,
+            0.045,
+        ]
+    )
+    f = sp.interpolate.interp1d(Z, N_carnation, fill_value="extrapolate")
     interp_N = f(z)
-    #S = (interp_N) ** 2  # /(1e-04)**2
+    S = (interp_N*2*np.pi/60)**2 /(f_0**2)
     #S = np.exp(2*z/H)
-    #s_param = np.asarray(S, dtype=np.float64)
+    s_param = np.asarray(S, dtype=np.float64)
     #s_param = np.exp(10*z/H)
-    s_param = np.ones(n)
+    #s_param = np.ones(n)
     # S = 1/(1-10*z/H)
     # S = np.exp(10 * z / H)
     # S = np.ones(H+1)*1e+04
@@ -249,19 +287,53 @@ if __name__ == "__main__":
     # print([sp.integrate.trapezoid(profile[:,i]*profile[:,i-1], x=-depth) for i in range(1,profile.shape[1])])
     grid_step = H/n
     eigenvals, structfunc = BaroclinicModes.compute_baroclinicmodes(
-        s_param, grid_step= H/n, generalized_method=True
+        s_param, grid_step= H/n, generalized_method=False
     )
-    print((np.sqrt(eigenvals) - testmodes.LaCasce_eigenvals("const"))/testmodes.LaCasce_eigenvals("const"))
+    print(f"Kundu eigenvalues [km^-1]: {1000*np.sqrt(eigenvals)}")
     # print([sp.integrate.trapezoid(structfunc[100:,i]*structfunc[100:,i], x=-z[100:]/H) for i in range(1,structfunc.shape[1])])
     # gamma = testmodes.LaCasce_eigenvals("const")
     #   print(testmodes.from_eigenvals_to_gamma(eigenvals, 10), gamma)
     # print(profile[-1,:]-profile[-2,:], structfunc[0,:])
-    plt.figure(figsize=(7, 8))
-    plt.grid(visible=True)
-    # plt.plot(profile, depth, "k--")
-    plt.plot(structfunc[:, :4], z)
+    # plt.figure(figsize=(7, 8))
+    # plt.grid(visible=True)
+    # # plt.plot(profile, depth, "k--")
+    # plt.plot(structfunc[:, :4], z[1:])
+    # plt.show()
+    # plt.figure(figsize=(7, 8))
+    # plt.plot(interp_N, z)
+    # #  plt.show()
+    # plt.close()
+    # BAROCLINIC MODES
+    fig1, ax1 = plt.subplots(figsize=(7, 8))
+    im1 = plt.imread("/mnt/d/Physics/ocean-baroclinic-modes/src/OBM/kundu_modes.png")
+    im1 = ax1.imshow(im1, extent=[-50, 50, -100, 0])
+    ax1.grid(visible=True)
+    structfunc[:,3] *=-1
+    ax1.plot(structfunc[:, :3] / 3 * 50, z[:-1], "r")
+    ax1.plot(structfunc[:, 3] / 3 * 50, z[:-1], "r--")
+    ax1.set_xlabel(
+        "NORMALIZED MODE AMPLITUDE AT CARNATION,\n from Kundu, Allen, Smith (1975)",
+        labelpad=15,
+        fontsize=14,
+    )
+    ax1.set_yticks(np.linspace(-100, 0, 11))
+    ax1.set_yticklabels(
+        ["-100", None, "-80", None, "-60", None, "-40", None, "-20", None, "0"]
+    )
+    ax1.set_xticks(np.linspace(-50, 50, 7))
+    ax1.set_xticklabels(["-3", "-2", "1", "0", "1", "2", "3"])
+    ax1.yaxis.set_tick_params(width=1, length=7)
+    ax1.xaxis.set_tick_params(width=1, length=7)
+    ax1.tick_params(axis="y", direction="in")
+    ax1.tick_params(axis="x", direction="in")
+    ax1.set_ylabel("DEPTH (m)", fontsize=14)
+    ax1.set_xlim(-55, 55)
+    ax1.set_ylim(-100, 0)
+    ax1.xaxis.tick_top()
+    ax1.xaxis.set_label_position("top")
+    ax1.spines["left"].set_position("center")
+    ax1.spines["right"].set_color("none")
+    ax1.legend(["Kundu (1975)", "numerical results REPLICA"])
     plt.show()
-    plt.figure(figsize=(7, 8))
-    plt.plot(interp_N, z)
-    #  plt.show()
     plt.close()
+
