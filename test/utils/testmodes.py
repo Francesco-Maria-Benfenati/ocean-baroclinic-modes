@@ -334,6 +334,7 @@ if __name__ == "__main__":
     ax1.spines["left"].set_position("center")
     ax1.spines["right"].set_color("none")
     ax1.legend(["Kundu (1975)", "numerical results REPLICA"])
-    plt.show()
+  #  plt.show()
     plt.close()
-
+    new_test = TestModes(1000,1e-04,1000,1e-04)
+    print(new_test.LaCasce_eigenvals("const"), new_test.LaCasce_eigenvals("exp2")*2, new_test.LaCasce_eigenvals("exp10")*20)

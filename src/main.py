@@ -79,6 +79,21 @@ if __name__ == "__main__":
     BV_freq_sq = compute_BVsq(depth, mean_pot_density)
     BV_freq_sq[np.where(BV_freq_sq < 0)] = np.nan
 
+    from scipy.signal import butter, lfilter
+    def butter_lowpass(cutoff, fs, order=5):
+        return butter(order, cutoff, fs=fs, btype='low', analog=False)
+
+    def butter_lowpass_filter(data, cutoff, fs, order=5):
+        b, a = butter_lowpass(cutoff, fs, order=order)
+        y = lfilter(b, a, data)
+        return y
+    
+    order = 6
+    fs = 30.0       # sample rate, Hz
+    cutoff = 3.667  # desired cutoff frequency of the filter, Hz
+
+    #BV_freq_sq = butter_lowpass_filter(BV_freq_sq, cutoff, fs, order)
+    
     # ----------------------------------------------------------------
     # N° of modes of motion considered (including the barotropic one).
     N_motion_modes = config_parameters["set_modes"]["n_modes"]
@@ -88,11 +103,10 @@ if __name__ == "__main__":
     BV_freq_sq = BV_freq_sq[: mean_depth + 1]
     # Compute baroclinic Rossby radius and vert. struct. function Phi(z).
     eigenvals, Phi = modes(depth, mean_lat, BV_freq_sq, N_motion_modes)
-    R = 1 / (np.sqrt(eigenvals) * 2 * np.pi)  # Rossby radius in [m]
+    R = 1 / (np.sqrt(eigenvals)*1000)  # Rossby radius in [m]
     # coriolis parameter (1/s)
-    print(f"eigenvalues: {eigenvals}")
-    print(f"Rossby radii: {R}")
-    print(f"1/sqrt(eigenvals): {1/(np.sqrt(eigenvals))}")
+    print(f"eigenvalues [km^-1]: {np.sqrt(eigenvals)*1000}")
+    print(f"Rossby radii [km]: {R}")
 
     # ======================================================================
     #                  *  WRITE RESULTS ON OUTPUT FILE  *
