@@ -166,7 +166,11 @@ if __name__ == "__main__":
 
     # Test with LaCasce values (2012). Dimensional Case.
     bvfreq_0 = 2 * 1e-02  # surface BV freq 0.02 1/s
-    mean_depth = 3 * 1e03  # mean depth 3000 km
+    shallow = True
+    if shallow:
+        mean_depth = 1 * 1e+02  # mean depth 100 m
+    else:
+        mean_depth = 3 * 1e+03  # mean depth 3000 km
     f_0 = 1e-04  # coriolis parameter 0.0001
     grid_step = 1  # dz = 1 m
     n_levels = int(mean_depth + 1)
