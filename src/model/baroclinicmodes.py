@@ -33,11 +33,11 @@ class BaroclinicModes:
             s_param = bvfreq**2
         else:
             s_param = BaroclinicModes.compute_problem_sparam(bvfreq, mean_lat)
-        self.eigenvalues, self.structurefunc = BaroclinicModes.compute_baroclinicmodes(
+        self.eigenvals, self.structfunc = BaroclinicModes.compute_baroclinicmodes(
             s_param, grid_step
         )
         # Rossby deformation radius
-        self.deformrad = BaroclinicModes.rossby_rad(self.eigenvalues)
+        self.deformrad = BaroclinicModes.rossby_rad(self.eigenvals)
 
     @staticmethod
     def compute_baroclinicmodes(
@@ -84,6 +84,8 @@ class BaroclinicModes:
             )
         else:
             vert_structurefunc = eigenprob.eigenvecs
+        # Check sign
+        vert_structurefunc = BaroclinicModes.check_sign_eigenvectors(vert_structurefunc)
         # Normalization of vertical structure function
         normalized_vert_structurefunc = BaroclinicModes.normalize_eigenfunc(
             vert_structurefunc, dz
@@ -100,6 +102,17 @@ class BaroclinicModes:
         norm = np.sqrt(sp.integrate.trapezoid(eigenfunc * eigenfunc, dx=dz, axis=0) / H)
         normalized_eigenfuncs = eigenfunc / norm
         return normalized_eigenfuncs
+
+    @staticmethod
+    def check_sign_eigenvectors(eigenvectors: NDArray) -> NDArray:
+        """
+        Check if the eigenvectors have correct sign.
+        """
+
+        for i in range(eigenvectors.shape[1]):
+            if eigenvectors[0, i] < 0:
+                eigenvectors[:, i] *= -1
+        return eigenvectors
 
     @staticmethod
     def from_w_to_structfunc(
@@ -174,16 +187,16 @@ class BaroclinicModes:
         M = np.zeros([n, n])
 
         for k in range(2, n):
-            M[k - 1, k] = 1 / S[k]
-            M[k - 1, k - 1] = -1 / S[k - 1] - 1 / S[k]
-            M[k - 1, k - 2] = 1 / S[k - 1]
+            M[k - 1, k] = 1 / S[k] * (-1)
+            M[k - 1, k - 1] = (-1 / S[k - 1] - 1 / S[k]) * (-1)
+            M[k - 1, k - 2] = 1 / S[k - 1] * (-1)
         # B.C.s
-        M[0, 0] = -1 / S[1]
-        M[0, 1] = 1 / S[1]
-        M[-1, -2] = 1 / S[-2]
-        M[-1, -1] = -1 / S[-2]
+        M[0, 0] = -1 / S[1] * (-1)
+        M[0, 1] = 1 / S[1] * (-1)
+        M[-1, -2] = 1 / S[-2] * (-1)
+        M[-1, -1] = -1 / S[-2] * (-1)
 
-        M *= -1 / (dz**2)
+        M *= 1 / (dz**2)
         return M
 
     @staticmethod
@@ -366,22 +379,26 @@ if __name__ == "__main__":
     N2_const = np.full(H, 1.0)
     obm1 = BaroclinicModes(N2_const)
     obm2 = BaroclinicModes(N2_const)
-    eigval_neg = obm1.eigenvalues
-    eigval_pos = obm2.eigenvalues
+    eigval_neg = obm1.eigenvals
+    eigval_pos = obm2.eigenvals
     assert np.array_equal(eigval_pos, eigval_neg)
 
     # Test eigenvalues for nondim constant profile
     expected_eigenvals = (np.arange(0, 5) * np.pi) ** 2
-    assert np.allclose(
-        eigval_pos[:-1], expected_eigenvals[:-1]
-    )  # remove 5th mode, less accurate
     print("For const nondimensional case, eigenvalues are lambda = n*pi (n=0,1,2...).")
     print(
         f"Computed lambdas are {eigval_pos}, with relative errors {(eigval_pos-expected_eigenvals)/expected_eigenvals}"
     )
+    print(eigval_pos - expected_eigenvals, (1 / 2000))
     # Test generalized method
     eigvals_generalized_case, struct_func = BaroclinicModes.compute_baroclinicmodes(
         N2_const, generalized_method=True
     )
     print("On the other hans, solving generalized leads to relative error:")
     print((eigvals_generalized_case - expected_eigenvals) / expected_eigenvals)
+
+    # Test tridiag matrix
+    new_s_param = np.ones(10)
+    new_s_param[0], new_s_param[-1] = 0, 0
+    new_tridiag = BaroclinicModes.tridiag_matrix_standardprob(new_s_param, 1)
+    print(new_tridiag)

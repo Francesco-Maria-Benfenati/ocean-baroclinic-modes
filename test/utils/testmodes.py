@@ -15,8 +15,7 @@ class TestModes(Utils):
 
     def __init__(
         self,
-        n_levels: int,
-        bvsqrd_0: float = 1,
+        bvfreq_0: float = 1,
         H: float = 1,
         coriolis_param: float = 1,
     ) -> None:
@@ -30,8 +29,7 @@ class TestModes(Utils):
             coriolis_param: coriolis_parameter. Defaults to 1.
         """
 
-        self.bvsqrd_0 = bvsqrd_0
-        self.n_levels = n_levels
+        self.bvfreq_0 = bvfreq_0
         self.H = abs(H)
         self.coriolis_param = coriolis_param
 
@@ -43,41 +41,44 @@ class TestModes(Utils):
         """
 
         # coefficient for dimensionalization of eigenvalues/gamma values
-        dim_coeff = (np.sqrt(self.bvsqrd_0) * self.H) / (self.coriolis_param)
+        dim_coeff = (self.coriolis_param) / (self.bvfreq_0 * self.H)
         match profile:
             case "const":
                 eigenvals = np.arange(5) * np.pi
-                return eigenvals / dim_coeff
+                return eigenvals * dim_coeff
             case "exp2":
                 gamma = np.array([0, 4.9107, 9.9072, 14.8875, 19.8628]) / 2
-                return gamma / dim_coeff
+                return gamma * dim_coeff
             case "exp10":
                 gamma = np.array([0, 2.7565, 5.9590, 9.1492, 12.3340]) / 2
-                return gamma / dim_coeff
+                return gamma * dim_coeff
             case "lindzen":
                 gamma = np.array([0, 1.4214, 2.7506, 4.0950, 5.4448]) / 2
-                return gamma / dim_coeff
+                return gamma * dim_coeff
             case _:
                 return None
 
-    def from_eigenvals_to_gamma(self, eigenval: float, alpha: float) -> float:
+    def from_gamma_to_eigenvals(self, profile: str, alpha: float) -> float:
         """
-        Given coeff alpha and eigenvalues, compute gamma.
+        Given coeff alpha and gamma, compute eigenvals.
         """
-        dim_coeff = (np.sqrt(self.bvsqrd_0) * self.H) / (self.coriolis_param)
-        gamma = np.sqrt(eigenval) * dim_coeff / alpha
-        return gamma
+
+        gamma = self.LaCasce_eigenvals(profile)
+        eigenval = gamma * alpha
+        return eigenval**2
 
     def const_profile(self, n_modes: int = 5) -> NDArray:
         """
         Computes vertical structure func. for N^2(z) = const.
         """
 
-        n_levels = self.n_levels
-        depth = -np.linspace(0, self.H, n_levels)  # new equally spaced depth grid
+        depth = -np.arange(0.5, self.H, 1)  # new equally spaced depth grid
+        n_levels = len(depth)
         # Eigenvalues
         eigenvals = (
-            self.LaCasce_eigenvals("const") * self.bvsqrd_0 / (self.coriolis_param**2)
+            self.LaCasce_eigenvals("const")
+            * (self.bvfreq_0) ** 2
+            / (self.coriolis_param**2)
         )
         # Theoretical solution.
         struct_func = np.empty([n_levels, n_modes])
@@ -106,9 +107,9 @@ class TestModes(Utils):
                 return None
         n_modes = len(gamma)
         A = 1  # amplitude
-        n_levels = self.n_levels
         alpha /= self.H
-        depth = -np.linspace(0, self.H, n_levels)  # new equally spaced depth grid
+        depth = -np.arange(0.5, self.H, 1)  # new equally spaced depth grid
+        n_levels = len(depth)
         # Theoretical Vertical Structure Function Phi(z)
         struct_func = np.empty([n_levels, n_modes])
         for i in range(n_modes):
@@ -142,8 +143,8 @@ class TestModes(Utils):
         n_modes = len(gamma)
         A = 1  # amplitude
         D /= self.H
-        n_levels = self.n_levels
-        depth = -np.linspace(0, self.H, n_levels)  # new equally spaced depth grid
+        depth = -np.arange(0.5, self.H, 1)  # new equally spaced depth grid
+        n_levels = len(depth)
         # Theoretical Vertical Structure Function Phi(z)
         struct_func = np.empty([n_levels, n_modes])
         for i in range(n_modes):
@@ -161,180 +162,69 @@ class TestModes(Utils):
 
 
 if __name__ == "__main__":
-    import matplotlib.pyplot as plt
+    import math
 
-    try:
-        from ...src.model.baroclinicmodes import BaroclinicModes
-    except ImportError:
-        import sys, os
+    # Test with LaCasce values (2012). Dimensional Case.
+    bvfreq_0 = 2 * 1e-02  # surface BV freq 0.02 1/s
+    mean_depth = 3 * 1e03  # mean depth 3000 km
+    f_0 = 1e-04  # coriolis parameter 0.0001
+    grid_step = 1  # dz = 1 m
+    n_levels = int(mean_depth + 1)
+    depth = -np.linspace(0, mean_depth, n_levels)
 
-        sys.path.append(
-            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        )
-        from src.model.baroclinicmodes import BaroclinicModes
+    testmodes = TestModes(bvfreq_0, mean_depth, f_0)
+    # CONST case
+    bvfreq_const = np.ones(n_levels) * bvfreq_0
+    const_profile = Utils(bvfreq_const**2, f_0, grid_step)
+    eigenvals_const = testmodes.LaCasce_eigenvals("const")
+    rel_error_const = const_profile.compare_eigenvals(eigenvals_const**2)
 
-    H = 100
-    n = 1000
-    z = -np.linspace(0, H, n)
-    f_0 = BaroclinicModes.coriolis_param(42.6)
-    print(f_0)
-    #S = 1.0e04 * np.exp(10 * z / H)
-     # Test Kundu (1975)
-    Z = -np.array(
-        [
-            0,
-            3,
-            5,
-            6,
-            8,
-            10,
-            12,
-            13,
-            15,
-            20,
-            25,
-            30,
-            35,
-            40,
-            45,
-            50,
-            55,
-            60,
-            65,
-            70,
-            75,
-            80,
-            85,
-            90,
-            95,
-            100,
-        ]
+    # EXPON case alpha = 2/H, alpha = 10/H, lindzen profile.
+    bvfreqsqrd_expon_2 = (bvfreq_0**2) * np.exp(2 * depth / mean_depth)
+    bvfreqsqrd_expon_10 = (bvfreq_0**2) * np.exp(10 * depth / mean_depth)
+    bvfreqsqrd_lindzen = (bvfreq_0**2) / (1 - 10 * depth / mean_depth)
+
+    expon2_profile = Utils(bvfreqsqrd_expon_2, f_0, grid_step)
+    expon10_profile = Utils(bvfreqsqrd_expon_10, f_0, grid_step)
+    lindzen_profile = Utils(bvfreqsqrd_lindzen, f_0, grid_step)
+
+    eigenvals_expon2 = testmodes.from_gamma_to_eigenvals("exp2", 2)
+    eigenvals_expon10 = testmodes.from_gamma_to_eigenvals("exp10", 10)
+    eigenvals_lindzen = testmodes.from_gamma_to_eigenvals("lindzen", 10)
+
+    rel_error_expon2 = expon2_profile.compare_eigenvals(eigenvals_expon2)
+    rel_error_expon10 = expon10_profile.compare_eigenvals(eigenvals_expon10)
+    rel_error_lindzen = lindzen_profile.compare_eigenvals(eigenvals_lindzen)
+
+    print(
+        f"Error is expected to be of order O(10^{(math.floor(math.log((1/mean_depth)**2, 10)))})."
     )
-    N_carnation = np.array(
-        [
-            0.135,
-            0.18,
-            0.25,
-            0.47,
-            0.5,
-            0.47,
-            0.40,
-            0.36,
-            0.3,
-            0.22,
-            0.185,
-            0.165,
-            0.145,
-            0.13,
-            0.12,
-            0.105,
-            0.095,
-            0.085,
-            0.077,
-            0.069,
-            0.067,
-            0.06,
-            0.05,
-            0.045,
-            0.0425,
-            0.04,
-        ]
+    print(f"For Const case, expected eigenvalues are [km^-1]: {eigenvals_const*1000}")
+    print(f"Relative error respect to LaCasce const profile: {rel_error_const}")
+    print(
+        f"For alpha = 2/H case, expected eigenvalues are [km^-1]: {np.sqrt(eigenvals_expon2)*1000}"
     )
-    N_db7 = np.array(
-        [
-            0.1,
-            0.12,
-            0.15,
-            0.17,
-            0.24,
-            0.32,
-            0.36,
-            0.37,
-            0.34,
-            0.25,
-            0.185,
-            0.15,
-            0.135,
-            0.125,
-            0.11,
-            0.105,
-            0.095,
-            0.085,
-            0.077,
-            0.069,
-            0.067,
-            0.06,
-            0.055,
-            0.055,
-            0.05,
-            0.045,
-        ]
+    print(f"Relative error respect to LaCasce const profile: {rel_error_expon2}")
+    print(
+        f"For alpha = 10/H, expected eigenvalues are [km^-1]: {np.sqrt(eigenvals_expon10)*1000}"
     )
-    f = sp.interpolate.interp1d(Z, N_carnation, fill_value="extrapolate")
-    interp_N = f(z)
-    S = (interp_N*2*np.pi/60)**2 /(f_0**2)
-    #S = np.exp(2*z/H)
-    s_param = np.asarray(S, dtype=np.float64)
-    #s_param = np.exp(10*z/H)
-    #s_param = np.ones(n)
-    # S = 1/(1-10*z/H)
-    # S = np.exp(10 * z / H)
-    # S = np.ones(H+1)*1e+04
-    # S = 4.6e-04/BaroclinicModes.coriolis_param(45)**2 * np.ones(H+1)
-    testmodes = TestModes(n, 1, H, 1)
-    #  profile = testmodes.expon_profile(10)
-    depth = -np.linspace(0, testmodes.H, testmodes.n_levels)
-    # print([sp.integrate.trapezoid(profile[:,i]*profile[:,i-1], x=-depth) for i in range(1,profile.shape[1])])
-    grid_step = H/n
-    eigenvals, structfunc = BaroclinicModes.compute_baroclinicmodes(
-        s_param, grid_step= H/n, generalized_method=False
+    print(f"Relative error respect to LaCasce const profile: {rel_error_expon10}")
+    print(
+        f"For Lindzen case, expected eigenvalues are [km^-1]: {np.sqrt(eigenvals_lindzen)*1000}"
     )
-    print(f"Kundu eigenvalues [km^-1]: {1000*np.sqrt(eigenvals)}")
-    # print([sp.integrate.trapezoid(structfunc[100:,i]*structfunc[100:,i], x=-z[100:]/H) for i in range(1,structfunc.shape[1])])
-    # gamma = testmodes.LaCasce_eigenvals("const")
-    #   print(testmodes.from_eigenvals_to_gamma(eigenvals, 10), gamma)
-    # print(profile[-1,:]-profile[-2,:], structfunc[0,:])
-    # plt.figure(figsize=(7, 8))
-    # plt.grid(visible=True)
-    # # plt.plot(profile, depth, "k--")
-    # plt.plot(structfunc[:, :4], z[1:])
-    # plt.show()
-    # plt.figure(figsize=(7, 8))
-    # plt.plot(interp_N, z)
-    # #  plt.show()
-    # plt.close()
-    # BAROCLINIC MODES
-    fig1, ax1 = plt.subplots(figsize=(7, 8))
-    im1 = plt.imread("/mnt/d/Physics/ocean-baroclinic-modes/src/OBM/kundu_modes.png")
-    im1 = ax1.imshow(im1, extent=[-50, 50, -100, 0])
-    ax1.grid(visible=True)
-    structfunc[:,3] *=-1
-    ax1.plot(structfunc[:, :3] / 3 * 50, z[:-1], "r")
-    ax1.plot(structfunc[:, 3] / 3 * 50, z[:-1], "r--")
-    ax1.set_xlabel(
-        "NORMALIZED MODE AMPLITUDE AT CARNATION,\n from Kundu, Allen, Smith (1975)",
-        labelpad=15,
-        fontsize=14,
-    )
-    ax1.set_yticks(np.linspace(-100, 0, 11))
-    ax1.set_yticklabels(
-        ["-100", None, "-80", None, "-60", None, "-40", None, "-20", None, "0"]
-    )
-    ax1.set_xticks(np.linspace(-50, 50, 7))
-    ax1.set_xticklabels(["-3", "-2", "1", "0", "1", "2", "3"])
-    ax1.yaxis.set_tick_params(width=1, length=7)
-    ax1.xaxis.set_tick_params(width=1, length=7)
-    ax1.tick_params(axis="y", direction="in")
-    ax1.tick_params(axis="x", direction="in")
-    ax1.set_ylabel("DEPTH (m)", fontsize=14)
-    ax1.set_xlim(-55, 55)
-    ax1.set_ylim(-100, 0)
-    ax1.xaxis.tick_top()
-    ax1.xaxis.set_label_position("top")
-    ax1.spines["left"].set_position("center")
-    ax1.spines["right"].set_color("none")
-    ax1.legend(["Kundu (1975)", "numerical results REPLICA"])
-  #  plt.show()
-    plt.close()
-    new_test = TestModes(1000,1e-04,1000,1e-04)
-    print(new_test.LaCasce_eigenvals("const"), new_test.LaCasce_eigenvals("exp2")*2, new_test.LaCasce_eigenvals("exp10")*20)
+    print(f"Relative error respect to LaCasce const profile: {rel_error_lindzen}")
+
+    # Plots of Struct Func
+    depth_levels = -np.arange(0.5, mean_depth, 1)
+    run_plots = False
+    if run_plots:
+        # Plot Struct Func comparison
+        const_profile.plot_struct_func(testmodes.const_profile(), depth_levels)
+        expon2_profile.plot_struct_func(testmodes.expon_profile(2), depth_levels)
+        expon10_profile.plot_struct_func(testmodes.expon_profile(10), depth_levels)
+        lindzen_profile.plot_struct_func(testmodes.lindzen_profile(10), depth_levels)
+        # Plot Relative Error
+        const_profile.plot_error(testmodes.const_profile(), depth_levels)
+        expon2_profile.plot_error(testmodes.expon_profile(2), depth_levels)
+        expon10_profile.plot_error(testmodes.expon_profile(10), depth_levels)
+        lindzen_profile.plot_error(testmodes.lindzen_profile(10), depth_levels)

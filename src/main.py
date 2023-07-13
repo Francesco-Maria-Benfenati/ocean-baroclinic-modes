@@ -19,23 +19,6 @@ from OBM.eos import compute_BruntVaisala_freq_sq as compute_BVsq
 from OBM.baroclinic_modes import compute_barocl_modes as modes
 
 
-def LaCasce_rossby_rad(lat_0: float, lat_1: float, eigenvals: float) -> float:
-    """
-    Compute Rossby Radius according to LaCasce, 2020.
-    """
-    c1 = 1 / np.sqrt(eigenvals)
-    earth_angvel = 7.29 * 1e-05  # earth angular velocity (1/s)
-    # coriolis parameter (1/s)
-    coriolis_param_0 = 2 * earth_angvel * np.sin(np.deg2rad(lat_0))
-    coriolis_param_1 = 2 * earth_angvel * np.sin(np.deg2rad(lat_1))
-    mean_lat = (lat_0 + lat_1) / 2
-    mean_coriolis = 2 * earth_angvel * np.sin(np.deg2rad(mean_lat))
-    beta = (coriolis_param_1 - coriolis_param_0) / (lat_1 - lat_0)
-    # beta = 2*earth_angvel*np.cos(np.deg2rad(mean_lat))/6371e+03 # According to Chelto, 1997
-    rossby_rad = c1 / np.sqrt(mean_coriolis**2 + 2 * beta * c1)
-    return rossby_rad
-
-
 if __name__ == "__main__":
     # ======================================================================
     #    *  READ CONFIG FILE AND STORE VARIABLES FROM NetCDF INPUT FILE  *

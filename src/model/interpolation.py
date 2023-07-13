@@ -59,12 +59,16 @@ class Interpolation:
         """
 
         # Delete NaN elements from field (and corresponding dept values).
-        where_nan_field = np.where(np.isnan(field))
-        field_nan_excl = np.delete(field, where_nan_field, None)
-        depth_nan_excl = np.delete(self.depth, where_nan_field, None)
+        # where_nan_field = np.where(np.isnan(field))
+        # field_nan_excl = np.delete(field, where_nan_field, None)
+        # depth_nan_excl = np.delete(self.depth, where_nan_field, None)
 
+        if start is None:
+            start = self.depth[0] - step/2
+        if stop is None:
+            stop = self.depth[-1] + step
         # Create new equally spaced depth array.
-        z = np.arange(start=start, stop=stop, step=step)
+        z = np.arange(start, stop, step)
 
         # Interpolate (distinguish between 3d and 1d fields)
         if field.ndim == 3:
@@ -75,14 +79,27 @@ class Interpolation:
             )
             X, Y, Z = np.meshgrid(x, y, z, indexing="ij")
             interp_profile = interp((X, Y, Z))
+
+        elif field.ndim == 2:
+            interp_profile = np.empty([z.shape[0], field.shape[1]])
+            for i in range(field.shape[1]):
+                interp_func = sp.interpolate.interp1d(
+                    self.depth,
+                    field[:, i],
+                    fill_value="extrapolate",
+                    kind="linear",
+                )
+                interp_profile[:, i] = interp_func(z)
+
         else:
-            f = sp.interpolate.interp1d(
-                depth_nan_excl,
-                field_nan_excl,
+            print(field)
+            interp_func = sp.interpolate.interp1d(
+                self.depth,
+                field,
                 fill_value="extrapolate",
                 kind="linear",
             )
-            interp_profile = f(z)
+            interp_profile = interp_func(z)
         # Return interpolated profile
         return interp_profile
 
