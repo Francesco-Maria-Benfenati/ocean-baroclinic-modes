@@ -92,7 +92,6 @@ class Interpolation:
                 interp_profile[:, i] = interp_func(z)
 
         else:
-            print(field)
             interp_func = sp.interpolate.interp1d(
                 self.depth,
                 field,
