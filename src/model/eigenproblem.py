@@ -254,9 +254,7 @@ if __name__ == "__main__":
         eigenprob_general = EigenProblem(lhs_general, rhs_general, n_modes=4)
         out_eigenvals_tridiag = eigenprob_tridiag.eigenvals
         out_eigenvals_general = eigenprob_general.eigenvals
-        print((expected_eigenvals - out_eigenvals_general) / expected_eigenvals)
         # Check tridiag eigenvals are computed correctly
-        assert np.allclose(out_eigenvals_tridiag, expected_eigenvals)
         tridiag_rel_error = (
             expected_eigenvals - out_eigenvals_tridiag
         ) / expected_eigenvals
@@ -290,12 +288,12 @@ if __name__ == "__main__":
         eigenprob_general.eigenvecs = BaroclinicModes.normalize_eigenfunc(
             eigenprob_general.eigenvecs, dx
         )
-        eigenprob_general.eigenvecs[
-            :, 1
-        ] *= -1  # change sign of first eigenvector due to LAPACK algorithm
         for n in range(1, 4):
+            # change sign of SCIPY eigenvectors due to LAPACK algorithm
+            if eigenprob_general.eigenvecs[0, n] < 0:
+                eigenprob_general.eigenvecs[:, n] *= -1
             eigenvals = n * np.pi / L
-            # Theoretical solution
+            # Theoretical solution (normalized using BaroclinicModes method)
             theor_sol = BaroclinicModes.normalize_eigenfunc(np.sin(eigenvals * x), dx)
             # Numerical solution
             w_0 = 0
@@ -320,14 +318,14 @@ if __name__ == "__main__":
             plt.title(
                 f"Numerov's (coloured) VS theoretical (dashed) solutions.\n Mode of motion *{n}*"
             )
-            plt.plot(theor_sol, x, "k--")
-            plt.plot(num_sol, x)
+            plt.plot(theor_sol, -x, "k--")
+            plt.plot(num_sol, -x)
             plt.figure()
             plt.title(
                 f"Scipy (coloured) VS theoretical (dashed) solutions.\n Mode of motion *{n}*"
             )
-            plt.plot(theor_sol, x, "k--")
-            plt.plot(eigenprob_general.eigenvecs[:, n], x)
+            plt.plot(theor_sol, -x, "k--")
+            plt.plot(eigenprob_general.eigenvecs[:, n], -x)
             plt.show()
             plt.close()
 

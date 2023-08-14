@@ -200,9 +200,6 @@ if __name__ == "__main__":
     rel_error_expon10 = expon10_profile.compare_eigenvals(eigenvals_expon10)
     rel_error_lindzen = lindzen_profile.compare_eigenvals(eigenvals_lindzen)
 
-    print(
-        f"Error is expected to be of order O(10^{(math.floor(math.log((1/mean_depth)**2, 10)))})."
-    )
     print(f"For Const case, expected eigenvalues are [km^-1]: {eigenvals_const*1000}")
     print(f"Relative error respect to LaCasce const profile: {rel_error_const}")
     print(

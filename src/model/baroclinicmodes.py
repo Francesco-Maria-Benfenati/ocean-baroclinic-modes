@@ -119,7 +119,7 @@ class BaroclinicModes:
         eigenvectors: NDArray, s_param: NDArray, dz: float
     ) -> NDArray:
         """
-        Compute structure function from eigenvectors
+        Compute structure function from eigenvectors (if using generalized method).
         """
 
         n_modes = eigenvectors.shape[1]
@@ -347,7 +347,7 @@ class BaroclinicModes:
 if __name__ == "__main__":
     dz = 0.5
     # -----------------------------
-    #  Testing _compute_matrix_A()
+    #  Testing _compute_matrix_A() of generalized problem
     # -----------------------------
     A = (1 / (12 * dz**2)) * np.array(
         [
@@ -362,7 +362,7 @@ if __name__ == "__main__":
     computed_A = BaroclinicModes.lhs_matrix_generalizedprob(8, dz)
     assert np.allclose(A, computed_A)
     # -----------------------------
-    #  Testing _compute_matrix_B()
+    #  Testing _compute_matrix_B() of generalized problem
     # -----------------------------
     n = 1000
     S = np.arange(n)
@@ -370,35 +370,27 @@ if __name__ == "__main__":
     computed_B = BaroclinicModes.rhs_matrix_generalizedprob(S)
     assert np.allclose(B, computed_B)
 
-    """
-    Test if compute_barocl_modes() works whell when depth is taken with
-    negative sign convention.
-    """
+    # Test eigenvalues for nondim constant profile
     n_modes = 3
     H = 2000
     N2_const = np.full(H, 1.0)
-    obm1 = BaroclinicModes(N2_const)
-    obm2 = BaroclinicModes(N2_const)
-    eigval_neg = obm1.eigenvals
-    eigval_pos = obm2.eigenvals
-    assert np.array_equal(eigval_pos, eigval_neg)
-
-    # Test eigenvalues for nondim constant profile
+    obm = BaroclinicModes(N2_const)
+    eigval = obm.eigenvals
     expected_eigenvals = (np.arange(0, 5) * np.pi) ** 2
     print("For const nondimensional case, eigenvalues are lambda = n*pi (n=0,1,2...).")
     print(
-        f"Computed lambdas are {eigval_pos}, with relative errors {(eigval_pos-expected_eigenvals)/expected_eigenvals}"
+        f"Computed lambdas are {eigval}, with relative errors {(eigval-expected_eigenvals)/expected_eigenvals}"
     )
-    print(eigval_pos - expected_eigenvals, (1 / 2000))
+    print(eigval - expected_eigenvals, (1 / 2000))
     # Test generalized method
     eigvals_generalized_case, struct_func = BaroclinicModes.compute_baroclinicmodes(
         N2_const, generalized_method=True
     )
-    print("On the other hans, solving generalized leads to relative error:")
+    print("On the other hand, solving generalized leads to relative error:")
     print((eigvals_generalized_case - expected_eigenvals) / expected_eigenvals)
 
     # Test tridiag matrix
     new_s_param = np.ones(10)
     new_s_param[0], new_s_param[-1] = 0, 0
     new_tridiag = BaroclinicModes.tridiag_matrix_standardprob(new_s_param, 1)
-    print(new_tridiag)
+    print("Tridiagonal matrix is of type:\n", new_tridiag)
