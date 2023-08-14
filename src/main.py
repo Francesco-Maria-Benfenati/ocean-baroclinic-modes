@@ -50,7 +50,7 @@ if __name__ == "__main__":
     # * COMPUTE POTENTIAL DENSITY, BRUNT-VAISALA FREQUENCY & ROSSBY RADIUS *
     # ======================================================================
     # Compute Potential Density from Pot. Temperature & Salinity.
-    pot_density = eos.compute_density(depth_3D, pot_temperature, salinity)
+    pot_density = eos.compute_density(depth_3D/10, pot_temperature, salinity)
 
     # Make 3D depth a 1D array.
     depth = depth_3D[:, 0, 0]
