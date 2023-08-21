@@ -1,11 +1,11 @@
 [experiment]
-    name = "myexp" # name of the simulation
+    name = "test_case_azores" # name of the simulation
     start_datetime = 2017-04-23T00:00:00 # start date of the simulation
     end_datetime = 2017-04-23T00:00:00 # start date of the simulation
     n_modes = 4 # Num. of modes of motion to be computed
     outpath = "./data/test_case/output" # folder where output files are saved
     [experiment.domain]
-        lat = [] # latitude min, max
+        lat = [30, 50] # latitude min, max
         lon = [] # longitude min, max
 [input]
     indata_path = "./data/test_case/dataset_azores/azores_Jan2021.nc" # path to data file(s)
