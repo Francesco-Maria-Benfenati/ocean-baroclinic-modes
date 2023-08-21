@@ -272,6 +272,6 @@ if __name__ == "__main__":
         "2",
         bbox={"boxstyle": "circle", "facecolor": "None", "edgecolor": "black"},
     )
+    plt.figtext(0.29, 0.3, "Mode", fontweigth='bold')
     plt.show()
     plt.close()
-

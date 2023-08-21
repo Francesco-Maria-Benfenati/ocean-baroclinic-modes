@@ -9,245 +9,97 @@ Created on Thu Apr  7 16:10:28 2022
 # BAROCLINIC ROSSBY RADIUS in a defined region.
 # ======================================================================
 import sys
-import subprocess
-import numpy as np
-from netCDF4 import Dataset
 
-from OBM import eos
-import OBM.read_input as read
-from OBM.eos import compute_BruntVaisala_freq_sq as compute_BVsq
-from OBM.baroclinic_modes import compute_barocl_modes as modes
+from argparse import ArgumentParser
+import numpy as np
+import warnings
+
+from model.ncread import ncRead
+from model.eos import Eos
+from model.config import Config
+from model.baroclinicmodes import BaroclinicModes
+from model.interpolation import Interpolation
+from model.bvfreq import BVfreq
 
 
 if __name__ == "__main__":
-    # ======================================================================
-    #    *  READ CONFIG FILE AND STORE VARIABLES FROM NetCDF INPUT FILE  *
-    # ======================================================================
-    # Store config file name
-    config_file_name = sys.argv[1]
+    # READ CONFIG FILE
+    # arg parser to get config file path
+    # usage example: python main.py -c config.toml
+    print("Reading config file ...")
+    parser = ArgumentParser()
+    parser.add_argument("-c", "--config", help="Path to config file", required=True)
+    args, unknown = parser.parse_known_args(sys.argv)
+    # load config
+    config = Config(args.config)
 
-    # Store configuration parameters from JSON config file.
-    config_parameters = read.read_JSON_config_file(
-        config_file_name,
-        section_key="sections",
-        title_key="title",
-        items_key="items",
-        name_key="name",
-        type_key="type",
-        value_key="value",
-    )
-
+    # STORE VARIABLES FROM NetCDF INPUT FILE
+    print("Reading data ...")
+    indata_path = config.input.indata_path
+    read_oce = ncRead(indata_path)
     # Store Potential Temperature, Salinity and mean latitude from NetCDF input file.
-    [salinity, pot_temperature, mean_lat] = read.extract_data_from_NetCDF_input_file(
-        config_parameters
+    oce_dims = config.input.oce.dims
+    # check dimension order in config file
+    try:
+        assert tuple(oce_dims.keys()) == ("time", "lon", "lat", "depth")
+    except AssertionError:
+        warnings.warn("Dimension in config file are not in order time, lon, lat, depth")
+    oce_vars = config.input.oce.vars
+    (
+        pot_temperature,
+        salinity,
+        depth,
+    ) = read_oce.variables(*oce_vars.values())
+    # Transpose dims in the same order as in config file (time, lon, lat, depth)
+    pot_temperature, salinity = read_oce.transpose(
+        pot_temperature, salinity, **oce_dims
     )
-    # Mean depth of the considered region.
-    mean_depth = read.extract_mean_bathy_from_NetCDF_file(config_parameters)
-    # 3D depth array
-    depth_3D = read.extract_depth3D_from_NetCDF_file(config_parameters)
 
-    # ======================================================================
-    # * COMPUTE POTENTIAL DENSITY, BRUNT-VAISALA FREQUENCY & ROSSBY RADIUS *
-    # ======================================================================
+    # STORE SEA FLOOR DEPTH FROM NetCDF BATHYMETRY FILE
+    print("Reading bathymetry ...")
+    inbathy_path = config.input.bathy.inbathy_path
+    read_bathy = ncRead(inbathy_path)
+    bathy_dims = config.input.bathy.dims
+    bathy_vars = config.input.bathy.vars
+    (seafloor_depth,) = read_bathy.variables(*bathy_vars.values())
+
+    # COMPUTE POTENTIAL DENSITY & BRUNT-VAISALA FREQUENCY
+    print("Computing potential density ...")
     # Compute Potential Density from Pot. Temperature & Salinity.
-    pot_density = eos.compute_density(depth_3D/10, pot_temperature, salinity)
-
-    # Make 3D depth a 1D array.
-    depth = depth_3D[:, 0, 0]
-
+    eos = Eos(pot_temperature.values, salinity.values, depth.values)
     # Compute Brunt-Vaisala frequency squared from Potential Density.
     # Store vertical mean potential density as used within the function
     # while computing Brunt-Vaisala frequency squared.
-    mean_pot_density = np.nanmean(pot_density, axis=(1, 2))
-    BV_freq_sq = compute_BVsq(depth, mean_pot_density)
-    BV_freq_sq[np.where(BV_freq_sq < 0)] = np.nan
+    mean_region_density = np.nanmean(eos.density, axis=(0, 1, 2))
+    print("Density mean profile: ", mean_region_density)
 
-    from scipy.signal import butter, lfilter
-    def butter_lowpass(cutoff, fs, order=5):
-        return butter(order, cutoff, fs=fs, btype='low', analog=False)
+    # VERTICAL INTERPOLATION
+    print("Vertically interpolating mean potential density ...")
+    grid_step = 1  # [m]
+    mean_region_depth = seafloor_depth.mean(dim=bathy_dims.values()).values
+    interpolation = Interpolation(depth.values, mean_region_density)
+    (interp_dens,) = interpolation.apply_interpolation(
+        -grid_step / 2, mean_region_depth + grid_step, grid_step
+    )
+    interp_depth = -np.arange(-grid_step / 2, mean_region_depth + grid_step, grid_step)
+    print("Region mean depth: ", mean_region_depth)
+    print("New interpolated depth grid: ", interp_depth)
+    # Compute Brunt-Vaisala freq
+    bv_freq_sqrd = BVfreq.compute_bvfreq_sqrd(interp_depth, interp_dens)
+    bv_freq_sqrd = BVfreq.post_processing(bv_freq_sqrd)
+    bv_freq = np.sqrt(bv_freq_sqrd)
+    print("Brunt-Vaisala frequency profile: ", bv_freq)
+    print("Max BV freq value: ", np.max(bv_freq))
 
-    def butter_lowpass_filter(data, cutoff, fs, order=5):
-        b, a = butter_lowpass(cutoff, fs, order=order)
-        y = lfilter(b, a, data)
-        return y
-    
-    order = 6
-    fs = 30.0       # sample rate, Hz
-    cutoff = 3.667  # desired cutoff frequency of the filter, Hz
-
-    #BV_freq_sq = butter_lowpass_filter(BV_freq_sq, cutoff, fs, order)
-    
-    # ----------------------------------------------------------------
+    # BAROCLINIC MODES & ROSSBY RADIUS
+    print("Computing baroclinic modes and Rossby radii ...")
     # N° of modes of motion considered (including the barotropic one).
-    N_motion_modes = config_parameters["set_modes"]["n_modes"]
-    # ----------------------------------------------------------------
-    mean_depth = int(mean_depth)
-    depth = depth[: mean_depth + 1]
-    BV_freq_sq = BV_freq_sq[: mean_depth + 1]
+    N_motion_modes = config.experiment.n_modes
+    mean_lat = np.mean(np.array(config.experiment.domain.lat))
     # Compute baroclinic Rossby radius and vert. struct. function Phi(z).
-    eigenvals, Phi = modes(depth, mean_lat, BV_freq_sq, N_motion_modes)
-    R = 1 / (np.sqrt(eigenvals)*1000)  # Rossby radius in [m]
-    # coriolis parameter (1/s)
-    print(f"eigenvalues [km^-1]: {np.sqrt(eigenvals)*1000}")
+    baroclinicmodes = BaroclinicModes(bv_freq, mean_lat, grid_step)
+    R = 1 / (np.sqrt(baroclinicmodes.eigenvals) * 1000)  # Rossby radius in [km]
     print(f"Rossby radii [km]: {R}")
 
-    # ======================================================================
-    #                  *  WRITE RESULTS ON OUTPUT FILE  *
-    # ======================================================================
-    # -----------------------------------------------------------------------
-    # Set output path and directory.
-    # -----------------------------------------------------------------------
-    # Store input path and experiment name.
-    set_paths = config_parameters["set_paths"]
-    in_path = set_paths["indata_path"]
-    exp_name = set_paths["experiment_name"]
-
-    # Make output path coherent with input path (wether on
-    # windows or linux/mac)
-    if in_path[-1] == "\\":
-        path_end = "\\"
-        option = ""
-        shell_val = True
-    else:
-        path_end = "/"
-        option = "-p"
-        shell_val = False
-
-    # Create directory for exp outputs within input data directory.
-    output_dir = exp_name + path_end
-    subprocess.run(["mkdir", option, in_path + output_dir], shell=shell_val)
-
-    # -----------------------------------------------------------------------
-    # Create output file.
-    # -----------------------------------------------------------------------
-    # Create output path and file name
-    output_path = in_path + output_dir + path_end
-    output_name = exp_name + "_output.nc"
-
-    # Open output file for writing
-    out_file = Dataset(output_path + output_name, "w", format="NETCDF4")
-
-    # -----------------------------------------------------------------------
-    # Create dimensions and store variables.
-    # -----------------------------------------------------------------------
-    # Create time, lat, lon, depth dimensions.
-    len_depth = len(depth)
-    out_file.createDimension("time", 1)
-    out_file.createDimension("latitude", 1)
-    out_file.createDimension("longitude", 1)
-    out_file.createDimension("depth", len_depth)
-    # Create equally spaced depth grid for R, Phi.
-    out_file.createDimension("nondim_depth", len(Phi[:, 0]))
-    del len_depth
-
-    # Create mode of motion dimension (only for R and Phi)
-    out_file.createDimension("mode", N_motion_modes)
-
-    # Create time variable.
-    time_var = out_file.createVariable("time", np.int32, "time")
-    time_var[:] = 1
-    time_var.long_name = "time"
-    time_var.standard_name = "time"
-
-    # Create latitude variable.
-    lat_var = out_file.createVariable("latitude", np.int32, "latitude")
-    lat_var[:] = 1
-    lat_var.long_name = "latitude"
-    lat_var.standard_name = "latitude"
-
-    # Create longitude variable.
-    lon_var = out_file.createVariable("longitude", np.int32, "longitude")
-    lon_var[:] = 1
-    lon_var.long_name = "longitude"
-    lon_var.standard_name = "longitude"
-
-    # Create depth variable.
-    depth_var = out_file.createVariable("depth", np.float32, "depth")
-    depth_var[:] = depth
-    depth_var.valid_min = 0.0
-    depth_var.valid_max = max(depth)
-    depth_var.mean_depth = mean_depth
-    depth_var.unit_long = "meters"
-    depth_var.units = "m"
-    depth_var.long_name = "depth below sea level"
-    depth_var.standard_name = "depth"
-
-    # Create depth variable.
-    new_depth_var = out_file.createVariable("nondim_depth", np.float32, "nondim_depth")
-    new_depth_var[:] = np.linspace(0, 1, len(Phi[:, 0]))
-    new_depth_var.valid_min = 0
-    new_depth_var.valid_max = 1
-    new_depth_var.grid_step = "1m/H"
-    new_depth_var.unit_long = "dimensionless"
-    new_depth_var.units = "1"
-    new_depth_var.long_name = "non-dimensional depth below sea level"
-    new_depth_var.standard_name = "non_dim_depth_grid"
-
-    # Create modes variable.
-    mode_var = out_file.createVariable("mode", np.int32, "mode")
-    mode_var[:] = [i for i in range(N_motion_modes)]
-    mode_var.long_name = "modes of motion considered"
-    mode_var.standard_name = "modes_of_motion"
-
-    # Create vertical mean density variable .
-    dens_var = out_file.createVariable(
-        "mean_density", np.float32, ("time", "latitude", "longitude", "depth")
-    )
-    dens_var[:] = mean_pot_density
-    dens_var.unit_long = "kilograms per meter cube"
-    dens_var.units = "kg/m^3"
-    dens_var.long_name = "averaged density"
-    dens_var.standard_name = "mean_sea_water_potential_density"
-
-    # Create Brunt-Vaisala frequency variable.
-    BVfreq_var = out_file.createVariable(
-        "BVfreq", np.float32, ("time", "latitude", "longitude", "depth")
-    )
-    BVfreq_var[:] = np.sqrt(BV_freq_sq)
-    BVfreq_var.unit_long = "cycles per second"
-    BVfreq_var.units = "cycles/s"
-    BVfreq_var.long_name = "Brunt-Vaisala frequency"
-    BVfreq_var.standard_name = "BV_frequency"
-
-    # Create baroclinic Rossby radius variable.
-    Ross_rad_var = out_file.createVariable(
-        "R", np.float32, ("time", "latitude", "longitude", "mode")
-    )
-    Ross_rad_var[:] = R
-    Ross_rad_var.unit_long = "meters"
-    Ross_rad_var.units = "m"
-    Ross_rad_var.long_name = "Rossby deformation radius"
-    Ross_rad_var.standard_name = "Rossby_radius"
-
-    # Create baroclinic Rossby radius variable.
-    Phi_var = out_file.createVariable(
-        "Phi", np.float32, ("time", "latitude", "longitude", "nondim_depth", "mode")
-    )
-    Phi_var[:] = Phi
-    Phi_var.unit_long = "dimensionless"
-    Phi_var.units = "1"
-    Phi_var.long_name = "vertical structure function"
-    Phi_var.standard_name = "structure_func"
-
-    # Add modes attribute.
-    dens_var.modes = ""  # no legend for density
-    BVfreq_var.modes = ""  # no legend for BVfreq
-    # Modes for R & Phi.
-    modes_array = ["barotropic mode"]
-    for i in range(1, N_motion_modes):
-        modes_array.append("%s° baroclinic mode" % (i))
-    Phi_var.modes = modes_array
-    Ross_rad_var.modes = modes_array
-
-    # Add global attributes to file.
-    out_file.region = config_parameters["set_paths"]["region_name"]
-    out_file.period = config_parameters["set_time"]["period_name"]
-    out_file.starting_time = config_parameters["set_time"]["starting_time"]
-    out_file.ending_time = config_parameters["set_time"]["ending_time"]
-    out_file.lat_min = config_parameters["set_domain"]["lat_min"]
-    out_file.lat_max = config_parameters["set_domain"]["lat_max"]
-    out_file.lon_min = config_parameters["set_domain"]["lon_min"]
-    out_file.lon_max = config_parameters["set_domain"]["lon_max"]
-
-    # Close output file.
-    out_file.close()
+    # WRITE RESULTS ON OUTPUT FILE
+    print("Writing output file ...")
