@@ -364,3 +364,33 @@ if __name__ == "__main__":
     # Test conversion from pressure to depth.
     # From UNESCO documentation.
     assert np.isclose(Eos.press2depth(10000, 30), 9712.653)
+
+    # Check if it works for 3D array and 1D depth
+    test_sal = np.ones([3, 10, 2, 15]) * 24262
+    test_temp = np.ones_like(test_sal) * 25
+    test_depth = np.ones_like(test_sal) * 10
+    test_3d = Eos.compute_density(test_sal, test_temp, test_depth)
+    print("Testing 4D sal, temp and 1D depth ...")
+    try:
+        Eos.compute_density(test_sal, test_temp, test_depth[:, 0, 0, 0])
+    except ValueError:
+        print("Does not work along axis 0")
+    try:
+        Eos.compute_density(test_sal, test_temp, test_depth[0, :, 0, 0])
+    except ValueError:
+        print("Does not work along axis 1")
+    try:
+        Eos.compute_density(test_sal, test_temp, test_depth[0, 0, :, 0])
+    except ValueError:
+        print("Does not work along axis 2, if dimensions are 4")
+    try:
+        Eos.compute_density(
+            test_sal[:, 0, :, :], test_temp[:, 0, :, :], test_depth[0, 0, 0, :]
+        )
+        print("Works along axis 2, if dimensions are 3")
+    except ValueError:
+        assert False
+    test_1d = Eos.compute_density(test_sal, test_temp, test_depth[0, 0, 0, :])
+    assert np.array_equal(test_3d, test_1d)
+    print("Works along axis 3, if dimensions are 4")
+    print("Only works along LAST array axis.")

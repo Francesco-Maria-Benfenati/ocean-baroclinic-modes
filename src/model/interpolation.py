@@ -50,7 +50,7 @@ class Interpolation:
         step: float,
     ) -> NDArray:
         """
-        Interpolate B-V freq. squared on a new equally spaced depth grid.
+        Interpolate on a new equally spaced depth grid.
 
         Args:
             start (float): upper depth
@@ -58,42 +58,26 @@ class Interpolation:
             step (float): grid step
         """
 
-        # Delete NaN elements from field (and corresponding dept values).
-        # where_nan_field = np.where(np.isnan(field))
-        # field_nan_excl = np.delete(field, where_nan_field, None)
-        # depth_nan_excl = np.delete(self.depth, where_nan_field, None)
-
-        if start is None:
-            start = self.depth[0] - step/2
-        if stop is None:
-            stop = self.depth[-1] + step
         # Create new equally spaced depth array.
         z = np.arange(start, stop, step)
+        # Remove NaN values
+        depth = np.delete(self.depth, np.where(np.isnan(field)))
+        field = np.delete(field, np.where(np.isnan(field)), axis=-1)
 
         # Interpolate (distinguish between 3d and 1d fields)
         if field.ndim == 3:
+            # Remove NaN values
             x = np.arange(field.shape[0])
             y = np.arange(field.shape[1])
             interp = RegularGridInterpolator(
-                (x, y, self.depth), field, bounds_error=False, fill_value=None
+                (x, y, depth), field, bounds_error=False, fill_value=None
             )
             X, Y, Z = np.meshgrid(x, y, z, indexing="ij")
             interp_profile = interp((X, Y, Z))
 
-        elif field.ndim == 2:
-            interp_profile = np.empty([z.shape[0], field.shape[1]])
-            for i in range(field.shape[1]):
-                interp_func = sp.interpolate.interp1d(
-                    self.depth,
-                    field[:, i],
-                    fill_value="extrapolate",
-                    kind="linear",
-                )
-                interp_profile[:, i] = interp_func(z)
-
         else:
             interp_func = sp.interpolate.interp1d(
-                self.depth,
+                depth,
                 field,
                 fill_value="extrapolate",
                 kind="linear",
@@ -101,35 +85,6 @@ class Interpolation:
             interp_profile = interp_func(z)
         # Return interpolated profile
         return interp_profile
-
-    @staticmethod
-    def interpolate_at_interface(depth: NDArray, field: NDArray) -> NDArray:
-        """
-        Interpolate vertically at interfaces +/- 1/2.
-
-        :returns : interface depths and interpolated field
-        """
-
-        depth_levels = np.arange(len(depth))
-        interface_levels = np.arange(len(depth) + 1)
-        f1 = sp.interpolate.interp1d(
-            depth_levels, depth, fill_value="extrapolate", kind="linear"
-        )
-        interface_depth = f1(interface_levels)
-        if field.ndim == 3:
-            x = np.arange(field.shape[0])
-            y = np.arange(field.shape[1])
-            f2 = RegularGridInterpolator(
-                (x, y, depth_levels), field, bounds_error=False, fill_value=None
-            )
-            X, Y, Z = np.meshgrid(x, y, interface_levels, indexing="ij")
-            interface_field = f2((X, Y, Z))
-        else:
-            f2 = sp.interpolate.interp1d(
-                depth_levels, field, fill_value="extrapolate", kind="linear"
-            )
-            interface_field = f2(interface_levels)
-        return interface_depth, interface_field
 
 
 if __name__ == "__main__":
@@ -176,6 +131,9 @@ if __name__ == "__main__":
     interp_result = interp3d.apply_interpolation(0, 100, 1)[0]
     assert interp_result.shape == (12, 13, 100)
     print("OK: vertical interpolation works for 3D array.")
-    interface_depth, interface_field = Interpolation.interpolate_at_interface(z, arr3d)
-    assert interface_field.shape == (12, 13, n_steps + 1)
-    print("OK: vertical interpolation *at interfaces* works for 3D array.")
+
+    # Test NaN interpolation
+    test_arr = np.array([0, 1, 2, np.nan, 4, np.nan, 6])
+    interp = Interpolation(np.arange(7), test_arr)
+    interp_arr = interp.apply_interpolation(0, 7, 1)
+    assert np.allclose(interp_arr, np.arange(7))
