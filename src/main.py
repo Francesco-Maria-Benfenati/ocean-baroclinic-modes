@@ -115,7 +115,7 @@ def main() -> None:
     print("Region mean depth: ", mean_region_depth)
     print("New interpolated depth grid: ", interp_depth)
 
-    # COMPUTE POTENTIAL DENSITY & BRUNT-VAISALA FREQUENCY
+    # COMPUTE BRUNT-VAISALA FREQUENCY
     bv_freq_sqrd = BVfreq.compute_bvfreq_sqrd(interp_depth, interp_dens)
     bv_freq_sqrd = BVfreq.post_processing(bv_freq_sqrd)
     bv_freq = np.sqrt(bv_freq_sqrd)
