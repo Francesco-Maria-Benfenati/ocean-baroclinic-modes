@@ -9,9 +9,9 @@ Created on Thu Apr  7 16:10:28 2022
 # BAROCLINIC ROSSBY RADIUS in a defined region.
 # ======================================================================
 import sys
+import numpy as np
 
 from argparse import ArgumentParser
-import numpy as np
 import warnings
 
 from model.ncread import ncRead
@@ -21,8 +21,38 @@ from model.baroclinicmodes import BaroclinicModes
 from model.interpolation import Interpolation
 from model.bvfreq import BVfreq
 
+import concurrent.futures
+import time
+from tqdm import tqdm
 
-if __name__ == "__main__":
+
+def timed_future_progress_bar(future, expected_time=60, increments=100):
+    """
+    ** BETA VERSION **
+    Display progress bar for expected_time seconds.
+    Complete early if future completes.
+    Wait for future if it doesn't complete in expected_time.
+    """
+    interval = expected_time / increments
+    with tqdm(total=increments) as pbar:
+        for i in range(increments - 1):
+            if future.done():
+                # finish the progress bar
+                pbar.update(increments - i)
+                return
+            else:
+                time.sleep(interval)
+                pbar.update()
+        # if the future still hasn't completed, wait for it.
+        future.result()
+        pbar.update()
+
+
+def main() -> None:
+    """
+    Main code for running the model.
+    """
+
     # READ CONFIG FILE
     # arg parser to get config file path
     # usage example: python main.py -c config.toml
@@ -63,7 +93,7 @@ if __name__ == "__main__":
     bathy_vars = config.input.bathy.vars
     (seafloor_depth,) = read_bathy.variables(*bathy_vars.values())
 
-    # COMPUTE POTENTIAL DENSITY & BRUNT-VAISALA FREQUENCY
+    # COMPUTE POTENTIAL DENSITY
     print("Computing potential density ...")
     # Compute Potential Density from Pot. Temperature & Salinity.
     eos = Eos(pot_temperature.values, salinity.values, depth.values)
@@ -73,7 +103,7 @@ if __name__ == "__main__":
     mean_region_density = np.nanmean(eos.density, axis=(0, 1, 2))
     print("Density mean profile: ", mean_region_density)
 
-    # VERTICAL INTERPOLATION
+    # VERTICAL INTERPOLATION (1m grid step)
     print("Vertically interpolating mean potential density ...")
     grid_step = 1  # [m]
     mean_region_depth = seafloor_depth.mean(dim=bathy_dims.values()).values
@@ -84,7 +114,8 @@ if __name__ == "__main__":
     interp_depth = -np.arange(-grid_step / 2, mean_region_depth + grid_step, grid_step)
     print("Region mean depth: ", mean_region_depth)
     print("New interpolated depth grid: ", interp_depth)
-    # Compute Brunt-Vaisala freq
+
+    # COMPUTE POTENTIAL DENSITY & BRUNT-VAISALA FREQUENCY
     bv_freq_sqrd = BVfreq.compute_bvfreq_sqrd(interp_depth, interp_dens)
     bv_freq_sqrd = BVfreq.post_processing(bv_freq_sqrd)
     bv_freq = np.sqrt(bv_freq_sqrd)
@@ -103,3 +134,10 @@ if __name__ == "__main__":
 
     # WRITE RESULTS ON OUTPUT FILE
     print("Writing output file ...")
+
+
+if __name__ == "__main__":
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+        future = pool.submit(main)
+        timed_future_progress_bar(future)
+        print("Computing QG Baroclinic Modes COMPLETED.")
