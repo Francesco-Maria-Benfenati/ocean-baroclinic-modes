@@ -1,5 +1,5 @@
 [experiment]
-    name = "myexp" # name of the simulation
+    name = "baroclinic_modes" # name of the simulation
     start_datetime = 2017-04-23T00:00:00 # start date of the simulation
     end_datetime = 2017-04-23T00:00:00 # start date of the simulation
     n_modes = 4 # Num. of modes of motion to be computed

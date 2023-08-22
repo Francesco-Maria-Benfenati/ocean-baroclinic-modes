@@ -5,22 +5,33 @@ from numpy.typing import NDArray
 class Eos:
     """
     This class is for computing density through the Equation of State.
+
+    NOTE: EoS is computed exploiting POTENTIAL temperature (not "in situ")
     """
 
-    def __init__(self, sal: float, temp: float, depth: float) -> None:
+    def __init__(self, sal: float, pot_temp: float, depth: float) -> None:
+        """
+        Class constructor, computes density and set it as attribute.
+
+        Args:
+            sal (float): salinity [PSU]
+            pot_temp (float): potential temperature [°C]
+            depth (float): depth coordinate [m]
+        """
+
         self.sal = sal
-        self.temp = temp
+        self.temp = pot_temp
         self.depth = depth
         # Convert pressure to depth
         press = Eos.depth2press(depth)
         # Convert pressure from dbars to bars
         press_bars = press / 10
-        self.density = Eos.compute_density(sal, temp, press_bars)
+        self.density = Eos.compute_density(self.sal, self.temp, press_bars)
 
     @staticmethod
     def compute_density(sal: float, temp: float, press: float) -> float:
         """
-        Compute potential density from salinity and potential temperature.
+        Compute density from salinity and potential temperature.
 
         NOTE: pressure is expressed in BARS, not dbars!!!
 
@@ -42,7 +53,7 @@ class Eos:
         Returns
         -------
         density : <numpy.ndarray>
-            potential density [kg/(m^3)]
+            density [kg/(m^3)]
 
 
         The Eq. Of Seawater used is the one implemented in NEMO:
@@ -97,7 +108,7 @@ class Eos:
         B = Eos.__compute_B(temp, sal)
 
         # ==================================================================
-        # Compute IN SITU POTENTIAL DENSITY IN TERMS OF DEPTH. The above
+        # Compute IN SITU DENSITY IN TERMS OF DEPTH. The above
         # coeffients of terms in K(sal, temp, p) have been modified
         # consistently with Jackett and McDougall (1994).
         #

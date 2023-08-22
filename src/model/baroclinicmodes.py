@@ -37,13 +37,13 @@ class BaroclinicModes:
             s_param, grid_step
         )
         # Rossby deformation radius
-        self.deformrad = BaroclinicModes.rossby_rad(self.eigenvals)
+        self.rossbyrad = BaroclinicModes.rossby_rad(self.eigenvals)
 
     @staticmethod
     def compute_baroclinicmodes(
         s_param: NDArray,
         grid_step: float = None,
-        n_modes: int = 5,
+        n_modes: int = 4,
         generalized_method: bool = False,
     ) -> tuple[NDArray]:
         """
@@ -158,7 +158,7 @@ class BaroclinicModes:
         Compute Rossby Radius given the eigenvalue(s).
         """
 
-        rossby_rad = 1 / (np.sqrt(eigenvalue) * 2 * np.pi)
+        rossby_rad = 1 / (np.sqrt(eigenvalue))
         return rossby_rad
 
     @staticmethod
@@ -394,3 +394,7 @@ if __name__ == "__main__":
     new_s_param[0], new_s_param[-1] = 0, 0
     new_tridiag = BaroclinicModes.tridiag_matrix_standardprob(new_s_param, 1)
     print("Tridiagonal matrix is of type:\n", new_tridiag)
+
+    # Test 3D array
+    N_const = np.ones([15,20,50])
+    baroclinic = BaroclinicModes(N_const)

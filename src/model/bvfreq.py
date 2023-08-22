@@ -32,7 +32,7 @@ class BVfreq:
         depth : <class 'numpy.ndarray'>
             depth  [m]
         mean_density : <class 'numpy.ndarray'>
-            mean potential density vertical profile [kg/(m^3)],
+            mean density vertical profile [kg/(m^3)],
             defined on z grid
         Returns
         -------
@@ -53,7 +53,7 @@ class BVfreq:
         # Take absolute value of depth with neg sign.
         # Only if values are all positive or all negative.
         if np.all(np.sign(depth) < 0) or np.all(np.sign(depth) > 0):
-            depth = -np.abs(depth)
+            depth = np.abs(depth)
         # Defining value of gravitational acceleration.
         g = 9.806  # (m/s^2)
         # Defining value of reference density rho_0.
@@ -61,7 +61,7 @@ class BVfreq:
         # Compute Brunt-Vaisala frequency
         dz = depth[..., 1:] - depth[..., :-1]
         density_diff = density[..., 1:] - density[..., :-1]
-        bvfreq_sqrd = -(g / rho_0) * density_diff / dz
+        bvfreq_sqrd = - (g / rho_0) * density_diff / dz
         return bvfreq_sqrd
 
     @staticmethod
@@ -111,6 +111,7 @@ if __name__ == "__main__":
     result_linear = BVfreq.compute_bvfreq_sqrd(depth, linear_density)
     result_expon = BVfreq.compute_bvfreq_sqrd(depth, expon_density)
     assert np.allclose(result_const, expected_bvfreqsqrd_const)
+    print(result_linear)
     assert np.allclose(result_linear, expected_bvfreqsqrd_linear)
     print(
         f"For LINEAR case, relative error is of order {np.mean(np.abs(result_linear - expected_bvfreqsqrd_linear)/expected_bvfreqsqrd_linear)}"
@@ -149,7 +150,7 @@ if __name__ == "__main__":
         f"Due to interpolation, error is now: {np.mean((np.abs(bvfreq_3d[:,2,:] - expected_bvfreqsqrd_expon)/expected_bvfreqsqrd_expon))}"
     )
 
-    test_arr = np.array([0, -1, 2, np.nan, 4, -5, 6])
+    test_arr = np.array([np.nan, -1, 2, np.nan, 4, -5, 6])
     processed_arr = BVfreq.post_processing(test_arr)
     assert np.allclose(processed_arr, np.arange(7))
     print("OK post-processing for removing NaN and NEG values.")

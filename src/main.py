@@ -1,18 +1,14 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Apr  7 16:10:28 2022
-
-@author: Francesco M. Benfenati
-"""
 # ======================================================================
 # MAIN FILE recalling the functions implemented for computing the
 # BAROCLINIC ROSSBY RADIUS in a defined region.
 # ======================================================================
-import sys
-import numpy as np
-
-from argparse import ArgumentParser
+import sys, os
+import time
+import logging
 import warnings
+import numpy as np
+import scipy as sp
+from argparse import ArgumentParser
 
 from model.ncread import ncRead
 from model.eos import Eos
@@ -20,38 +16,12 @@ from model.config import Config
 from model.baroclinicmodes import BaroclinicModes
 from model.interpolation import Interpolation
 from model.bvfreq import BVfreq
-
-import concurrent.futures
-import time
-from tqdm import tqdm
+from model.ncwrite import ncWrite
 
 
-def timed_future_progress_bar(future, expected_time=60, increments=100):
-    """
-    ** BETA VERSION **
-    Display progress bar for expected_time seconds.
-    Complete early if future completes.
-    Wait for future if it doesn't complete in expected_time.
-    """
-    interval = expected_time / increments
-    with tqdm(total=increments) as pbar:
-        for i in range(increments - 1):
-            if future.done():
-                # finish the progress bar
-                pbar.update(increments - i)
-                return
-            else:
-                time.sleep(interval)
-                pbar.update()
-        # if the future still hasn't completed, wait for it.
-        future.result()
-        pbar.update()
-
-
-def main() -> None:
-    """
-    Main code for running the model.
-    """
+if __name__ == "__main__":
+    # Get starting time
+    start_time = time.time()
 
     # READ CONFIG FILE
     # arg parser to get config file path
@@ -93,34 +63,26 @@ def main() -> None:
     bathy_vars = config.input.bathy.vars
     (seafloor_depth,) = read_bathy.variables(*bathy_vars.values())
 
-    # COMPUTE POTENTIAL DENSITY
-    print("Computing potential density ...")
-    # Compute Potential Density from Pot. Temperature & Salinity.
+    # COMPUTE DENSITY
+    print("Computing density ...")
+    # Compute Density from Pot. Temperature & Salinity.
     eos = Eos(pot_temperature.values, salinity.values, depth.values)
-    # Compute Brunt-Vaisala frequency squared from Potential Density.
-    # Store vertical mean potential density as used within the function
-    # while computing Brunt-Vaisala frequency squared.
     mean_region_density = np.nanmean(eos.density, axis=(0, 1, 2))
-    print("Density mean profile: ", mean_region_density)
 
     # VERTICAL INTERPOLATION (1m grid step)
-    print("Vertically interpolating mean potential density ...")
+    print("Vertically interpolating mean density ...")
     grid_step = 1  # [m]
     mean_region_depth = seafloor_depth.mean(dim=bathy_dims.values()).values
     interpolation = Interpolation(depth.values, mean_region_density)
     (interp_dens,) = interpolation.apply_interpolation(
         -grid_step / 2, mean_region_depth + grid_step, grid_step
     )
-    interp_depth = -np.arange(-grid_step / 2, mean_region_depth + grid_step, grid_step)
-    print("Region mean depth: ", mean_region_depth)
-    print("New interpolated depth grid: ", interp_depth)
+    interp_depth = np.arange(-grid_step / 2, mean_region_depth + grid_step, grid_step)
 
     # COMPUTE BRUNT-VAISALA FREQUENCY
     bv_freq_sqrd = BVfreq.compute_bvfreq_sqrd(interp_depth, interp_dens)
     bv_freq_sqrd = BVfreq.post_processing(bv_freq_sqrd)
     bv_freq = np.sqrt(bv_freq_sqrd)
-    print("Brunt-Vaisala frequency profile: ", bv_freq)
-    print("Max BV freq value: ", np.max(bv_freq))
 
     # BAROCLINIC MODES & ROSSBY RADIUS
     print("Computing baroclinic modes and Rossby radii ...")
@@ -129,15 +91,57 @@ def main() -> None:
     mean_lat = np.mean(np.array(config.experiment.domain.lat))
     # Compute baroclinic Rossby radius and vert. struct. function Phi(z).
     baroclinicmodes = BaroclinicModes(bv_freq, mean_lat, grid_step)
-    R = 1 / (np.sqrt(baroclinicmodes.eigenvals) * 1000)  # Rossby radius in [km]
-    print(f"Rossby radii [km]: {R}")
+    rossby_rad = baroclinicmodes.rossbyrad / 1000  # Rossby radius in [km]
+    # Set Rossby radius of mode 0 (barotropic) as NaN
+    if rossby_rad[0] > 1e04:
+        rossby_rad[0] = np.nan
+    structure_func = baroclinicmodes.structfunc
+    print(f"Rossby radii [km]: {rossby_rad}")
 
     # WRITE RESULTS ON OUTPUT FILE
     print("Writing output file ...")
+    ncwrite = ncWrite(config.experiment.outpath, filename=config.experiment.name)
+    dims = ["mode"]
+    modes_of_motion = np.arange(0, config.experiment.n_modes)
+    # Rossby radii dataset
+    radii_dataset = ncwrite.create_dataset(
+        dims="mode", coords={"mode": modes_of_motion}, rossbyrad=rossby_rad
+    )
+    # Vertical profiles dataset
+    # Interpolate Brunt-Vaisala frequency over original depth levels
+    interface_depths = np.arange(0, mean_region_depth, grid_step)
+    interpolate = sp.interpolate.interp1d(
+        interface_depths,
+        bv_freq,
+        fill_value="extrapolate",
+        kind="linear",
+    )
+    interp_bvfreq = interpolate(depth)
+    vertical_profiles_dataset = ncwrite.create_dataset(
+        dims="depth",
+        coords={"depth": depth.values},
+        density=mean_region_density,
+        bvfreq=interp_bvfreq,
+    )
+    # Vertical structure function dataset
+    # Interpolate vertical structure function over original depth levels
+    interpolate = sp.interpolate.interp1d(
+        -interp_depth[1:-1],
+        structure_func,
+        fill_value="extrapolate",
+        kind="linear",
+        axis=0,
+    )
+    interp_structfunc = interpolate(depth)
+    vert_struct_func_dataset = ncwrite.create_dataset(
+        dims=["depth", "mode"],
+        coords={"mode": modes_of_motion, "depth": depth.values},
+        structfunc=interp_structfunc,
+    )
+    ncwrite.save(radii_dataset, vert_struct_func_dataset, vertical_profiles_dataset)
 
-
-if __name__ == "__main__":
-    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-        future = pool.submit(main)
-        timed_future_progress_bar(future)
-        print("Computing QG Baroclinic Modes COMPLETED.")
+    # Get ending time
+    end_time = time.time()
+    # Print elapsed time
+    elapsed_time = np.round(end_time - start_time, decimals=2)
+    print(f"Computing Ocean Baroclinic Modes COMPLETED in {elapsed_time} seconds.")
