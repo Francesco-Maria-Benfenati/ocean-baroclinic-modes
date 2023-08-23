@@ -61,7 +61,7 @@ class BVfreq:
         # Compute Brunt-Vaisala frequency
         dz = depth[..., 1:] - depth[..., :-1]
         density_diff = density[..., 1:] - density[..., :-1]
-        bvfreq_sqrd = - (g / rho_0) * density_diff / dz
+        bvfreq_sqrd = (g / rho_0) * density_diff / dz
         return bvfreq_sqrd
 
     @staticmethod
@@ -83,8 +83,8 @@ if __name__ == "__main__":
     # Density profiles
     H = 2000  # bottom depth in [m]
     dz = 1  # grid step [m]
-    depth = -np.arange(-dz / 2, H + (3 / 2) * dz, step=dz)  # depth < 0
-    interface = -np.arange(0, H + dz, step=dz)
+    depth = np.arange(-dz / 2, H + (3 / 2) * dz, step=dz)  # depth < 0
+    interface = np.arange(0, H + dz, step=dz)
     print("depth levels at: ", depth)
     print("interfaces at: ", interface)
     # NOTE: while density is defined on depth levels, BVfreq is defined on interface levels.
@@ -99,19 +99,20 @@ if __name__ == "__main__":
     const_density = np.full([len_z], rho_0)
     expected_bvfreqsqrd_const = np.full([len_int], 0.0)
     # Case LINEAR rho(z) = a * z/H + rho_0, z < 0 --> N^2 = g*a/(H*rho_0)
-    coeff = 0.12  # kh/m^3
+    coeff = 10  # kg/m^3
     g = 9.806  # (m/s^2)
-    linear_density = -coeff * depth / H + rho_0
+    linear_density = coeff * depth / H + rho_0
     expected_bvfreqsqrd_linear = ((g * coeff) / (H * rho_0)) * np.ones(len_int)
     # Case EXPON rho(z) = rho_0 * exp(a*z/H), z < 0 --> N^2 = g*a*exp(a*z)/H
-    expon_density = rho_0 * np.exp(-coeff * depth / H)
-    expected_bvfreqsqrd_expon = g * coeff * (1 / H) * np.exp(-coeff * interface / H)
+    coeff = 0.01  # kg/m^3
+    expon_density = rho_0 * np.exp(coeff * depth / H)
+    expected_bvfreqsqrd_expon = g * coeff * (1 / H) * np.exp(coeff * interface / H)
+
     # Numerical results.
     result_const = BVfreq.compute_bvfreq_sqrd(depth, const_density)
     result_linear = BVfreq.compute_bvfreq_sqrd(depth, linear_density)
     result_expon = BVfreq.compute_bvfreq_sqrd(depth, expon_density)
     assert np.allclose(result_const, expected_bvfreqsqrd_const)
-    print(result_linear)
     assert np.allclose(result_linear, expected_bvfreqsqrd_linear)
     print(
         f"For LINEAR case, relative error is of order {np.mean(np.abs(result_linear - expected_bvfreqsqrd_linear)/expected_bvfreqsqrd_linear)}"
@@ -150,7 +151,7 @@ if __name__ == "__main__":
         f"Due to interpolation, error is now: {np.mean((np.abs(bvfreq_3d[:,2,:] - expected_bvfreqsqrd_expon)/expected_bvfreqsqrd_expon))}"
     )
 
-    test_arr = np.array([np.nan, -1, 2, np.nan, 4, -5, 6])
+    test_arr = np.array([np.nan, np.nan, -1, 2, np.nan, 4, -5, 6])
     processed_arr = BVfreq.post_processing(test_arr)
-    assert np.allclose(processed_arr, np.arange(7))
+    assert np.allclose(processed_arr, np.arange(-1, 7))
     print("OK post-processing for removing NaN and NEG values.")
