@@ -1,9 +1,8 @@
 import os
 import xarray as xr
-from xarray import DataArray, Dataset, Variable
+from xarray import Dataset, Variable
 import numpy as np
 import pandas as pd
-from datetime import datetime, timedelta
 from numpy.typing import NDArray
 
 
@@ -23,11 +22,81 @@ class ncRead:
             inpath = os.path.join(inpath, "*.nc")
         self.path = inpath
 
+    def dataset(
+        self,
+        dims: dict[str],
+        vars: dict[str] = None,
+        coords: dict[str] = None,
+        **domain: dict[list],
+    ) -> Dataset:
+        """
+        Extract Dataset out of a NetCDF file, given dimensions and variables.
+        NOTE: if coords is not None,
+        """
+        try:
+            dataset = xr.open_mfdataset(
+                self.path,
+                concat_dim=None,
+                combine="by_coords",
+                parallel=True,
+                # engine="h5netcdf",
+                engine="netcdf4",
+                cache=True,
+                lock=False,
+                decode_times=True,
+            )
+        except ValueError:
+            dataset = xr.open_dataset(self.path)
+        if vars is not None:
+            # check that the variables are in the dataset
+            for key in vars.values():
+                assert key in dataset.var(), f"Variable {key} not found in dataset"
+            # keep only variables we are interested in.
+            dataset = dataset[list(vars.values())]
+        # check that the dimensions are in the dataset
+        for key in dims.values():
+            assert key in dataset.dims, f"Dimension {key} not found in dataset"
+        # Check if domain has coorect labels (i.e. dimension names)
+        for key in domain.keys():
+            assert key in dataset.dims, "Domain labels do not correspond to dimensions"
+        # check that the coords are in the dataset
+        if coords is not None:
+            for key in coords.values():
+                assert key in dataset.coords, f"Coordinate {key} not found in dataset"
+                # Check if labels are the same for dims and coords dictionaries
+                assert (
+                    coords.keys() == dims.keys()
+                ), "Labels are not the same in dims and coords dictionaries"
+            if coords != dims:
+                print("ciao")
+                # Rename coordinates as dimensions
+                name_dict = {k: v for k, v in zip(coords.values(), dims.values())}
+                dataset = dataset.rename(name_dict)
+        # Transpose dataset coherently with the dims argument.
+        dataset = dataset.transpose(*dims.values(), ..., missing_dims="raise")
+        # Crop dataset
+        dataset = self.crop_dataset(dataset, **domain)
+        dataset.close()
+        return dataset
+
     def variables(self, *names: tuple[str]) -> tuple[Variable]:
         """
         Extract variable(s) from NetCDF file, given the name(s).
         """
-        dataset = xr.open_mfdataset(self.path)
+        try:
+            dataset = xr.open_mfdataset(
+                self.path,
+                concat_dim=None,
+                combine="by_coords",
+                parallel=True,
+                engine="h5netcdf",
+                # engine = "netcdf4",
+                cache=True,
+                lock=False,
+                decode_times=True,
+            )
+        except ValueError:
+            dataset = xr.open_dataset(self.path)
         variables = ()
         for name in names:
             var = dataset.variables[name]
@@ -35,15 +104,49 @@ class ncRead:
         dataset.close()
         return variables
 
-    def transpose(self, *vars: tuple[Variable], **kdims: tuple[str]) -> tuple[Variable]:
+    def var_asattr(self, *names: tuple[str]) -> None:
+        """
+        Set variable(s) as attributes.
+        """
+        variables = self.variables(*names)
+        for i in range(len(names)):
+            setattr(self, names[i], variables[i])
+
+    def transpose(self, *vars: tuple[Variable], **kdims: dict[str]) -> tuple[Variable]:
         """
         Transpose variables according to the given dimensions order.
         """
         transposed_vars = ()
         dims = kdims.values()
         for var in vars:
-            transposed_vars += (var.transpose(*dims, ..., missing_dims="raise"),)
+            transposed_vars += (var.transpose(*dims, ..., missing_dims="ignore"),)
         return transposed_vars
+
+    def crop_dataset(self, dataset: Dataset, **domain: dict[list]) -> tuple[Variable]:
+        """
+        Crop the input Variable(s). Kyeword args 'domain' are the dims/coordinates.
+        NOTE: dims and coords should be named in the same way.
+        """
+        coords = dataset.coords
+        dims = dataset.dims
+        new_domain = dict()
+        # check that the dimensions are in the dataset
+        for key in domain.keys():
+            assert key in dims, f"Kwarg {key} is not among dataset dims: {dims}"
+            assert key in coords, f"Kwarg {key} is not among dataset coords: {coords}"
+            if domain[key] == []:
+                continue
+            [id_min, id_max] = self.find_nearvals(coords[key].values, *domain[key])
+            new_domain[key] = np.arange(id_min, id_max + 1)
+        cropped_dataset = dataset.isel(new_domain, missing_dims="warn")
+        return cropped_dataset
+
+    def find_nearvals(self, array: NDArray, *vals: float or np.datetime64) -> list[int]:
+        """
+        Find array indeces corresponding to min and max values of a range.
+        """
+        ids = [np.argmin(np.abs((array - val))) for val in vals]
+        return ids
 
 
 if __name__ == "__main__":
@@ -57,3 +160,47 @@ if __name__ == "__main__":
     # Transpose many fields using **dict dims
     temp, sal = read.transpose(temp, sal, **dims)
     print(temp.dims)
+    # Test loading coordinates as attributes.
+    read.var_asattr("latitude", "longitude")
+    print(read.longitude)
+    print(read.latitude.values)
+    print(temp[0, 0:3, 0, 0].values)
+    temp = temp.isel({"longitude": [0, 1, 2]})
+    print(temp[0, :, 0, 0].values)
+    near_ids = read.find_nearvals(np.arange(1, 11), 2.3, 4.5, 6.9)
+    assert near_ids == [1, 3, 6]
+    dataset = xr.open_dataset("./data/test_case/dataset_azores/azores_Jan2021.nc")
+    print("Whole dataset: ", dataset.dims)
+    cropped_dataset = read.crop_dataset(
+        dataset,
+        longitude=[23, 45],
+        latitude=[34, 68],
+        time=[
+            np.datetime64("2021-01-21T12"),
+            np.datetime64("2021-01-26T12"),
+        ],
+    )
+    print("Cropped dataset: ", cropped_dataset.dims)
+    date0 = pd.Timestamp("2021-01-21T12")
+    date1 = pd.Timestamp("2021-01-26T12")
+    cropped_dataset = read.crop_dataset(
+        dataset,
+        longitude=[23, 45],
+        latitude=[34, 68],
+        time=[
+            np.datetime64(date0),
+            np.datetime64(date1),
+        ],
+        depth=[0.7, 120],
+    )
+    print("Cropped dataset: ", cropped_dataset.dims)
+    try:
+        read.crop_dataset(dataset, lon=[23, 45], lat=[34, 68])
+    except AssertionError:
+        pass
+    dataset.close()
+    vars = {"temp": "thetao", "sal": "so"}
+    dims = {"time": "time", "lon": "longitude", "lat": "latitude", "depth": "depth"}
+    coords = dims
+    dataset = read.dataset(dims, vars, coords, longitude=[-33, -30], latitude=[40, 42])
+    print(dataset)

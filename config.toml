@@ -1,18 +1,36 @@
-[experiment]
-    name = "baroclinic_modes" # name of the simulation
-    start_datetime = 2017-04-23T00:00:00 # start date of the simulation
-    end_datetime = 2017-04-23T00:00:00 # start date of the simulation
-    n_modes = 4 # Num. of modes of motion to be computed
-    outpath = "./data/test_case/output" # folder where output files are saved
-    [experiment.domain]
-        lat = [] # latitude min, max
-        lon = [] # longitude min, max
 [input]
-    indata_path = "./data/test_case/dataset_azores/azores_Jan2021.nc" # path to data file(s)
     [input.oce]
-        vars = {temperature = "thetao", salinity = "so", depth = "depth"} # Name of Salinity and Temperature variables in Netcdf files.
-        dims = {time = "time", lon = "longitude", lat = "latitude", depth = "depth"} # Name of dimensions time, longitude, latitude, depth in Netcdf files.
+        # Path to ocean data NetCDF file
+        #path = "./data/mercatorglorys12v1_gl12_mean_1993_2016_01.nc" 
+        path = "./data/mercatorglorys12v1_gl12_mean_1993_2016_winter.nc"
+        # Name of Salinity, Temperature and other variables in Netcdf file.
+        vars = {temperature = "thetao", salinity = "so"}
+        # Name of coords in Netcdf file.
+        coords = {time = "time", lon = "longitude", lat = "latitude", depth = "depth"} 
+        # Name of dimensions [time, longitude, latitude, depth] in Netcdf file.
+        dims = {time = "time", lon = "longitude", lat = "latitude", depth = "depth"} 
     [input.bathy]
-        inbathy_path = "./data/test_case/dataset_azores/bathymetry/mask_bathy_test_case_azores.nc" # Path to bathymetry file
+        # Path to bathymetry NetCDF file
+        path = "./data/bathymetry/GLO-MFC_001_030_mask_bathy.nc" 
+        # Name of Sea Floor depth and other variables in Netcdf file.
         vars = {bottomdepth = "deptho"}
+        # Name of coords in Netcdf file.
+        coords = {lon = "longitude", lat = "latitude"} 
+        # Name of dimensions [longitude, latitude] in Netcdf file.
         dims = {lon = "longitude", lat = "latitude"}
+[domain]
+    # Domain extremants: time min, max (in datetime format)
+    time = [2017-04-23T00:00:00, 2017-04-23T00:00:00]
+    # Domain extremants: longitude min, max
+    lon = [-19, -5]
+    # Domain extremants: latitude min, max
+    lat = [26, 56]
+    # Domain extremants: depth min, max
+    depth = []
+[output]
+    # Path where output files are saved to.
+    path = "./output" 
+    # Name of the output file.
+    filename = "baroclinic_modes"
+    # Num. of modes of motion to be computed.
+    n_modes = 4

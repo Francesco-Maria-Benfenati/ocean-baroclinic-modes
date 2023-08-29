@@ -43,7 +43,7 @@ class BVfreq:
         (1999) 'Le cause dinamiche della stratificazione verticale nel
         mediterraneo'
 
-        N = (- g/rho_0 * ∂rho_s/∂z)^1/2  with g = 9.806 m/s^2,
+        N = (- g/rho_0 * ∂rho_s/∂z)^1/2  with g = 9.806 m/s^2, z<0
 
         where rho_0 is the reference density.
         Depths are at integer levels 1, 2, 3, 4 ... N
@@ -65,16 +65,17 @@ class BVfreq:
         return bvfreq_sqrd
 
     @staticmethod
-    def post_processing(bv_freq_sqrd: NDArray) -> NDArray:
+    def rm_negvals(bv_freq_sqrd: NDArray) -> NDArray:
         """
         Remove negative values and re-interpolate the profile.
         """
 
         # Remove possible negative values
-        bv_freq_sqrd[np.where(bv_freq_sqrd < 0)] = np.nan
+        new_arr = np.copy(bv_freq_sqrd)
+        new_arr[np.where(new_arr < 0)] = np.nan
         arr_len = bv_freq_sqrd.shape[0]
         depth = np.arange(0, arr_len)
-        interpolation = Interpolation(depth, bv_freq_sqrd)
+        interpolation = Interpolation(depth, new_arr)
         (interp_arr,) = interpolation.apply_interpolation(0, arr_len, 1)
         return interp_arr
 
@@ -152,6 +153,7 @@ if __name__ == "__main__":
     )
 
     test_arr = np.array([np.nan, np.nan, -1, 2, np.nan, 4, -5, 6])
-    processed_arr = BVfreq.post_processing(test_arr)
+    processed_arr = BVfreq.rm_negvals(test_arr)
     assert np.allclose(processed_arr, np.arange(-1, 7))
     print("OK post-processing for removing NaN and NEG values.")
+    print("test array: ", test_arr)

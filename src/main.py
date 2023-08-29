@@ -33,40 +33,48 @@ if __name__ == "__main__":
     # load config
     config = Config(args.config)
 
-    # STORE VARIABLES FROM NetCDF INPUT FILE
-    print("Reading data ...")
-    indata_path = config.input.indata_path
-    read_oce = ncRead(indata_path)
-    # Store Potential Temperature, Salinity and mean latitude from NetCDF input file.
+    # STORE VARIABLES FROM NetCDF OCE FILE
+    print("Reading OCE data ...")
+    oce_path = config.input.oce.path
+    read_oce = ncRead(oce_path)
+    # OCE dimensions, variables and coordinates
     oce_dims = config.input.oce.dims
-    # check dimension order in config file
-    try:
-        assert tuple(oce_dims.keys()) == ("time", "lon", "lat", "depth")
-    except AssertionError:
-        warnings.warn("Dimension in config file are not in order time, lon, lat, depth")
     oce_vars = config.input.oce.vars
-    (
-        pot_temperature,
-        salinity,
-        depth,
-    ) = read_oce.variables(*oce_vars.values())
-    # Transpose dims in the same order as in config file (time, lon, lat, depth)
-    pot_temperature, salinity = read_oce.transpose(
-        pot_temperature, salinity, **oce_dims
-    )
+    oce_coords = config.input.oce.coords
+    # check dimension order in config file
+    sorted_dims = ("time", "lon", "lat", "depth")
+    try:
+        assert tuple(oce_dims.keys()) == sorted_dims
+    except AssertionError:
+        warnings.warn(
+            "Dimension in config file are expected to be [time, lon, lat, depth]."
+        )
+
+    oce_domain = {k: v for k, v in zip(oce_dims.values(), config.domain.values())}
+    # Convert datetime to numpy friendly
+    oce_domain[oce_dims["time"]] = [np.datetime64(t) for t in oce_domain[oce_dims["time"]]]
+    # Read oce dataset
+    oce_dataset = read_oce.dataset(dims = oce_dims, vars = oce_vars, coords = oce_coords, **oce_domain)
+    # STORE POT. TEMPERATURE AND SALINITY VARIABLES.
+    pot_temperature = oce_dataset.variables[oce_vars["temperature"]]
+    salinity = oce_dataset.variables[oce_vars["salinity"]]
+    depth = oce_dataset.coords[oce_coords["depth"]]
 
     # STORE SEA FLOOR DEPTH FROM NetCDF BATHYMETRY FILE
     print("Reading bathymetry ...")
-    inbathy_path = config.input.bathy.inbathy_path
+    inbathy_path = config.input.bathy.path
     read_bathy = ncRead(inbathy_path)
     bathy_dims = config.input.bathy.dims
     bathy_vars = config.input.bathy.vars
-    (seafloor_depth,) = read_bathy.variables(*bathy_vars.values())
+    bathy_coords = config.input.bathy.coords
+    bathy_domain = {bathy_dims["lon"] : oce_domain[oce_dims["lon"]], bathy_dims["lat"] : oce_domain[oce_dims["lat"]]}
+    bathy_dataset = read_bathy.dataset(dims= bathy_dims, vars = bathy_vars, coords=bathy_coords, **bathy_domain)
+    seafloor_depth = bathy_dataset[bathy_vars["bottomdepth"]]
 
     # COMPUTE DENSITY
     print("Computing density ...")
     # Compute Density from Pot. Temperature & Salinity.
-    eos = Eos(pot_temperature.values, salinity.values, depth.values)
+    eos = Eos(salinity.values, pot_temperature.values, depth.values)
     mean_region_density = np.nanmean(eos.density, axis=(0, 1, 2))
 
     # VERTICAL INTERPOLATION (1m grid step)
@@ -77,66 +85,67 @@ if __name__ == "__main__":
     (interp_dens,) = interpolation.apply_interpolation(
         -grid_step / 2, mean_region_depth + grid_step, grid_step
     )
+    # Depth levels (1m grid step)
     interp_depth = np.arange(-grid_step / 2, mean_region_depth + grid_step, grid_step)
+    # Interface levels (1m grid step, shifted of 0.5 m respect to depth levels)
+    interface_depth = np.arange(len(interp_depth[1:-1]) + 1)
 
     # COMPUTE BRUNT-VAISALA FREQUENCY
     bv_freq_sqrd = BVfreq.compute_bvfreq_sqrd(interp_depth, interp_dens)
-    bv_freq_sqrd = BVfreq.post_processing(bv_freq_sqrd)
     bv_freq = np.sqrt(bv_freq_sqrd)
+    #######################################################################
+    # BETA PLOTTING OF PROFILES
+    import matplotlib.pyplot as plt
+    plt.figure(1)
+    plt.plot(bv_freq, -depth.values[:-1])
+    plt.plot(y, -interface_depth)
+    plt.figure(2)
+    plt.plot(mean_region_density, -depth.values)
+    plt.show()
+    plt.close()
+    #######################################################################
 
     # BAROCLINIC MODES & ROSSBY RADIUS
     print("Computing baroclinic modes and Rossby radii ...")
     # N° of modes of motion considered (including the barotropic one).
-    N_motion_modes = config.experiment.n_modes
-    mean_lat = np.mean(np.array(config.experiment.domain.lat))
+    N_motion_modes = config.output.n_modes
+    mean_lat = np.mean(lat_oce.values)
+
     # Compute baroclinic Rossby radius and vert. struct. function Phi(z).
     baroclinicmodes = BaroclinicModes(bv_freq, mean_lat, grid_step)
     rossby_rad = baroclinicmodes.rossbyrad / 1000  # Rossby radius in [km]
-    # Set Rossby radius of mode 0 (barotropic) as NaN
-    if rossby_rad[0] > 1e04:
-        rossby_rad[0] = np.nan
-    structure_func = baroclinicmodes.structfunc
     print(f"Rossby radii [km]: {rossby_rad}")
 
     # WRITE RESULTS ON OUTPUT FILE
     print("Writing output file ...")
-    ncwrite = ncWrite(config.experiment.outpath, filename=config.experiment.name)
+    ncwrite = ncWrite(config.output.path, filename=config.output.filename)
     dims = ["mode"]
-    modes_of_motion = np.arange(0, config.experiment.n_modes)
+    modes_of_motion = np.arange(0, config.output.n_modes)
     # Rossby radii dataset
     radii_dataset = ncwrite.create_dataset(
         dims="mode", coords={"mode": modes_of_motion}, rossbyrad=rossby_rad
     )
     # Vertical profiles dataset
-    # Interpolate Brunt-Vaisala frequency over original depth levels
-    interface_depths = np.arange(0, mean_region_depth, grid_step)
+    # Interpolate Brunt-Vaisala frequency (computed at interfaces) over depth levels
+    interface_depths = np.arange(0, mean_region_depth + grid_step, grid_step)
     interpolate = sp.interpolate.interp1d(
         interface_depths,
         bv_freq,
         fill_value="extrapolate",
         kind="linear",
     )
-    interp_bvfreq = interpolate(depth)
+    interp_bvfreq = interpolate(interp_depth[1:-1])
     vertical_profiles_dataset = ncwrite.create_dataset(
         dims="depth",
-        coords={"depth": depth.values},
-        density=mean_region_density,
+        coords={"depth": interp_depth[1:-1]},
+        density=interp_dens[1:-1],
         bvfreq=interp_bvfreq,
     )
     # Vertical structure function dataset
-    # Interpolate vertical structure function over original depth levels
-    interpolate = sp.interpolate.interp1d(
-        -interp_depth[1:-1],
-        structure_func,
-        fill_value="extrapolate",
-        kind="linear",
-        axis=0,
-    )
-    interp_structfunc = interpolate(depth)
     vert_struct_func_dataset = ncwrite.create_dataset(
         dims=["depth", "mode"],
-        coords={"mode": modes_of_motion, "depth": depth.values},
-        structfunc=interp_structfunc,
+        coords={"mode": modes_of_motion, "depth": interp_depth[1:-1]},
+        structfunc=baroclinicmodes.structfunc,
     )
     ncwrite.save(radii_dataset, vert_struct_func_dataset, vertical_profiles_dataset)
 

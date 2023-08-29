@@ -18,10 +18,10 @@ class Config:
         :param config_path: path to the config file
         :return: returns nothing
         """
-        self.config_file = config_path
         # check if the file exists
         if not os.path.exists(config_path):
             raise FileNotFoundError(f"Config file {config_path} not found")
+        self.config_file = config_path
         self.__read_config_file__(config_path)
         self.__from_dict_to_attrs__()
 
@@ -31,8 +31,12 @@ class Config:
         :param config_path: path to the config file
         :return: returns nothing
         """
+        # check if the file exists
+        if not os.path.exists(config_path):
+            raise FileNotFoundError(f"Config file {config_path} not found")
         self.config_file = config_path
         self.__read_config_file__(config_path)
+        self.__from_dict_to_attrs__()
 
     def __read_config_file__(self, config_path: str) -> None:
         """
@@ -42,12 +46,15 @@ class Config:
         """
         with open(config_path, mode="r") as f:
             self.config_dict = tomllib.loads(f.read())
+        return self.config_dict
 
     def __from_dict_to_attrs__(self) -> None:
         """
         Set attributes out of config dictionary.
         """
         for k, v in self.config_dict.items():
+            if hasattr(self, k):
+                delattr(self, k)  # Overwrite attribute
             attr = getattr(self, k, v)
             setattr(self, k, AttrDict(attr))
 
@@ -84,22 +91,27 @@ if __name__ == "__main__":
 
     from pprint import pprint
 
-    key = "experiment"
+    key = "domain"
     value = config.config_dict[key]
 
     print(value)
     pprint(value)
     print("Domain mean latitude:")
     # Access to config values as dictionary items
-    print(np.mean(np.array(config.config_dict["experiment"]["domain"]["lat"])))
+    print(np.mean(np.array(config.config_dict["domain"]["lat"])))
     # Access to config values as attributes
-    print(np.mean(np.array(config.experiment.domain.lat)))
-    print(config.experiment)
-    print("Exp name: ", config.experiment.name)
-    config.experiment.clear()
+    print(np.mean(np.array(config.domain.lat)))
+    print(config.input)
+    print("Output file name: ", config.output.filename)
+    config.domain.clear()
     try:
-        print(np.mean(np.array(config.experiment.domain.lat)))
+        print(np.mean(np.array(config.domain.lat)))
     except AttributeError:
-        print("experiment values cleared")
+        print("Domain values cleared")
+    config.input.clear()
+    config.load_config_file(file)
     print(config.input.oce.vars)
     print(config.input.oce.dims)
+    # Datetime format
+    print(type(config.domain.datetime[0]), config.domain.datetime[:])
+    print(np.datetime64(config.domain.datetime[0]))

@@ -396,5 +396,5 @@ if __name__ == "__main__":
     print("Tridiagonal matrix is of type:\n", new_tridiag)
 
     # Test 3D array
-    N_const = np.ones([15,20,50])
+    N_const = np.ones([15, 20, 50])
     baroclinic = BaroclinicModes(N_const)

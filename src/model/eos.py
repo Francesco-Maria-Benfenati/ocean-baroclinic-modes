@@ -85,7 +85,7 @@ class Eos:
         # of seawater' (Millero and Poisson, 1981).
         # ==================================================================
 
-        rho = Eos.__compute_rho(temp, sal)
+        rho = Eos.__compute_rho(sal, temp)
 
         # ==================================================================
         # Compute coefficients in the bulk modulus of seawater expression
@@ -102,10 +102,10 @@ class Eos:
         # ==================================================================
 
         # Bulk modulus of seawater at atmospheric pressure.
-        K_0 = Eos.__compute_K_0(temp, sal)
+        K_0 = Eos.__compute_K_0(sal, temp)
         # Compression term coefficients.
-        A = Eos.__compute_A(temp, sal)
-        B = Eos.__compute_B(temp, sal)
+        A = Eos.__compute_A(sal, temp)
+        B = Eos.__compute_B(sal, temp)
 
         # ==================================================================
         # Compute IN SITU DENSITY IN TERMS OF DEPTH. The above
@@ -172,7 +172,7 @@ class Eos:
         return depth
 
     @staticmethod
-    def __compute_rho(temp: float, sal: float) -> float:
+    def __compute_rho(sal: float, temp: float) -> float:
         """
         Compute reference density at atmospheric pressure
 
@@ -217,7 +217,7 @@ class Eos:
         return rho
 
     @staticmethod
-    def __compute_K_0(temp: float, sal: float) -> float:
+    def __compute_K_0(sal: float, temp: float) -> float:
         """
         Compute bulk modulus of seawater at atmospheric pressure term
 
@@ -257,7 +257,7 @@ class Eos:
         return K_0
 
     @staticmethod
-    def __compute_A(temp: float, sal: float) -> float:
+    def __compute_A(sal: float, temp: float) -> float:
         """
         Compute compression term coefficient A in bulk modulus of seawater
 
@@ -292,7 +292,7 @@ class Eos:
         return A
 
     @staticmethod
-    def __compute_B(temp: float, sal: float) -> float:
+    def __compute_B(sal: float, temp: float) -> float:
         """
         Compute compression term coefficient A in bulk modulus of seawater
 
@@ -360,7 +360,7 @@ if __name__ == "__main__":
     out_rho = []
     for sal in ref_sal:
         for temp in ref_temp:
-            out_rho.append(Eos._Eos__compute_rho(temp, sal))
+            out_rho.append(Eos._Eos__compute_rho(sal, temp))
     error = 1e-06  # kg/m^3
     assert np.allclose(ref_rho, out_rho, atol=error)
 
@@ -371,7 +371,6 @@ if __name__ == "__main__":
 
     # Test Compute density from Jackett and Mcdougall (1995).
     assert np.isclose(Eos.compute_density(35.5, 3.0, 300), 1041.83267)
-
     # Test conversion from pressure to depth.
     # From UNESCO documentation.
     assert np.isclose(Eos.press2depth(10000, 30), 9712.653)
