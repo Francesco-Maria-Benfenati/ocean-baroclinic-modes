@@ -52,9 +52,13 @@ if __name__ == "__main__":
 
     oce_domain = {k: v for k, v in zip(oce_dims.values(), config.domain.values())}
     # Convert datetime to numpy friendly
-    oce_domain[oce_dims["time"]] = [np.datetime64(t) for t in oce_domain[oce_dims["time"]]]
+    oce_domain[oce_dims["time"]] = [
+        np.datetime64(t) for t in oce_domain[oce_dims["time"]]
+    ]
     # Read oce dataset
-    oce_dataset = read_oce.dataset(dims = oce_dims, vars = oce_vars, coords = oce_coords, **oce_domain)
+    oce_dataset = read_oce.dataset(
+        dims=oce_dims, vars=oce_vars, coords=oce_coords, **oce_domain
+    )
     # STORE POT. TEMPERATURE AND SALINITY VARIABLES.
     pot_temperature = oce_dataset.variables[oce_vars["temperature"]]
     salinity = oce_dataset.variables[oce_vars["salinity"]]
@@ -67,8 +71,13 @@ if __name__ == "__main__":
     bathy_dims = config.input.bathy.dims
     bathy_vars = config.input.bathy.vars
     bathy_coords = config.input.bathy.coords
-    bathy_domain = {bathy_dims["lon"] : oce_domain[oce_dims["lon"]], bathy_dims["lat"] : oce_domain[oce_dims["lat"]]}
-    bathy_dataset = read_bathy.dataset(dims= bathy_dims, vars = bathy_vars, coords=bathy_coords, **bathy_domain)
+    bathy_domain = {
+        bathy_dims["lon"]: oce_domain[oce_dims["lon"]],
+        bathy_dims["lat"]: oce_domain[oce_dims["lat"]],
+    }
+    bathy_dataset = read_bathy.dataset(
+        dims=bathy_dims, vars=bathy_vars, coords=bathy_coords, **bathy_domain
+    )
     seafloor_depth = bathy_dataset[bathy_vars["bottomdepth"]]
 
     # COMPUTE DENSITY
@@ -96,6 +105,7 @@ if __name__ == "__main__":
     #######################################################################
     # BETA PLOTTING OF PROFILES
     import matplotlib.pyplot as plt
+
     plt.figure(1)
     plt.plot(bv_freq, -depth.values[:-1])
     plt.plot(y, -interface_depth)
