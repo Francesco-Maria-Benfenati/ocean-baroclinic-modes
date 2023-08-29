@@ -31,7 +31,6 @@ class ncRead:
     ) -> Dataset:
         """
         Extract Dataset out of a NetCDF file, given dimensions and variables.
-        NOTE: if coords is not None,
         """
         try:
             dataset = xr.open_mfdataset(
