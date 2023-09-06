@@ -20,11 +20,11 @@
         dims = {lon = "longitude", lat = "latitude"}
 [domain]
     # Domain extremants: time min, max (in format compatible with numpy.datetime64)
-    time = [2017-04-23T00:00:00, 2017-04-23T00:00:00]
+    time = [1993-01-01T00:00:00, 2016-12-31T23:59:59]
     # Domain extremants: longitude min, max
-    lon = [-19, -5]
+    lon = [-35, -35]
     # Domain extremants: latitude min, max
-    lat = [26, 56]
+    lat = [40, 40]
     # Domain extremants: depth min, max
     depth = []
 [output]

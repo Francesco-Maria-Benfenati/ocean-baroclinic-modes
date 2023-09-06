@@ -80,6 +80,7 @@ if __name__ == "__main__":
     )
     seafloor_depth = bathy_dataset[bathy_vars["bottomdepth"]]
 
+    print(f"Input Data have shape: {pot_temperature.shape}")
     # COMPUTE DENSITY
     print("Computing density ...")
     # Compute Density from Pot. Temperature & Salinity.
