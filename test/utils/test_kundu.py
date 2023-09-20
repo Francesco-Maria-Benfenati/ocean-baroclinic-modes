@@ -13,6 +13,12 @@ except ImportError:
     from src.model.baroclinicmodes import BaroclinicModes
     from src.model.interpolation import Interpolation
 
+
+"""
+Replica of results in Kundu, Allen, Smith (1975).
+"""
+
+
 if __name__ == "__main__":
     depth_kundu = -np.array(
         [
@@ -272,6 +278,6 @@ if __name__ == "__main__":
         "2",
         bbox={"boxstyle": "circle", "facecolor": "None", "edgecolor": "black"},
     )
-    plt.figtext(0.29, 0.3, "Mode", fontweigth='bold')
+    plt.figtext(0.29, 0.3, "Mode", fontweigth="bold")
     plt.show()
     plt.close()

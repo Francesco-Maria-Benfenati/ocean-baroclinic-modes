@@ -166,7 +166,7 @@ if __name__ == "__main__":
 
     # Test with LaCasce values (2012). Dimensional Case.
     bvfreq_0 = 2 * 1e-02  # surface BV freq 0.02 1/s
-    shallow = True
+    shallow = False
     if shallow:
         mean_depth = 1 * 1e+02  # mean depth 100 m
     else:

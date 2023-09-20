@@ -37,13 +37,49 @@ class BaroclinicModes:
             s_param, grid_step
         )
         # Rossby deformation radius
-        self.rossbyrad = BaroclinicModes.rossby_rad(self.eigenvals)
+        self.rossbyrad = BaroclinicModes.compute_rossby_rad(self.eigenvals)
+
+    @staticmethod
+    def multiprofiles(
+        bvfreq: NDArray,
+        mean_lat: NDArray,
+        grid_step: float = None,
+    ) -> tuple[NDArray]:
+        """
+        Apply computing baroclinic modes to array of vertical profiles.
+
+        NOTE: depth should be the last dimension.
+        """
+        s_param = BaroclinicModes.compute_problem_sparam(bvfreq, mean_lat)
+        flatten_array = s_param.reshape(-1, s_param.shape[-1])
+        rossbyrad = []
+        structfunc = []
+        for profile in flatten_array:
+            eigenvals, struct_func = BaroclinicModes.compute_baroclinicmodes(
+                profile, grid_step
+            )
+            rossby_rad = BaroclinicModes.compute_rossby_rad(eigenvals)
+            rossbyrad.append(rossby_rad)
+            structfunc.append(struct_func)
+        rossbyrad = np.array(rossbyrad)
+        structfunc = np.array(structfunc)
+        n_modes = rossby_rad.shape[-1]
+        levels = structfunc.shape[1]
+        rossbyrad = rossbyrad.reshape(bvfreq.shape[:-1] + (n_modes,))
+        structfunc = structfunc.reshape(
+            bvfreq.shape[:-1]
+            + (
+                levels,
+                n_modes,
+            )
+        )
+        return rossbyrad, structfunc
 
     @staticmethod
     def compute_baroclinicmodes(
         s_param: NDArray,
         grid_step: float = None,
-        n_modes: int = 4,
+        n_modes: int = 5,
         generalized_method: bool = False,
     ) -> tuple[NDArray]:
         """
@@ -153,7 +189,7 @@ class BaroclinicModes:
         return s_param
 
     @staticmethod
-    def rossby_rad(eigenvalue: float) -> float:
+    def compute_rossby_rad(eigenvalue: float) -> float:
         """
         Compute Rossby Radius given the eigenvalue(s).
         """
@@ -297,52 +333,6 @@ class BaroclinicModes:
         B = np.delete(B, 0, axis=1)
         return B
 
-    def __doc__(self) -> None:
-        """
-        If called, print info aboit the algorithm for computing baroclinic modes of motion.
-        """
-        print(
-            """ 
-            Computes baroclinic Rossby radius & vertical structure function.
-            
-                NOTE:
-            ---------------------------------------------------------------
-                                    About the algorithm
-                ---------------------------------------------------------------
-            Coriolis parameter (used for scaling) and region mean depth are
-            defined.
-            
-            1) N2 is linearly interpolated on a new equally spaced 
-            nondimensional depth grid with grid step dz = 1 m.
-            2) The problem parameter S is then computed as in 
-            Grilli, Pinardi (1999)
-            
-                    S = (N2)/(f^2)
-                    
-            where f is the Coriolis parameter.
-            3) The finite difference matrix 'A' and the S matrix 'B' are
-            computed and the eigenvalues problem is solved:
-                
-                A * w = lambda * B * w  (lambda eigenvalues, w eigenvectors)
-                
-            with BCs: w = 0 at z=0,1.
-            
-            4) The eigenvectors are computed through numerical integration
-            of the equation 
-            
-                (d^2/dz^2) * w = - lambda * S * w    (with BCs  w = 0 at z=0,1).
-            
-            5) The baroclinic Rossby radius is obtained as 
-                
-                    R_n = 1/sqrt(lambda_n)
-            
-            for each mode of motion 'n'.
-                                    - & - 
-            The vertical structure function Phi(z) is computed integrating
-            S*w between 0 and z (for each mode of motion).
-            """
-        )
-
 
 if __name__ == "__main__":
     dz = 0.5
@@ -396,5 +386,16 @@ if __name__ == "__main__":
     print("Tridiagonal matrix is of type:\n", new_tridiag)
 
     # Test 3D array
-    N_const = np.ones([15, 20, 50])
-    baroclinic = BaroclinicModes(N_const)
+    N_const_3d = np.ones([15, 20, 50])
+    N_const_3d[3, 5] *= 2
+    N_const_1d = np.ones(50)
+    mean_lat_1d = 1
+    mean_lat_3d = np.ones_like(N_const_3d)
+    rossbyrad_1d, structfunc_1d = BaroclinicModes.multiprofiles(N_const_1d, mean_lat_1d)
+    rossbyrad_3d, structfunc_3d = BaroclinicModes.multiprofiles(N_const_3d, mean_lat_3d)
+    print(
+        rossbyrad_1d.shape, rossbyrad_3d.shape, structfunc_1d.shape, structfunc_3d.shape
+    )
+    assert np.array_equal(structfunc_3d[3,5], structfunc_1d)
+    assert np.array_equal(rossbyrad_3d[3,5], rossbyrad_1d*2)
+    assert np.array_equal(rossbyrad_3d[12,17], rossbyrad_1d)

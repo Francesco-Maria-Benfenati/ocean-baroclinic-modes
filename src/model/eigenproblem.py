@@ -202,6 +202,8 @@ class EigenProblem:
 if __name__ == "__main__":
     from baroclinicmodes import BaroclinicModes
 
+    test_plot = False
+
     def test_compute_eigenvals_simple_problem():
         """
         Test if eigenvalues are computed correctly for a simple problem
@@ -312,22 +314,23 @@ if __name__ == "__main__":
             print(
                 f"On the other hand, mean absolute error associated to Scipy method is: {scipy_error}"
             )
-            import matplotlib.pyplot as plt
+            if test_plot:
+                import matplotlib.pyplot as plt
 
-            plt.figure()
-            plt.title(
-                f"Numerov's (coloured) VS theoretical (dashed) solutions.\n Mode of motion *{n}*"
-            )
-            plt.plot(theor_sol, -x, "k--")
-            plt.plot(num_sol, -x)
-            plt.figure()
-            plt.title(
-                f"Scipy (coloured) VS theoretical (dashed) solutions.\n Mode of motion *{n}*"
-            )
-            plt.plot(theor_sol, -x, "k--")
-            plt.plot(eigenprob_general.eigenvecs[:, n], -x)
-            plt.show()
-            plt.close()
+                plt.figure()
+                plt.title(
+                    f"Numerov's (coloured) VS theoretical (dashed) solutions.\n Mode of motion *{n}*"
+                )
+                plt.plot(theor_sol, -x, "k--")
+                plt.plot(num_sol, -x)
+                plt.figure()
+                plt.title(
+                    f"Scipy (coloured) VS theoretical (dashed) solutions.\n Mode of motion *{n}*"
+                )
+                plt.plot(theor_sol, -x, "k--")
+                plt.plot(eigenprob_general.eigenvecs[:, n], -x)
+                plt.show()
+                plt.close()
 
     # Run test functions.
     test_compute_eigenvals_simple_problem()
