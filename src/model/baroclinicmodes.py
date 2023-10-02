@@ -20,6 +20,7 @@ class BaroclinicModes:
         bvfreq: NDArray,
         mean_lat: float = None,
         grid_step: float = None,
+        n_modes: int = 5,
     ) -> None:
         """
         Constructor for OceBaroclModes objects
@@ -34,7 +35,7 @@ class BaroclinicModes:
         else:
             s_param = BaroclinicModes.compute_problem_sparam(bvfreq, mean_lat)
         self.eigenvals, self.structfunc = BaroclinicModes.compute_baroclinicmodes(
-            s_param, grid_step
+            s_param, grid_step, n_modes
         )
         # Rossby deformation radius
         self.rossbyrad = BaroclinicModes.compute_rossby_rad(self.eigenvals)
