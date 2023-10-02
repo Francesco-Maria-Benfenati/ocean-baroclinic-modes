@@ -27,6 +27,8 @@ class ncRead:
         dims: dict[str],
         vars: dict[str] = None,
         coords: dict[str] = None,
+        preprocess: callable = None,
+        decode_vars: bool = False,
         **domain: dict[list],
     ) -> Dataset:
         """
@@ -37,15 +39,30 @@ class ncRead:
                 self.path,
                 concat_dim=None,
                 combine="by_coords",
-                parallel=True,
-                # engine="h5netcdf",
-                engine="netcdf4",
+                parallel=False,
+                preprocess=preprocess,
+                engine="h5netcdf",
                 cache=True,
                 lock=False,
                 decode_times=True,
+                decode_cf=decode_vars,
+                # mask_and_scale = False,
             )
-        except ValueError:
-            dataset = xr.open_dataset(self.path)
+            print("Open NetCDF file(s) with h5netcdf engine.")
+        except (ValueError, OSError):
+            dataset = xr.open_mfdataset(
+                self.path,
+                concat_dim=None,
+                combine="by_coords",
+                parallel=True,
+                engine="netcdf4",
+                cache=True,
+                lock=False,
+                decode_cf=decode_vars,
+                decode_times=True,
+                # mask_and_scale = False,
+            )
+            print("Open NetCDF file(s) with netcdf4 engine.")
         if vars is not None:
             # check that the variables are in the dataset
             for key in vars.values():
@@ -67,7 +84,6 @@ class ncRead:
                     coords.keys() == dims.keys()
                 ), "Labels are not the same in dims and coords dictionaries"
             if coords != dims:
-                print("ciao")
                 # Rename coordinates as dimensions
                 name_dict = {k: v for k, v in zip(coords.values(), dims.values())}
                 dataset = dataset.rename(name_dict)
@@ -75,7 +91,9 @@ class ncRead:
         dataset = dataset.transpose(*dims.values(), ..., missing_dims="raise")
         # Crop dataset
         dataset = self.crop_dataset(dataset, **domain)
-        dataset.close()
+        # Decode variables manually
+        if decode_vars is False:
+            dataset = self.decode_vars(dataset)
         return dataset
 
     def variables(self, *names: tuple[str]) -> tuple[Variable]:
@@ -89,12 +107,12 @@ class ncRead:
                 combine="by_coords",
                 parallel=True,
                 engine="h5netcdf",
-                # engine = "netcdf4",
                 cache=True,
                 lock=False,
                 decode_times=True,
+                decode_cf=True,
             )
-        except ValueError:
+        except (ValueError, OSError):
             dataset = xr.open_dataset(self.path)
         variables = ()
         for name in names:
@@ -135,7 +153,13 @@ class ncRead:
             assert key in coords, f"Kwarg {key} is not among dataset coords: {coords}"
             if domain[key] == []:
                 continue
-            [id_min, id_max] = self.find_nearvals(coords[key].values, *domain[key])
+            try:
+                [id_min, id_max] = self.find_nearvals(coords[key].values, *domain[key])
+            except ValueError:
+                raise ValueError(
+                    "Please, provide both or none domain extremants in config file. Only one is not accepted."
+                )
+            [id_min, id_max] = np.sort([id_min, id_max])
             new_domain[key] = np.arange(id_min, id_max + 1)
         cropped_dataset = dataset.isel(new_domain, missing_dims="warn")
         return cropped_dataset
@@ -146,6 +170,17 @@ class ncRead:
         """
         ids = [np.argmin(np.abs((array - val))) for val in vals]
         return ids
+
+    def decode_vars(self, dataset: Dataset) -> Dataset:
+        for var in dataset.var():
+            if dataset[var].dtype == "int16":
+                scale_factor = dataset[var].scale_factor
+                add_offset = dataset[var].add_offset
+                decode_values = dataset[var].values * np.float64(
+                    scale_factor
+                ) + np.float64(add_offset)
+                dataset[var].values = decode_values
+        return dataset
 
 
 if __name__ == "__main__":
@@ -202,4 +237,12 @@ if __name__ == "__main__":
     dims = {"time": "time", "lon": "longitude", "lat": "latitude", "depth": "depth"}
     coords = dims
     dataset = read.dataset(dims, vars, coords, longitude=[-33, -30], latitude=[40, 42])
-    print(dataset)
+    print(dataset["thetao"].values[0, 0, 0, 0])
+    print(dataset["thetao"].dtype)
+    dataset.close()
+    # Read Copernicus dataset.
+    cmems = ncRead("./data/reanalysis")
+    dataset = cmems.dataset(dims, vars, coords, longitude=[-33, -30], latitude=[40, 42])
+    print(dataset["thetao"].dtype)
+    print(dataset["thetao"].values[0, 0, 0, 0])
+    dataset.close()
