@@ -100,7 +100,7 @@ if __name__ == "__main__":
             dims=bathy_dims, vars=bathy_vars, coords=bathy_coords, **bathy_domain
         )
         seafloor_depth = bathy_dataset[bathy_vars["bottomdepth"]]
-        mean_region_depth =  seafloor_depth.mean(dim=bathy_dims.values()).values
+        mean_region_depth = seafloor_depth.mean(dim=bathy_dims.values()).values
         bathy_dataset.close()
     else:
         mean_region_depth = config.input.bathy.set_bottomdepth
@@ -145,27 +145,11 @@ if __name__ == "__main__":
         print("Applying low-pass filter to Brunt-Vaisala frequency ...")
         filter_order = config.bvfilter.order
         cutoff_wavelength = config.bvfilter.cutoff_wavelength
-        bv_freq_filtered = Filter.lowpass(bv_freq, grid_step, cutoff_wavelength, filter_order)
+        bv_freq_filtered = Filter.lowpass(
+            bv_freq, grid_step, cutoff_wavelength, filter_order
+        )
     else:
         bv_freq_filtered = bv_freq
-
-    #######################################################################
-    # BETA PLOTTING OF PROFILES
-    plot_bv = True
-    if plot_bv:
-        import matplotlib.pyplot as plt
-
-        fig, ax = plt.subplots()
-        ax.plot(bv_freq, -interp_depth[:-1], label=None)
-        ax.plot(bv_freq_filtered, -interp_depth[:-1], label="filtered")
-        ax.set_xlabel(r"Brunt Vaisala frequency [$1/s$]")
-        ax.set_ylabel("depth [m]")
-        ax.set_ylim(-mean_region_depth, 100)
-        ax.legend()
-        ax.plot(np.ones_like(interp_depth[:-1]) * 0.02, -interp_depth[:-1], "k--")
-        plt.show()
-        plt.close()
-    #######################################################################
 
     # BAROCLINIC MODES & ROSSBY RADIUS
     print("Computing baroclinic modes and Rossby radii ...")
