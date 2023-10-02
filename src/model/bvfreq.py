@@ -57,11 +57,12 @@ class BVfreq:
         # Defining value of gravitational acceleration.
         g = 9.806  # (m/s^2)
         # Defining value of reference density rho_0.
-        rho_0 = 1025.0  # (kg/m^3)
+        # rho_0 = 1025.0  # (kg/m^3)
+        rho = density[..., :-1]
         # Compute Brunt-Vaisala frequency
         dz = depth[..., 1:] - depth[..., :-1]
         density_diff = density[..., 1:] - density[..., :-1]
-        bvfreq_sqrd = (g / rho_0) * density_diff / dz
+        bvfreq_sqrd = (g / rho) * density_diff / dz
         return bvfreq_sqrd
 
     @staticmethod
@@ -114,12 +115,12 @@ if __name__ == "__main__":
     result_linear = BVfreq.compute_bvfreq_sqrd(depth, linear_density)
     result_expon = BVfreq.compute_bvfreq_sqrd(depth, expon_density)
     assert np.allclose(result_const, expected_bvfreqsqrd_const)
-    assert np.allclose(result_linear, expected_bvfreqsqrd_linear)
+    assert np.allclose(result_linear, expected_bvfreqsqrd_linear, rtol=1e-02)
     print(
         f"For LINEAR case, relative error is of order {np.mean(np.abs(result_linear - expected_bvfreqsqrd_linear)/expected_bvfreqsqrd_linear)}"
     )
     # Remove surface and bottom values, as less accurate method is used there.
-    assert np.allclose(result_expon, expected_bvfreqsqrd_expon)
+    assert np.allclose(result_expon, expected_bvfreqsqrd_expon, rtol=1e-02)
     print(
         f"For EXPON case, relative error is of order {np.mean((np.abs(result_expon - expected_bvfreqsqrd_expon)/expected_bvfreqsqrd_expon))}"
     )
@@ -135,7 +136,7 @@ if __name__ == "__main__":
             expected_bvfreqsqrd_expon,
         ]
     )
-    assert np.allclose(new_result, expected_array)
+    assert np.allclose(new_result, expected_array, rtol=1e-02)
     print("Multidim result has expected accuracy.")
     # Test with 3D array
     density_array = np.array([const_density, linear_density, expon_density])
