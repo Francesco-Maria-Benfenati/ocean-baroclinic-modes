@@ -35,9 +35,11 @@ class Utils:
             s_param = interpolation.apply_interpolation(z_0, z_N, grid_step)[0]
         else:
             s_param = bvfreq_sqrd / (coriolis_param**2)
+        print("According to numpy, input values have precision:", s_param.dtype)
         self.eigenvals, self.structfunc = BaroclinicModes.compute_baroclinicmodes(
             s_param, grid_step
         )
+        print("After using scipy, output values have precision:", self.eigenvals.dtype)
 
     def compare_eigenvals(self, ref_eigenvals: NDArray) -> NDArray:
         """

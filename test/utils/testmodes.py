@@ -10,7 +10,7 @@ except ImportError:
 
 class TestModes(Utils):
     """
-    This Class contains analytical solutions from LaCasce (2012), for constant, expontential and Lindzen stratification profiles.
+    This Class contains analytical solutions from LaCasce (2012), for constant, exponential and Lindzen stratification profiles.
     """
 
     def __init__(
@@ -18,6 +18,7 @@ class TestModes(Utils):
         bvfreq_0: float = 1,
         H: float = 1,
         coriolis_param: float = 1,
+        grid_step: float = 1,
     ) -> None:
         """
         Class Constructor.
@@ -32,6 +33,7 @@ class TestModes(Utils):
         self.bvfreq_0 = bvfreq_0
         self.H = abs(H)
         self.coriolis_param = coriolis_param
+        self.grid_step = grid_step
 
     def LaCasce_eigenvals(self, profile: str) -> NDArray:
         """
@@ -72,7 +74,7 @@ class TestModes(Utils):
         Computes vertical structure func. for N^2(z) = const.
         """
 
-        depth = -np.arange(0.5, self.H, 1)  # new equally spaced depth grid
+        depth = -np.arange(0.5, self.H + self.grid_step/2, self.grid_step)  # new equally spaced depth grid
         n_levels = len(depth)
         # Eigenvalues
         eigenvals = (
@@ -102,13 +104,13 @@ class TestModes(Utils):
             case 2.0:
                 gamma = self.LaCasce_eigenvals("exp2")
             case 10.0:
-                gamma = self.LaCasce_eigenvals("exp10")
+                gamma = np.longdouble(self.LaCasce_eigenvals("exp10"))
             case _:
                 return None
         n_modes = len(gamma)
         A = 1  # amplitude
         alpha /= self.H
-        depth = -np.arange(0.5, self.H, 1)  # new equally spaced depth grid
+        depth = -np.arange(0.5, self.H + self.grid_step/2, self.grid_step)  # new equally spaced depth grid
         n_levels = len(depth)
         # Theoretical Vertical Structure Function Phi(z)
         struct_func = np.empty([n_levels, n_modes])
@@ -143,7 +145,7 @@ class TestModes(Utils):
         n_modes = len(gamma)
         A = 1  # amplitude
         D /= self.H
-        depth = -np.arange(0.5, self.H, 1)  # new equally spaced depth grid
+        depth = -np.arange(0.5, self.H + self.grid_step/2, self.grid_step)  # new equally spaced depth grid
         n_levels = len(depth)
         # Theoretical Vertical Structure Function Phi(z)
         struct_func = np.empty([n_levels, n_modes])
@@ -170,26 +172,30 @@ if __name__ == "__main__":
     if shallow:
         mean_depth = 1 * 1e+02  # mean depth 100 m
     else:
-        mean_depth = 3 * 1e+03  # mean depth 3000 km
+        mean_depth = 1 * 3e+03  # mean depth 3000 km
     f_0 = 1e-04  # coriolis parameter 0.0001
-    grid_step = 1  # dz = 1 m
-    n_levels = int(mean_depth + 1)
-    depth = -np.linspace(0, mean_depth, n_levels)
-
-    testmodes = TestModes(bvfreq_0, mean_depth, f_0)
+    grid_step = 0.3  # [m]
+    depth = -np.arange(0, mean_depth + grid_step/2, grid_step)
+    n_levels = len(depth)
+    
+    testmodes = TestModes(bvfreq_0, mean_depth, f_0, grid_step)
     # CONST case
     bvfreq_const = np.ones(n_levels) * bvfreq_0
+    print("Running CONST case ...")
     const_profile = Utils(bvfreq_const**2, f_0, grid_step)
     eigenvals_const = testmodes.LaCasce_eigenvals("const")
     rel_error_const = const_profile.compare_eigenvals(eigenvals_const**2)
 
     # EXPON case alpha = 2/H, alpha = 10/H, lindzen profile.
     bvfreqsqrd_expon_2 = (bvfreq_0**2) * np.exp(2 * depth / mean_depth)
-    bvfreqsqrd_expon_10 = (bvfreq_0**2) * np.exp(10 * depth / mean_depth)
+    bvfreqsqrd_expon_10 = np.array((bvfreq_0**2) * np.exp(10 * depth / mean_depth), dtype=np.longdouble)
     bvfreqsqrd_lindzen = (bvfreq_0**2) / (1 - 10 * depth / mean_depth)
 
+    print("Running EXPON 2/H case ...")
     expon2_profile = Utils(bvfreqsqrd_expon_2, f_0, grid_step)
+    print("Running EXPON 10/H case ...")
     expon10_profile = Utils(bvfreqsqrd_expon_10, f_0, grid_step)
+    print("Running LINDZEN case ...")
     lindzen_profile = Utils(bvfreqsqrd_lindzen, f_0, grid_step)
 
     eigenvals_expon2 = testmodes.from_gamma_to_eigenvals("exp2", 2)
@@ -200,23 +206,31 @@ if __name__ == "__main__":
     rel_error_expon10 = expon10_profile.compare_eigenvals(eigenvals_expon10)
     rel_error_lindzen = lindzen_profile.compare_eigenvals(eigenvals_lindzen)
 
-    print(f"For Const case, expected eigenvalues are [km^-1]: {eigenvals_const*1000}")
+    print(f"For Const case, expected rossby radii are [km]: {1/eigenvals_const/1000}")
+    print(f"Our result is: {1/np.sqrt(const_profile.eigenvals)/1000}")
     print(f"Relative error respect to LaCasce const profile: {rel_error_const}")
+    print(f"Absolute error respect to LaCasce: {np.abs((1/eigenvals_const/1000)-(1/np.sqrt(const_profile.eigenvals)/1000))}")
     print(
-        f"For alpha = 2/H case, expected eigenvalues are [km^-1]: {np.sqrt(eigenvals_expon2)*1000}"
+        f"For alpha = 2/H case, expected rossby radii are [km]: {1/np.sqrt(eigenvals_expon2)/1000}"
     )
-    print(f"Relative error respect to LaCasce const profile: {rel_error_expon2}")
+    print(f"Our result is: {1/np.sqrt(expon2_profile.eigenvals)/1000}")
+    print(f"Relative error respect to LaCasce expon 2/H profile: {rel_error_expon2}")
+    print(f"Absolute error respect to LaCasce: {np.abs((1/np.sqrt(expon2_profile.eigenvals)/1000)-(1/np.sqrt(eigenvals_expon2)/1000))}")
     print(
-        f"For alpha = 10/H, expected eigenvalues are [km^-1]: {np.sqrt(eigenvals_expon10)*1000}"
+        f"For alpha = 10/H, expected rossby radii are [km]: {1/np.sqrt(eigenvals_expon10)/1000}"
     )
-    print(f"Relative error respect to LaCasce const profile: {rel_error_expon10}")
+    print(f"Our result is: {1/np.sqrt(expon10_profile.eigenvals)/1000}")
+    print(f"Relative error respect to LaCasce expon 10/H profile: {rel_error_expon10}")
+    print(f"Absolute error respect to LaCasce: {np.abs((1/np.sqrt(expon10_profile.eigenvals)/1000)-(1/np.sqrt(eigenvals_expon10)/1000))}")
     print(
-        f"For Lindzen case, expected eigenvalues are [km^-1]: {np.sqrt(eigenvals_lindzen)*1000}"
+        f"For Lindzen case, expected rossby radii are [km]: {1/np.sqrt(eigenvals_lindzen)/1000}"
     )
-    print(f"Relative error respect to LaCasce const profile: {rel_error_lindzen}")
+    print(f"Our result is: {1/np.sqrt(lindzen_profile.eigenvals)/1000}")
+    print(f"Relative error respect to LaCasce Lindzen profile: {rel_error_lindzen}")
+    print(f"Absolute error respect to LaCasce: {np.abs((1/np.sqrt(lindzen_profile.eigenvals)/1000)-(1/np.sqrt(eigenvals_lindzen)/1000))}")
 
     # Plots of Struct Func
-    depth_levels = -np.arange(0.5, mean_depth, 1)
+    depth_levels = -np.arange(0.5, mean_depth, grid_step)
     run_plots = False
     if run_plots:
         # Plot Struct Func comparison
