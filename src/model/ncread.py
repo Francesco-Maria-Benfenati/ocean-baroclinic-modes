@@ -35,6 +35,7 @@ class ncRead:
         Extract Dataset out of a NetCDF file, given dimensions and variables.
         """
         try:
+            engine = "h5netcdf"
             dataset = xr.open_mfdataset(
                 self.path,
                 concat_dim=None,
@@ -48,27 +49,23 @@ class ncRead:
                 decode_cf=decode_vars,
                 # mask_and_scale = False,
             )
-            print("Open NetCDF file(s) with h5netcdf engine.")
         except (ValueError, OSError):
+            engine = "scipy" # "netcdf4"
             dataset = xr.open_mfdataset(
                 self.path,
                 concat_dim=None,
                 combine="by_coords",
                 parallel=True,
-                engine="netcdf4",
+                engine=engine,
                 cache=True,
                 lock=False,
                 decode_cf=decode_vars,
                 decode_times=True,
                 # mask_and_scale = False,
             )
-            print("Open NetCDF file(s) with netcdf4 engine.")
-        if vars is not None:
-            # check that the variables are in the dataset
-            for key in vars.values():
-                assert key in dataset.var(), f"Variable {key} not found in dataset"
-            # keep only variables we are interested in.
-            dataset = dataset[list(vars.values())]
+        print(f"Open NetCDF file(s) with {engine} engine.")
+        # Keep only variables we are interested in.
+        dataset = dataset[list(vars.values())]
         # check that the dimensions are in the dataset
         for key in dims.values():
             assert key in dataset.dims, f"Dimension {key} not found in dataset"
