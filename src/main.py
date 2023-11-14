@@ -97,13 +97,17 @@ if __name__ == "__main__":
             bathy_dims["lat"]: oce_domain[oce_dims["lat"]],
         }
         bathy_dataset = read_bathy.dataset(
-            dims=bathy_dims, vars=bathy_vars, coords=bathy_coords, **bathy_domain
+            dims=bathy_dims,
+            vars=bathy_vars,
+            coords=bathy_coords,
+            **bathy_domain,
+            decode_vars=True,
         )
         seafloor_depth = bathy_dataset[bathy_vars["bottomdepth"]]
-        mean_region_depth = seafloor_depth.mean(dim=bathy_dims.values()).values
+        mean_region_depth = np.abs(seafloor_depth.mean(dim=bathy_dims.values()).values)
         bathy_dataset.close()
     else:
-        mean_region_depth = config.input.bathy.set_bottomdepth
+        mean_region_depth = np.abs(config.input.bathy.set_bottomdepth)
     mean_region_depth = np.round(mean_region_depth, decimals=0)
     print(f"Mean region depth: {mean_region_depth} m")
 
@@ -151,6 +155,13 @@ if __name__ == "__main__":
     else:
         bv_freq_filtered = bv_freq
 
+    # import matplotlib.pyplot as plt
+    # plt.figure(1)
+    # plt.plot(bv_freq, - interface_depth)
+    # plt.plot(bv_freq_filtered, - interface_depth)
+    # plt.show()
+    # plt.close()
+
     # BAROCLINIC MODES & ROSSBY RADIUS
     print("Computing baroclinic modes and Rossby radii ...")
     # N° of modes of motion considered (including the barotropic one).
@@ -159,9 +170,14 @@ if __name__ == "__main__":
 
     # Compute baroclinic Rossby radius and vert. struct. function Phi(z).
     baroclinicmodes = BaroclinicModes(
-        bv_freq_filtered, mean_lat, grid_step, N_motion_modes
+        bv_freq_filtered,
+        mean_lat=mean_lat,
+        grid_step=grid_step,
+        n_modes=N_motion_modes,
     )
-    rossby_rad = baroclinicmodes.rossbyrad / 1000  # Rossby radius in [km]
+    rossby_rad = (
+        baroclinicmodes.rossbyrad / 1000
+    )  # Rossby radius in [km]
     print(f"Rossby radii [km]: {rossby_rad}")
 
     # WRITE RESULTS ON OUTPUT FILE
