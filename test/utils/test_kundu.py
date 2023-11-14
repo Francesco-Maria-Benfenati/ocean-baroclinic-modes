@@ -121,9 +121,9 @@ if __name__ == "__main__":
     N_db7_kundu *= (2 * np.pi) / 60
     # Problem parameters
     mean_depth = 100
-    depth = -np.arange(0, mean_depth + 1, 1)
-    coriolis_param = 1e-04
     dz = 1  # grid step [m]
+    depth = -np.arange(0, mean_depth + 1, dz)
+    coriolis_param = 1e-04
     # Interpolate Brunt-Vaisala freq at depth levels
     interpolation = Interpolation(-depth_kundu, N_carnation_kundu, N_db7_kundu)
     N_carnation, N_db7 = interpolation.apply_interpolation(0, mean_depth + 1, dz)
@@ -142,6 +142,8 @@ if __name__ == "__main__":
     )
     print(f"Eigenvalues at Carnation [km^-1]: {np.sqrt(eigenvals_carn)*1000}")
     print(f"Eigenvalues at DB-7 [km^-1]: {np.sqrt(eigenvals_db7)*1000}")
+    print(f"Rossby Radii at Carnation [km]: {1/(np.sqrt(eigenvals_carn)*1000)}")
+    print(f"Rossby Radii at DB-7 [km]: {1/(np.sqrt(eigenvals_db7)*1000)}")
 
     # PLOT Brunt-Vaisala frequency
     fig, ax = plt.subplots(figsize=(7, 8))
