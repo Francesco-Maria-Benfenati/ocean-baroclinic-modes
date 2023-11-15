@@ -155,18 +155,26 @@ if __name__ == "__main__":
     else:
         bv_freq_filtered = bv_freq
 
-    # import matplotlib.pyplot as plt
-    # plt.figure(1)
-    # plt.plot(bv_freq, - interface_depth)
-    # plt.plot(bv_freq_filtered, - interface_depth)
-    # plt.show()
-    # plt.close()
+    import matplotlib.pyplot as plt
+
+    plt.figure(1)
+    plt.plot(bv_freq, -interface_depth)
+    plt.plot(bv_freq_filtered, -interface_depth)
+    plt.show()
+    plt.close()
 
     # BAROCLINIC MODES & ROSSBY RADIUS
     print("Computing baroclinic modes and Rossby radii ...")
     # N° of modes of motion considered (including the barotropic one).
     N_motion_modes = config.output.n_modes
     mean_lat = np.mean(latitude.values)
+
+    # Warning if the region is too near the equator.
+    equator_threshold = 2.0
+    if -equator_threshold < np.any(latitude.values) < equator_threshold:
+        warnings.warn(
+            "The domain area is close to the equator: ! Rossby radii computation might be inaccurate !"
+        )
 
     # Compute baroclinic Rossby radius and vert. struct. function Phi(z).
     baroclinicmodes = BaroclinicModes(
@@ -175,9 +183,7 @@ if __name__ == "__main__":
         grid_step=grid_step,
         n_modes=N_motion_modes,
     )
-    rossby_rad = (
-        baroclinicmodes.rossbyrad / 1000
-    )  # Rossby radius in [km]
+    rossby_rad = baroclinicmodes.rossbyrad / 1000  # Rossby radius in [km]
     print(f"Rossby radii [km]: {rossby_rad}")
 
     # WRITE RESULTS ON OUTPUT FILE
