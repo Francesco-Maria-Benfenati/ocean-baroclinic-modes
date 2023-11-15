@@ -145,23 +145,52 @@ if __name__ == "__main__":
 
     # FILTERING BRUNT-VAISALA FREQUENCY PROFILE WITH A LOW-PASS FILTER.
     filter = config.bvfilter.filter
+    ####################################################################
+    # if filter:
+    #     print("Applying low-pass filter to Brunt-Vaisala frequency ...")
+    #     filter_order = config.bvfilter.order
+    #     cutoff_wavelength = config.bvfilter.cutoff_wavelength
+    #     bv_freq_filtered = Filter.lowpass(
+    #         bv_freq, grid_step, cutoff_wavelength, filter_order
+    #     )
+    # else:
+    #     bv_freq_filtered = bv_freq
+    ####################################################################
+
+    # * Filtering differently above/below 100 m *
+    bv_freq_above_pycnocline = bv_freq[:100]
+    bv_freq_below_pycnocline = bv_freq[100:]
     if filter:
         print("Applying low-pass filter to Brunt-Vaisala frequency ...")
         filter_order = config.bvfilter.order
         cutoff_wavelength = config.bvfilter.cutoff_wavelength
-        bv_freq_filtered = Filter.lowpass(
-            bv_freq, grid_step, cutoff_wavelength, filter_order
+        bv_freq_filtered_above_pycnocline = Filter.lowpass(
+            bv_freq_above_pycnocline,
+            grid_step,
+            cutoff_wavelength=10,
+            order=filter_order,
+        )
+        bv_freq_filtered_below_pycnocline = Filter.lowpass(
+            bv_freq_below_pycnocline,
+            grid_step,
+            cutoff_wavelength=cutoff_wavelength,
+            order=filter_order,
+        )
+        bv_freq_filtered = np.concatenate(
+            (bv_freq_filtered_above_pycnocline, bv_freq_filtered_below_pycnocline)
         )
     else:
         bv_freq_filtered = bv_freq
 
-    import matplotlib.pyplot as plt
-
-    plt.figure(1)
-    plt.plot(bv_freq, -interface_depth)
-    plt.plot(bv_freq_filtered, -interface_depth)
-    plt.show()
-    plt.close()
+    ####################################################################
+    # Beta plot of BV frequency.
+    # import matplotlib.pyplot as plt
+    # plt.figure(1)
+    # plt.plot(bv_freq, -interface_depth)
+    # plt.plot(bv_freq_filtered, -interface_depth)
+    # plt.show()
+    # plt.close()
+    ####################################################################
 
     # BAROCLINIC MODES & ROSSBY RADIUS
     print("Computing baroclinic modes and Rossby radii ...")

@@ -53,6 +53,6 @@
     # Set filter to true if it should be applied.
     filter = true
     # CUTOFF WAVELENGTH (in meters).
-    cutoff_wavelength = 10
+    cutoff_wavelength = 100
     # Filter order.
     order = 3
