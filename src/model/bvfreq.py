@@ -57,12 +57,12 @@ class BVfreq:
         # Defining value of gravitational acceleration.
         g = 9.806  # (m/s^2)
         # Defining value of reference density rho_0.
-        # rho_0 = 1025.0  # (kg/m^3)
-        rho = density[..., :-1]
+        rho_0 = 1025.0  # (kg/m^3)
+        # rho = density[..., :-1]
         # Compute Brunt-Vaisala frequency
         dz = depth[..., 1:] - depth[..., :-1]
         density_diff = density[..., 1:] - density[..., :-1]
-        bvfreq_sqrd = (g / rho) * density_diff / dz
+        bvfreq_sqrd = (g / rho_0) * density_diff / dz
         return bvfreq_sqrd
 
     @staticmethod
