@@ -35,7 +35,7 @@ class BaroclinicModes:
         else:
             s_param = BaroclinicModes.compute_problem_sparam(bvfreq, mean_lat)
         self.eigenvals, self.structfunc = BaroclinicModes.compute_baroclinicmodes(
-            s_param, grid_step, n_modes
+            s_param, grid_step, n_modes, vertvel_method=False
         )
         # Rossby deformation radius
         self.rossbyrad = BaroclinicModes.compute_rossby_rad(self.eigenvals)
@@ -81,7 +81,7 @@ class BaroclinicModes:
         s_param: NDArray,
         grid_step: float = None,
         n_modes: int = 5,
-        generalized_method: bool = False,
+        vertvel_method: bool = False,
     ) -> tuple[NDArray]:
         """
         Compute Baroclinic Rossby rad and vertical structure function.
@@ -89,7 +89,7 @@ class BaroclinicModes:
         Args:
             grid_step (float): vertical grid step 'dz'. Defaults to None.
             n_modes (int, optional): Num. of modes of motion to be computed. Defaults to 5.
-            generalized_method (bool, optional): If the generalized method should be used
+            vertvel_method (bool, optional): If the modal structure for vertical velocity method should be used
                                                  instead of the standard one. Defaults to False.
 
         Returns:
@@ -103,7 +103,7 @@ class BaroclinicModes:
         else:
             dz = grid_step
         # COMPUTE MATRIX & SOLVE EIGEN PROBLEM
-        if generalized_method:  # generalized case
+        if vertvel_method:  # generalized case
             lhs_matrix = BaroclinicModes.lhs_matrix_generalizedprob(n_levels, dz)
             rhs_matrix = BaroclinicModes.rhs_matrix_generalizedprob(s_param)
             eigenprob = EigenProblem(
@@ -115,12 +115,24 @@ class BaroclinicModes:
             eigenprob = EigenProblem(matrix, n_modes=n_modes)
         # Return eigenvalues and vertical structure function
         eigenvalues = eigenprob.eigenvals
-        if generalized_method:
+        if vertvel_method:
             vert_structurefunc = BaroclinicModes.from_w_to_structfunc(
                 eigenprob.eigenvecs, s_param, dz
             )
         else:
             vert_structurefunc = eigenprob.eigenvecs
+        # import matplotlib.pyplot as plt
+        # plt.figure(1)
+        # plt.title("vertical structure function [1]")
+        # plt.plot(vert_structurefunc, -np.arange(len(vert_structurefunc)))
+        # plt.ylabel("depth [m]")
+        # plt.show()
+        # plt.figure(2)
+        # plt.title(r"modal structure for vertical velocity [1/m]")
+        # plt.plot(eigenprob.eigenvecs,  -np.arange(len(eigenprob.eigenvecs)))
+        # plt.ylabel("depth [m]")
+        # plt.show()
+        # plt.close()
         # Check sign
         vert_structurefunc = BaroclinicModes.check_sign_eigenvectors(vert_structurefunc)
         # Normalization of vertical structure function
@@ -156,7 +168,7 @@ class BaroclinicModes:
         eigenvectors: NDArray, s_param: NDArray, dz: float
     ) -> NDArray:
         """
-        Compute structure function from eigenvectors (if using generalized method).
+        Compute structure function from eigenvectors (if using modal structure for vertical velocity method).
         """
 
         n_modes = eigenvectors.shape[1]
@@ -373,9 +385,9 @@ if __name__ == "__main__":
         f"Computed lambdas are {eigval}, with relative errors {(eigval-expected_eigenvals)/expected_eigenvals}"
     )
     print(eigval - expected_eigenvals, (1 / 2000))
-    # Test generalized method
+    # Test modal structure for vertical velocity method
     eigvals_generalized_case, struct_func = BaroclinicModes.compute_baroclinicmodes(
-        N2_const, generalized_method=True
+        N2_const, vertvel_method=True
     )
     print("On the other hand, solving generalized leads to relative error:")
     print((eigvals_generalized_case - expected_eigenvals) / expected_eigenvals)
