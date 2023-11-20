@@ -284,28 +284,28 @@ if __name__ == "__main__":
     print(f"Computing Ocean Baroclinic Modes COMPLETED in {elapsed_time} seconds.")
 
     ####################################################################
-    # import matplotlib.pyplot as plt
+    import matplotlib.pyplot as plt
 
-    # # Beta plot of potential density.
-    # plt.figure(1)
-    # plt.title("Potential Density [kg/m^3]")
-    # plt.plot(interp_dens, -interp_depth)
-    # plt.ylabel("depth [m]")
-    # # Beta plot of BV frequency.
-    # plt.figure(2)
-    # plt.title("Brunt-Vaisala frequency [1/s]")
-    # plt.plot(bv_freq, -interface_depth)
-    # plt.plot(bv_freq_filtered, -interface_depth)
-    # plt.ylabel("depth [m]")
-    # # Beta plot of vertical structure function.
-    # plt.figure(3)
-    # if vertvel_method:
-    #     plt.title("modal structure for vertical velocity")
-    #     plt.plot(baroclinicmodes.structfunc, -interface_depth)
-    # else:
-    #     plt.title("vertical structure function")
-    #     plt.plot(baroclinicmodes.structfunc, -depth_levels)
-    # plt.ylabel("depth [m]")
-    # plt.show()
-    # plt.close()
+    # Beta plot of potential density.
+    plt.figure(1)
+    plt.title("Potential Density [kg/m^3]")
+    plt.plot(interp_dens, -interp_depth)
+    plt.ylabel("depth [m]")
+    # Beta plot of BV frequency.
+    plt.figure(2)
+    plt.title("Brunt-Vaisala frequency [1/s]")
+    plt.plot(bv_freq, -interface_depth)
+    plt.plot(bv_freq_filtered, -interface_depth)
+    plt.ylabel("depth [m]")
+    # Beta plot of vertical structure function.
+    plt.figure(3)
+    if vertvel_method:
+        plt.title("modal structure for vertical velocity")
+        plt.plot(baroclinicmodes.structfunc, -interface_depth)
+    else:
+        plt.title("vertical structure function")
+        plt.plot(baroclinicmodes.structfunc, -depth_levels)
+    plt.ylabel("depth [m]")
+    plt.show()
+    plt.close()
     ####################################################################
