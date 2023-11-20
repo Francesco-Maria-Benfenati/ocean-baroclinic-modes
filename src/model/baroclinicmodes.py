@@ -336,12 +336,6 @@ class BaroclinicModes:
         B = np.delete(B, 0, axis=1)
         return B
 
-    def __andor(a: bool, b: bool) -> bool:
-        """
-        And/Or logical statement.
-        """
-        return a and b | a or b
-
 
 if __name__ == "__main__":
     dz = 0.5

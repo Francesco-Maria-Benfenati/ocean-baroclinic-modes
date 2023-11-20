@@ -29,6 +29,12 @@ def drop_dims_from_dataset(dataset: Dataset, drop_dims: list[str]) -> Dataset:
     """
     return dataset.drop_dims(drop_dims=drop_dims)
 
+def andor(a: bool, b: bool) -> bool:
+        """
+        And/Or logical statement.
+        """
+        return a and b | a or b
+
 
 if __name__ == "__main__":
     # Get starting time
@@ -188,17 +194,18 @@ if __name__ == "__main__":
     # N° of modes of motion considered (including the barotropic one).
     N_motion_modes = config.output.n_modes
     mean_lat = np.mean(latitude.values)
-
     # Warning if the region is too near the equator.
     equator_threshold = 2.0
-    if -equator_threshold < np.any(latitude.values) < equator_threshold:
+    lower_condition = -equator_threshold < np.min(latitude.values) < equator_threshold
+    upper_condition = -equator_threshold < np.max(latitude.values) < equator_threshold
+    if andor(lower_condition, upper_condition):
         warnings.warn(
             "The domain area is close to the equator: ! Rossby radii computation might be inaccurate !"
         )
 
     # Compute baroclinic Rossby radius and vert. struct. function Phi(z).
     # Specify if structure of vertical velocity should be computed instead of Phi.
-    vertvel_method = True
+    vertvel_method = False
     baroclinicmodes = BaroclinicModes(
         bv_freq_filtered,
         mean_lat=mean_lat,
@@ -266,19 +273,17 @@ if __name__ == "__main__":
 
     ####################################################################
     # import matplotlib.pyplot as plt
-    # # Beta plot of BV frequency.
+    # # Beta plot of potential density.
     # plt.figure(1)
+    # plt.title("Potential Density [kg/m^3]")
+    # plt.plot(interp_dens, -interp_depth)
+    # plt.ylabel("depth [m]")
+    # # Beta plot of BV frequency.
+    # plt.figure(2)
     # plt.title("Brunt-Vaisala frequency [1/s]")
     # plt.plot(bv_freq, -interface_depth)
     # plt.plot(bv_freq_filtered, -interface_depth)
     # plt.ylabel("depth [m]")
-    # plt.show()
-    # # Beta plot of potential density.
-    # plt.figure(2)
-    # plt.title("Potential Density [kg/m^3]")
-    # plt.plot(interp_dens, -interp_depth)
-    # plt.ylabel("depth [m]")
-    # plt.show()
     # # Beta plot of BV frequency.
     # plt.figure(3)
     # if vertvel_method:
