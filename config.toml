@@ -35,9 +35,9 @@
     # time = [1900-01-01T00:00:00, 2018-01-01T00:00:00]
     time = []
     # Domain extremants: longitude min, max [° E]
-    lon = [-30, -35]
+    lon = [-27.2, -27.2]
     # Domain extremants: latitude min, max [° N]
-    lat = [50, 55]
+    lat = [53, 53]
     # Domain extremants: depth min, max [m]
     depth = []
 # OUTPUT FILE.

@@ -129,15 +129,14 @@ if __name__ == "__main__":
     # VERTICAL INTERPOLATION (1m grid step)
     print("Vertically interpolating mean density ...")
     grid_step = 1  # [m]
-
     interpolation = Interpolation(depth.values, mean_region_density)
-    (interp_dens,) = interpolation.apply_interpolation(
+    (interp_dens, interp_depth) = interpolation.apply_interpolation(
         -grid_step / 2, mean_region_depth + grid_step, grid_step
     )
-    # Depth levels (1m grid step)
-    interp_depth = np.arange(-grid_step / 2, mean_region_depth + grid_step, grid_step)
     # Interface levels (1m grid step, shifted of 0.5 m respect to depth levels)
-    interface_depth = np.arange(len(interp_depth[1:-1]) + 1)
+    interface_depth = interp_depth[:-1] + grid_step / 2
+    # New equispatial depth levels.
+    depth_levels = interp_depth[1:-1]
 
     # COMPUTE BRUNT-VAISALA FREQUENCY
     bv_freq_sqrd = BVfreq.compute_bvfreq_sqrd(interp_depth, interp_dens)
@@ -145,52 +144,44 @@ if __name__ == "__main__":
 
     # FILTERING BRUNT-VAISALA FREQUENCY PROFILE WITH A LOW-PASS FILTER.
     filter = config.bvfilter.filter
-    ####################################################################
-    # if filter:
-    #     print("Applying low-pass filter to Brunt-Vaisala frequency ...")
-    #     filter_order = config.bvfilter.order
-    #     cutoff_wavelength = config.bvfilter.cutoff_wavelength
-    #     bv_freq_filtered = Filter.lowpass(
-    #         bv_freq, grid_step, cutoff_wavelength, filter_order
-    #     )
-    # else:
-    #     bv_freq_filtered = bv_freq
-    ####################################################################
-
-    # * Filtering differently above/below 100 m *
-    bv_freq_above_pycnocline = bv_freq[:100]
-    bv_freq_below_pycnocline = bv_freq[100:]
-    if filter:
-        print("Applying low-pass filter to Brunt-Vaisala frequency ...")
-        filter_order = config.bvfilter.order
-        cutoff_wavelength = config.bvfilter.cutoff_wavelength
-        bv_freq_filtered_above_pycnocline = Filter.lowpass(
-            bv_freq_above_pycnocline,
-            grid_step,
-            cutoff_wavelength=10,
-            order=filter_order,
-        )
-        bv_freq_filtered_below_pycnocline = Filter.lowpass(
-            bv_freq_below_pycnocline,
-            grid_step,
-            cutoff_wavelength=cutoff_wavelength,
-            order=filter_order,
-        )
-        bv_freq_filtered = np.concatenate(
-            (bv_freq_filtered_above_pycnocline, bv_freq_filtered_below_pycnocline)
-        )
-    else:
-        bv_freq_filtered = bv_freq
-
-    ####################################################################
-    # Beta plot of BV frequency.
-    # import matplotlib.pyplot as plt
-    # plt.figure(1)
-    # plt.plot(bv_freq, -interface_depth)
-    # plt.plot(bv_freq_filtered, -interface_depth)
-    # plt.show()
-    # plt.close()
-    ####################################################################
+    # If filtering should be depth-dependent.
+    depth_dependent_filter = True
+    # Filtering the whole profile in the same way.
+    if not depth_dependent_filter:
+        if filter:
+            print("Applying low-pass filter to Brunt-Vaisala frequency ...")
+            filter_order = config.bvfilter.order
+            cutoff_wavelength = config.bvfilter.cutoff_wavelength
+            bv_freq_filtered = Filter.lowpass(
+                bv_freq, grid_step, cutoff_wavelength, filter_order
+            )
+        else:
+            bv_freq_filtered = bv_freq
+    # Filtering differently above/below 100 m .
+    elif depth_dependent_filter:
+        bv_freq_above_pycnocline = bv_freq[:100]
+        bv_freq_below_pycnocline = bv_freq[100:]
+        if filter:
+            print("Applying low-pass filter to Brunt-Vaisala frequency ...")
+            filter_order = config.bvfilter.order
+            cutoff_wavelength = config.bvfilter.cutoff_wavelength
+            bv_freq_filtered_above_pycnocline = Filter.lowpass(
+                bv_freq_above_pycnocline,
+                grid_step,
+                cutoff_wavelength=10,
+                order=filter_order,
+            )
+            bv_freq_filtered_below_pycnocline = Filter.lowpass(
+                bv_freq_below_pycnocline,
+                grid_step,
+                cutoff_wavelength=cutoff_wavelength,
+                order=filter_order,
+            )
+            bv_freq_filtered = np.concatenate(
+                (bv_freq_filtered_above_pycnocline, bv_freq_filtered_below_pycnocline)
+            )
+        else:
+            bv_freq_filtered = bv_freq
 
     # BAROCLINIC MODES & ROSSBY RADIUS
     print("Computing baroclinic modes and Rossby radii ...")
@@ -206,14 +197,17 @@ if __name__ == "__main__":
         )
 
     # Compute baroclinic Rossby radius and vert. struct. function Phi(z).
+    # Specify if structure of vertical velocity should be computed instead of Phi.
+    vertvel_method = True
     baroclinicmodes = BaroclinicModes(
         bv_freq_filtered,
         mean_lat=mean_lat,
         grid_step=grid_step,
         n_modes=N_motion_modes,
+        vertvel_method=vertvel_method,
     )
-    rossby_rad = baroclinicmodes.rossbyrad / 1000  # Rossby radius in [km]
-    print(f"Rossby radii [km]: {rossby_rad}")
+    rossby_rad = baroclinicmodes.rossbyrad  # / 1000  # Rossby radius in [km]
+    print(f"Rossby radii [km]: {rossby_rad/1000}")
 
     # WRITE RESULTS ON OUTPUT FILE
     print("Writing output file ...")
@@ -224,32 +218,76 @@ if __name__ == "__main__":
     radii_dataset = ncwrite.create_dataset(
         dims="mode", coords={"mode": modes_of_motion}, rossbyrad=rossby_rad
     )
-    # Vertical profiles dataset
-    # Interpolate Brunt-Vaisala frequency (computed at interfaces) over depth levels
-    interface_depths = np.arange(0, mean_region_depth + grid_step, grid_step)
-    interpolate = sp.interpolate.interp1d(
-        interface_depths,
-        bv_freq,
-        fill_value="extrapolate",
-        kind="linear",
-    )
-    interp_bvfreq = interpolate(interp_depth[1:-1])
-    vertical_profiles_dataset = ncwrite.create_dataset(
+    # Density dataset
+    density_dataset = ncwrite.create_dataset(
         dims="depth",
-        coords={"depth": interp_depth[1:-1]},
+        coords={"depth": depth_levels},
         density=interp_dens[1:-1],
-        bvfreq=interp_bvfreq,
+    )
+    # Brunt-Vaisala freq. dataset
+    bvfreq_dataset = ncwrite.create_dataset(
+        dims="depth_interface",
+        coords={"depth_interface": interface_depth},
+        bvfreq=bv_freq_filtered,
     )
     # Vertical structure function dataset
-    vert_struct_func_dataset = ncwrite.create_dataset(
-        dims=["depth", "mode"],
-        coords={"mode": modes_of_motion, "depth": interp_depth[1:-1]},
-        structfunc=baroclinicmodes.structfunc,
+    if vertvel_method:
+        vert_struct_func_dataset = ncwrite.create_dataset(
+            dims=["depth_interface", "mode"],
+            coords={"mode": modes_of_motion, "depth_interface": interface_depth},
+            structfunc=baroclinicmodes.structfunc,
+        )
+    else:
+        vert_struct_func_dataset = ncwrite.create_dataset(
+            dims=["depth", "mode"],
+            coords={"mode": modes_of_motion, "depth": depth_levels},
+            structfunc=baroclinicmodes.structfunc,
+        )
+    ncwrite.save(
+        radii_dataset, density_dataset, bvfreq_dataset, vert_struct_func_dataset
     )
-    ncwrite.save(radii_dataset, vert_struct_func_dataset, vertical_profiles_dataset)
+
+    # Results with WKB approximation (see Chelton, 1997)
+    m = np.arange(N_motion_modes)
+    coriolis_param = np.abs(baroclinicmodes.coriolis_param(mean_lat))
+    lambda_m = (coriolis_param * m * np.pi) ** (-1) * sp.integrate.trapezoid(
+        bv_freq_filtered, interface_depth
+    )
+    print(
+        "According to WKB approximation (see chelton, 1997), Rossby radii [km] are:",
+        lambda_m / 1000,
+    )
 
     # Get ending time
     end_time = time.time()
     # Print elapsed time
     elapsed_time = np.round(end_time - start_time, decimals=2)
     print(f"Computing Ocean Baroclinic Modes COMPLETED in {elapsed_time} seconds.")
+
+    ####################################################################
+    # import matplotlib.pyplot as plt
+    # # Beta plot of BV frequency.
+    # plt.figure(1)
+    # plt.title("Brunt-Vaisala frequency [1/s]")
+    # plt.plot(bv_freq, -interface_depth)
+    # plt.plot(bv_freq_filtered, -interface_depth)
+    # plt.ylabel("depth [m]")
+    # plt.show()
+    # # Beta plot of potential density.
+    # plt.figure(2)
+    # plt.title("Potential Density [kg/m^3]")
+    # plt.plot(interp_dens, -interp_depth)
+    # plt.ylabel("depth [m]")
+    # plt.show()
+    # # Beta plot of BV frequency.
+    # plt.figure(3)
+    # if vertvel_method:
+    #     plt.title("modal structure for vertical velocity")
+    #     plt.plot(baroclinicmodes.structfunc, -interface_depth)
+    # else:
+    #     plt.title("vertical structure function")
+    #     plt.plot(baroclinicmodes.structfunc, -depth_levels)
+    # plt.ylabel("depth [m]")
+    # plt.show()
+    # plt.close()
+    ####################################################################

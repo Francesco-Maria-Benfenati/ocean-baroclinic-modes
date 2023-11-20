@@ -21,6 +21,7 @@ class BaroclinicModes:
         mean_lat: float = None,
         grid_step: float = None,
         n_modes: int = 5,
+        vertvel_method: bool = False,
     ) -> None:
         """
         Constructor for OceBaroclModes objects
@@ -35,7 +36,10 @@ class BaroclinicModes:
         else:
             s_param = BaroclinicModes.compute_problem_sparam(bvfreq, mean_lat)
         self.eigenvals, self.structfunc = BaroclinicModes.compute_baroclinicmodes(
-            s_param, grid_step, n_modes, vertvel_method=False
+            s_param,
+            grid_step,
+            n_modes,
+            vertvel_method=vertvel_method,
         )
         # Rossby deformation radius
         self.rossbyrad = BaroclinicModes.compute_rossby_rad(self.eigenvals)
@@ -51,6 +55,7 @@ class BaroclinicModes:
 
         NOTE: depth should be the last dimension.
         """
+
         s_param = BaroclinicModes.compute_problem_sparam(bvfreq, mean_lat)
         flatten_array = s_param.reshape(-1, s_param.shape[-1])
         rossbyrad = []
@@ -93,7 +98,8 @@ class BaroclinicModes:
                                                  instead of the standard one. Defaults to False.
 
         Returns:
-            eigenvalues, vertical structure functions
+            eigenvalues, vertical structure function (or modal structure of vertical velocity,
+                                                        depending on 'vertvel_method')
         """
 
         # Number of vertical levels
@@ -109,30 +115,17 @@ class BaroclinicModes:
             eigenprob = EigenProblem(
                 lhs_matrix, rhs_matrix, grid_step=dz, n_modes=n_modes
             )
+            # Add BC values to eigenvectors (w=0 where z = 0,-H)
+            eigenprob.eigenvecs = np.insert(
+                eigenprob.eigenvecs, (0, -1), np.zeros(n_modes), axis=0
+            )
         else:
             # compute tridiagonal matrix (standard case)
             matrix = BaroclinicModes.tridiag_matrix_standardprob(s_param, dz)
             eigenprob = EigenProblem(matrix, n_modes=n_modes)
         # Return eigenvalues and vertical structure function
         eigenvalues = eigenprob.eigenvals
-        if vertvel_method:
-            vert_structurefunc = BaroclinicModes.from_w_to_structfunc(
-                eigenprob.eigenvecs, s_param, dz
-            )
-        else:
-            vert_structurefunc = eigenprob.eigenvecs
-        # import matplotlib.pyplot as plt
-        # plt.figure(1)
-        # plt.title("vertical structure function [1]")
-        # plt.plot(vert_structurefunc, -np.arange(len(vert_structurefunc)))
-        # plt.ylabel("depth [m]")
-        # plt.show()
-        # plt.figure(2)
-        # plt.title(r"modal structure for vertical velocity [1/m]")
-        # plt.plot(eigenprob.eigenvecs,  -np.arange(len(eigenprob.eigenvecs)))
-        # plt.ylabel("depth [m]")
-        # plt.show()
-        # plt.close()
+        vert_structurefunc = eigenprob.eigenvecs
         # Check sign
         vert_structurefunc = BaroclinicModes.check_sign_eigenvectors(vert_structurefunc)
         # Normalization of vertical structure function
@@ -172,9 +165,6 @@ class BaroclinicModes:
         """
 
         n_modes = eigenvectors.shape[1]
-        # Add BC values to eigenvectors
-        eigenvectors = np.insert(eigenvectors, 0, np.zeros(n_modes), axis=0)
-        eigenvectors = np.insert(eigenvectors, -1, np.zeros(n_modes), axis=0)
         # Define integration constant phi_0 = phi(z = 0) = 1 as BC.
         phi_barotropic = 1
         phi_0 = np.ones(n_modes) * phi_barotropic
@@ -346,6 +336,12 @@ class BaroclinicModes:
         B = np.delete(B, 0, axis=1)
         return B
 
+    def __andor(a: bool, b: bool) -> bool:
+        """
+        And/Or logical statement.
+        """
+        return a and b | a or b
+
 
 if __name__ == "__main__":
     dz = 0.5
@@ -409,6 +405,6 @@ if __name__ == "__main__":
     print(
         rossbyrad_1d.shape, rossbyrad_3d.shape, structfunc_1d.shape, structfunc_3d.shape
     )
-    assert np.array_equal(structfunc_3d[3,5], structfunc_1d)
-    assert np.array_equal(rossbyrad_3d[3,5], rossbyrad_1d*2)
-    assert np.array_equal(rossbyrad_3d[12,17], rossbyrad_1d)
+    assert np.array_equal(structfunc_3d[3, 5], structfunc_1d)
+    assert np.array_equal(rossbyrad_3d[3, 5], rossbyrad_1d * 2)
+    assert np.array_equal(rossbyrad_3d[12, 17], rossbyrad_1d)
