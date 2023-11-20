@@ -29,11 +29,12 @@ def drop_dims_from_dataset(dataset: Dataset, drop_dims: list[str]) -> Dataset:
     """
     return dataset.drop_dims(drop_dims=drop_dims)
 
+
 def andor(a: bool, b: bool) -> bool:
-        """
-        And/Or logical statement.
-        """
-        return a and b | a or b
+    """
+    And/Or logical statement.
+    """
+    return a and b | a or b
 
 
 if __name__ == "__main__":
@@ -120,16 +121,17 @@ if __name__ == "__main__":
     # COMPUTE DENSITY
     print("Computing density ...")
     # Compute Density from Pot. Temperature & Salinity.
+    ref_pressure = 0  # reference pressure [dbar]
     if config.input.oce.insitu_temperature is True:
         pot_temperature = Eos.potential_temperature(
-            salinity.values, temperature.values, depth.values
+            salinity.values, temperature.values, depth.values, ref_press=ref_pressure
         )
     else:
         pot_temperature = temperature
     try:
-        eos = Eos(salinity.values, pot_temperature.values, depth.values)
+        eos = Eos(salinity.values, pot_temperature.values, ref_pressure)
     except AttributeError:
-        eos = Eos(salinity.values, pot_temperature, depth.values)
+        eos = Eos(salinity.values, pot_temperature, ref_pressure)
     mean_region_density = np.nanmean(eos.density, axis=(0, 1, 2))
 
     # VERTICAL INTERPOLATION (1m grid step)
@@ -144,8 +146,18 @@ if __name__ == "__main__":
     # New equispatial depth levels.
     depth_levels = interp_depth[1:-1]
 
-    # COMPUTE BRUNT-VAISALA FREQUENCY
+    # COMPUTE BRUNT-VAISALA FREQUENCY SQUARED
     bv_freq_sqrd = BVfreq.compute_bvfreq_sqrd(interp_depth, interp_dens)
+
+    # RE-INTERPOLATING BRUNT-VAISALA FREQUENCY SQUARED FOR REMOVING NaNs and < 0 values.
+    bv_freq_sqrd[np.where(bv_freq_sqrd < 0)] = np.nan
+    if np.isnan(bv_freq_sqrd[0]):
+        bv_freq_sqrd[0] = 0.0
+    interpolate_bvfreqsqrd = Interpolation(interface_depth, bv_freq_sqrd)
+    bv_freq_sqrd, interfaces = interpolate_bvfreqsqrd.apply_interpolation(
+        0, mean_region_depth + grid_step, grid_step
+    )
+    assert np.array_equal(interfaces, interface_depth)
     bv_freq = np.sqrt(bv_freq_sqrd)
 
     # FILTERING BRUNT-VAISALA FREQUENCY PROFILE WITH A LOW-PASS FILTER.
@@ -205,7 +217,7 @@ if __name__ == "__main__":
 
     # Compute baroclinic Rossby radius and vert. struct. function Phi(z).
     # Specify if structure of vertical velocity should be computed instead of Phi.
-    vertvel_method = False
+    vertvel_method = True
     baroclinicmodes = BaroclinicModes(
         bv_freq_filtered,
         mean_lat=mean_lat,
@@ -273,6 +285,7 @@ if __name__ == "__main__":
 
     ####################################################################
     # import matplotlib.pyplot as plt
+
     # # Beta plot of potential density.
     # plt.figure(1)
     # plt.title("Potential Density [kg/m^3]")
@@ -284,7 +297,7 @@ if __name__ == "__main__":
     # plt.plot(bv_freq, -interface_depth)
     # plt.plot(bv_freq_filtered, -interface_depth)
     # plt.ylabel("depth [m]")
-    # # Beta plot of BV frequency.
+    # # Beta plot of vertical structure function.
     # plt.figure(3)
     # if vertvel_method:
     #     plt.title("modal structure for vertical velocity")
