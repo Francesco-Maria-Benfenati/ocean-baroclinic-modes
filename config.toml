@@ -18,9 +18,9 @@
         # This might be useful for memory issues due to xarray decoding procedure.
         decode_vars_with_xarray = true
     [input.bathy]
-        # Set region depth [in meters] (set to false if not used, otherwise set the value you desire.)
+        # Set region depth [in meters] (set to false if not used, otherwise set the value you desire).
         set_bottomdepth = false
-        # set_bottomdepth = 5000
+        # set_bottomdepth = 3500
         # Path to bathymetry NetCDF file
         path = "./data/bathymetry/GEBCO_2023.nc" 
         # Name of Sea Floor depth and other variables in Netcdf file.
@@ -35,9 +35,9 @@
     # time = [1900-01-01T00:00:00, 2018-01-01T00:00:00]
     time = []
     # Domain extremants: longitude min, max [° E]
-    lon = [-27.2, -27.2]
+    lon = [-45.3, -45.3]
     # Domain extremants: latitude min, max [° N]
-    lat = [53, 53]
+    lat = [29.9, 29.9]
     # Domain extremants: depth min, max [m]
     depth = []
 # OUTPUT FILE.
@@ -48,6 +48,8 @@
     filename = "baroclinic_modes"
     # Num. of modes of motion to be computed.
     n_modes = 4
+    # If modal structure of vertical velocity should be computed instead of vertical structure function.
+    vertvel_method = false
 # SMOOTHING BRUNT-VAISALA FREQUENCY PROFILE WITH A LOW-PASS FILTER.
 [bvfilter]
     # Set filter to true if it should be applied.

@@ -216,14 +216,13 @@ if __name__ == "__main__":
         )
 
     # Compute baroclinic Rossby radius and vert. struct. function Phi(z).
-    # Specify if structure of vertical velocity should be computed instead of Phi.
-    vertvel_method = True
+    # From config file, specify if structure of vertical velocity should be computed instead of Phi.
     baroclinicmodes = BaroclinicModes(
         bv_freq_filtered,
         mean_lat=mean_lat,
         grid_step=grid_step,
         n_modes=N_motion_modes,
-        vertvel_method=vertvel_method,
+        vertvel_method=config.output.vertvel_method,
     )
     rossby_rad = baroclinicmodes.rossbyrad  # / 1000  # Rossby radius in [km]
     print(f"Rossby radii [km]: {rossby_rad/1000}")
@@ -250,7 +249,7 @@ if __name__ == "__main__":
         bvfreq=bv_freq_filtered,
     )
     # Vertical structure function dataset
-    if vertvel_method:
+    if config.output.vertvel_method:
         vert_struct_func_dataset = ncwrite.create_dataset(
             dims=["depth_interface", "mode"],
             coords={"mode": modes_of_motion, "depth_interface": interface_depth},
@@ -284,28 +283,28 @@ if __name__ == "__main__":
     print(f"Computing Ocean Baroclinic Modes COMPLETED in {elapsed_time} seconds.")
 
     ####################################################################
-    import matplotlib.pyplot as plt
+    # import matplotlib.pyplot as plt
 
-    # Beta plot of potential density.
-    plt.figure(1)
-    plt.title("Potential Density [kg/m^3]")
-    plt.plot(interp_dens, -interp_depth)
-    plt.ylabel("depth [m]")
-    # Beta plot of BV frequency.
-    plt.figure(2)
-    plt.title("Brunt-Vaisala frequency [1/s]")
-    plt.plot(bv_freq, -interface_depth)
-    plt.plot(bv_freq_filtered, -interface_depth)
-    plt.ylabel("depth [m]")
-    # Beta plot of vertical structure function.
-    plt.figure(3)
-    if vertvel_method:
-        plt.title("modal structure for vertical velocity")
-        plt.plot(baroclinicmodes.structfunc, -interface_depth)
-    else:
-        plt.title("vertical structure function")
-        plt.plot(baroclinicmodes.structfunc, -depth_levels)
-    plt.ylabel("depth [m]")
-    plt.show()
-    plt.close()
+    # # Beta plot of potential density.
+    # plt.figure(1)
+    # plt.title("Potential Density [kg/m^3]")
+    # plt.plot(interp_dens, -interp_depth)
+    # plt.ylabel("depth [m]")
+    # # Beta plot of BV frequency.
+    # plt.figure(2)
+    # plt.title("Brunt-Vaisala frequency [cycles/hr]")
+    # plt.plot(bv_freq *3600/(2*np.pi), -interface_depth)
+    # plt.plot(bv_freq_filtered*3600/(2*np.pi), -interface_depth)
+    # plt.ylabel("depth [m]")
+    # # Beta plot of vertical structure function.
+    # plt.figure(3)
+    # if config.output.vertvel_method:
+    #     plt.title("modal structure for vertical velocity")
+    #     plt.plot(baroclinicmodes.structfunc, -interface_depth)
+    # else:
+    #     plt.title("vertical structure function")
+    #     plt.plot(baroclinicmodes.structfunc, -depth_levels)
+    # plt.ylabel("depth [m]")
+    # plt.show()
+    # plt.close()
     ####################################################################
