@@ -3,12 +3,12 @@ import scipy as sp
 from numpy.typing import NDArray
 
 try:
-    from .utils import Utils
+    from .testutils import TestUtils
 except ImportError:
-    from utils import Utils
+    from test.utils.testutils import TestUtils
 
 
-class TestModes(Utils):
+class TestModes(TestUtils):
     """
     This Class contains analytical solutions from LaCasce (2012), for constant, exponential and Lindzen stratification profiles.
     """
@@ -182,7 +182,7 @@ if __name__ == "__main__":
     # CONST case
     bvfreq_const = np.ones(n_levels) * bvfreq_0
     print("Running CONST case ...")
-    const_profile = Utils(bvfreq_const**2, f_0, grid_step)
+    const_profile = TestUtils(bvfreq_const**2, f_0, grid_step)
     eigenvals_const = testmodes.LaCasce_eigenvals("const")
     rel_error_const = const_profile.compare_eigenvals(eigenvals_const**2)
 
@@ -192,11 +192,11 @@ if __name__ == "__main__":
     bvfreqsqrd_lindzen = (bvfreq_0**2) / (1 - 10 * depth / mean_depth)
 
     print("Running EXPON 2/H case ...")
-    expon2_profile = Utils(bvfreqsqrd_expon_2, f_0, grid_step)
+    expon2_profile = TestUtils(bvfreqsqrd_expon_2, f_0, grid_step)
     print("Running EXPON 10/H case ...")
-    expon10_profile = Utils(bvfreqsqrd_expon_10, f_0, grid_step)
+    expon10_profile = TestUtils(bvfreqsqrd_expon_10, f_0, grid_step)
     print("Running LINDZEN case ...")
-    lindzen_profile = Utils(bvfreqsqrd_lindzen, f_0, grid_step)
+    lindzen_profile = TestUtils(bvfreqsqrd_lindzen, f_0, grid_step)
 
     eigenvals_expon2 = testmodes.from_gamma_to_eigenvals("exp2", 2)
     eigenvals_expon10 = testmodes.from_gamma_to_eigenvals("exp10", 10)
