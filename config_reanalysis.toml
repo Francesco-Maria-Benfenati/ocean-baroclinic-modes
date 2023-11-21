@@ -48,11 +48,12 @@
     filename = "baroclinic_modes"
     # Num. of modes of motion to be computed.
     n_modes = 4
-    vertvel_method = false
+    # If modal structure of vertical velocity should be computed instead of vertical structure function.
+    vertvel_method = true
 # SMOOTHING BRUNT-VAISALA FREQUENCY PROFILE WITH A LOW-PASS FILTER.
 [bvfilter]
     # Set filter to true if it should be applied.
-    filter = true
+    filter = false
     # CUTOFF WAVELENGTH (in meters).
     cutoff_wavelength = 100
     # Filter order.

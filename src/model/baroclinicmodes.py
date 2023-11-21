@@ -126,8 +126,9 @@ class BaroclinicModes:
         # Return eigenvalues and vertical structure function
         eigenvalues = eigenprob.eigenvals
         vert_structurefunc = eigenprob.eigenvecs
-        # Check sign
-        vert_structurefunc = BaroclinicModes.check_sign_eigenvectors(vert_structurefunc)
+        if not vertvel_method:
+            # Check sign
+            vert_structurefunc = BaroclinicModes.check_sign_eigenvectors(vert_structurefunc)
         # Normalization of vertical structure function
         normalized_vert_structurefunc = BaroclinicModes.normalize_eigenfunc(
             vert_structurefunc, dz
