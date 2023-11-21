@@ -281,30 +281,3 @@ if __name__ == "__main__":
     # Print elapsed time
     elapsed_time = np.round(end_time - start_time, decimals=2)
     print(f"Computing Ocean Baroclinic Modes COMPLETED in {elapsed_time} seconds.")
-
-    ####################################################################
-    # import matplotlib.pyplot as plt
-
-    # # Beta plot of potential density.
-    # plt.figure(1)
-    # plt.title("Potential Density [kg/m^3]")
-    # plt.plot(interp_dens, -interp_depth)
-    # plt.ylabel("depth [m]")
-    # # Beta plot of BV frequency.
-    # plt.figure(2)
-    # plt.title("Brunt-Vaisala frequency [cycles/hr]")
-    # plt.plot(bv_freq *3600/(2*np.pi), -interface_depth)
-    # plt.plot(bv_freq_filtered*3600/(2*np.pi), -interface_depth)
-    # plt.ylabel("depth [m]")
-    # # Beta plot of vertical structure function.
-    # plt.figure(3)
-    # if config.output.vertvel_method:
-    #     plt.title("modal structure for vertical velocity")
-    #     plt.plot(baroclinicmodes.structfunc, -interface_depth)
-    # else:
-    #     plt.title("vertical structure function")
-    #     plt.plot(baroclinicmodes.structfunc, -depth_levels)
-    # plt.ylabel("depth [m]")
-    # plt.show()
-    # plt.close()
-    ####################################################################
