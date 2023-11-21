@@ -1,4 +1,5 @@
 import os
+import logging
 import xarray as xr
 from xarray import Dataset, Variable
 import numpy as np
@@ -63,7 +64,7 @@ class ncRead:
                 decode_times=True,
                 # mask_and_scale = False,
             )
-        print(f"Open NetCDF file(s) with {engine} engine.")
+        logging.info(f"Open NetCDF file(s) with {engine} engine.")
         # Keep only variables we are interested in.
         dataset = dataset[list(vars.values())]
         # check that the dimensions are in the dataset

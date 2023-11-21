@@ -1,8 +1,9 @@
+import os
+import logging
 import xarray as xr
 from xarray import DataArray, Dataset
 import numpy as np
 from numpy.typing import NDArray
-import os
 
 
 class ncWrite:
@@ -29,7 +30,7 @@ class ncWrite:
         # Remove old files if having the same name
         if os.path.exists(self.path):
             os.remove(self.path)
-            print(f"Existing file {self.path} removed")
+            logging.info(f"Existing file {self.path} removed")
         # Create folder if does not exist
         os.makedirs(outfolder, exist_ok=True)
 

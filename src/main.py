@@ -6,6 +6,7 @@ import sys, os
 import time
 import logging
 import warnings
+import traceback
 import numpy as np
 import scipy as sp
 from argparse import ArgumentParser
@@ -36,23 +37,39 @@ def andor(a: bool, b: bool) -> bool:
     """
     return a and b | a or b
 
-
-if __name__ == "__main__":
-    # Get starting time
-    start_time = time.time()
+def main():
+    """
+    main function.
+    """
 
     # READ CONFIG FILE
     # arg parser to get config file path
     # usage example: python main.py -c config.toml
-    print("Reading config file ...")
     parser = ArgumentParser()
     parser.add_argument("-c", "--config", help="Path to config file", required=True)
     args, unknown = parser.parse_known_args(sys.argv)
     # load config
     config = Config(args.config)
+    
+    # SET LOGGING
+    log_path = os.path.join(config.output.path, "qgbaroclinic.log")
+    removed = False
+    if os.path.exists(log_path):
+        os.remove(log_path)
+        removed = True
+    os.makedirs(os.path.dirname(log_path), exist_ok=True)
+    log_level = logging.INFO
+    logging.basicConfig(
+        filename=log_path,
+        level=log_level,
+        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+        datefmt="%m/%d/%Y %I:%M:%S %p",
+    )
+    if removed:
+        logging.info(f"Removed old log file at {log_path}")
 
     # STORE VARIABLES FROM NetCDF OCE FILE
-    print("Reading OCE data ...")
+    logging.info("Reading OCE data ...")
     oce_path = config.input.oce.path
     read_oce = ncRead(oce_path)
     # OCE dimensions, variables and coordinates
@@ -64,7 +81,7 @@ if __name__ == "__main__":
     try:
         assert tuple(oce_dims.keys()) == sorted_dims
     except AssertionError:
-        warnings.warn(
+        logging.warning(
             "Dimension in config file are expected to be [time, lon, lat, depth]."
         )
     oce_domain = {k: v for k, v in zip(oce_dims.values(), config.domain.values())}
@@ -89,11 +106,11 @@ if __name__ == "__main__":
     latitude = oce_dataset[oce_coords["lat"]]
     # close datasets
     oce_dataset.close()
-    print(f"Input Data have shape: {salinity.shape}")
+    logging.info(f"Input Data have shape: {salinity.shape}")
 
     # STORE SEA FLOOR DEPTH FROM NetCDF BATHYMETRY FILE
     if config.input.bathy.set_bottomdepth is False:
-        print("Reading bathymetry ...")
+        logging.info("Reading bathymetry ...")
         inbathy_path = config.input.bathy.path
         read_bathy = ncRead(inbathy_path)
         bathy_dims = config.input.bathy.dims
@@ -116,10 +133,10 @@ if __name__ == "__main__":
     else:
         mean_region_depth = np.abs(config.input.bathy.set_bottomdepth)
     mean_region_depth = np.round(mean_region_depth, decimals=0)
-    print(f"Mean region depth: {mean_region_depth} m")
+    logging.info(f"Mean region depth: {mean_region_depth} m")
 
     # COMPUTE DENSITY
-    print("Computing density ...")
+    logging.info("Computing density ...")
     # Compute Density from Pot. Temperature & Salinity.
     ref_pressure = 0  # reference pressure [dbar]
     if config.input.oce.insitu_temperature is True:
@@ -132,12 +149,12 @@ if __name__ == "__main__":
         eos = Eos(salinity.values, pot_temperature.values, ref_pressure)
     except AttributeError:
         eos = Eos(salinity.values, pot_temperature, ref_pressure)
-    mean_region_density = np.nanmean(eos.density, axis=(0, 1, 2))
+    mean_region_potdensity = np.nanmean(eos.density, axis=(0, 1, 2))
 
     # VERTICAL INTERPOLATION (1m grid step)
-    print("Vertically interpolating mean density ...")
+    logging.info("Vertically interpolating mean density ...")
     grid_step = 1  # [m]
-    interpolation = Interpolation(depth.values, mean_region_density)
+    interpolation = Interpolation(depth.values, mean_region_potdensity)
     (interp_dens, interp_depth) = interpolation.apply_interpolation(
         -grid_step / 2, mean_region_depth + grid_step, grid_step
     )
@@ -167,7 +184,7 @@ if __name__ == "__main__":
     # Filtering the whole profile in the same way.
     if not depth_dependent_filter:
         if filter:
-            print("Applying low-pass filter to Brunt-Vaisala frequency ...")
+            logging.info("Applying low-pass filter to Brunt-Vaisala frequency ...")
             filter_order = config.bvfilter.order
             cutoff_wavelength = config.bvfilter.cutoff_wavelength
             bv_freq_filtered = Filter.lowpass(
@@ -180,7 +197,7 @@ if __name__ == "__main__":
         bv_freq_above_pycnocline = bv_freq[:100]
         bv_freq_below_pycnocline = bv_freq[100:]
         if filter:
-            print("Applying low-pass filter to Brunt-Vaisala frequency ...")
+            logging.info("Applying low-pass filter to Brunt-Vaisala frequency ...")
             filter_order = config.bvfilter.order
             cutoff_wavelength = config.bvfilter.cutoff_wavelength
             bv_freq_filtered_above_pycnocline = Filter.lowpass(
@@ -202,7 +219,7 @@ if __name__ == "__main__":
             bv_freq_filtered = bv_freq
 
     # BAROCLINIC MODES & ROSSBY RADIUS
-    print("Computing baroclinic modes and Rossby radii ...")
+    logging.info("Computing baroclinic modes and Rossby radii ...")
     # N° of modes of motion considered (including the barotropic one).
     N_motion_modes = config.output.n_modes
     mean_lat = np.mean(latitude.values)
@@ -225,10 +242,10 @@ if __name__ == "__main__":
         vertvel_method=config.output.vertvel_method,
     )
     rossby_rad = baroclinicmodes.rossbyrad  # / 1000  # Rossby radius in [km]
-    print(f"Rossby radii [km]: {rossby_rad/1000}")
+    logging.info(f"Rossby radii [km]: {rossby_rad/1000}")
 
     # WRITE RESULTS ON OUTPUT FILE
-    print("Writing output file ...")
+    logging.info("Writing output file ...")
     ncwrite = ncWrite(config.output.path, filename=config.output.filename)
     dims = ["mode"]
     modes_of_motion = np.arange(0, config.output.n_modes)
@@ -271,13 +288,29 @@ if __name__ == "__main__":
     lambda_m = (coriolis_param * m * np.pi) ** (-1) * sp.integrate.trapezoid(
         bv_freq_filtered, interface_depth
     )
-    print(
-        "According to WKB approximation (see chelton, 1997), Rossby radii [km] are:",
-        lambda_m / 1000,
+    logging.info(
+        f"According to WKB approximation (see chelton, 1997), Rossby radii [km] are:{lambda_m / 1000}"
     )
 
+
+if __name__ == "__main__":
+    # Get starting time
+    start_time = time.time()
+
+    # SET LOGGING
+    logging.captureWarnings(True)
+
+    # RUN MAIN()
+    try:
+        main()
+    except Exception as e:
+        # Log any unhandled exceptions
+        logging.error(f"An exception occurred: {e}")
+    
     # Get ending time
     end_time = time.time()
     # Print elapsed time
     elapsed_time = np.round(end_time - start_time, decimals=2)
-    print(f"Computing Ocean Baroclinic Modes COMPLETED in {elapsed_time} seconds.")
+    logging.info(
+        f"Computing Ocean Baroclinic Modes COMPLETED in {elapsed_time} seconds."
+    )
