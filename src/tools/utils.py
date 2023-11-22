@@ -1,4 +1,6 @@
 from xarray import Dataset
+import numpy as np
+from numpy.typing import NDArray
 
 
 class Utils:
@@ -22,6 +24,14 @@ class Utils:
         """
 
         return a and b | a or b
+    
+    @staticmethod
+    def find_nearvals(array: NDArray, *vals: float or np.datetime64) -> list[int]:
+        """
+        Find array indeces corresponding to min and max values of a range.
+        """
+        ids = [np.argmin(np.abs((array - val))) for val in vals]
+        return ids
 
 if __name__ == "__main__":
     a = True

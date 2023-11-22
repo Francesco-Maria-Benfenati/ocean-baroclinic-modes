@@ -1,13 +1,13 @@
+import sys, os
 import numpy as np
 import scipy as sp
 from numpy.typing import NDArray
 
 try:
-    from .interpolation import Interpolation
     from .eigenproblem import EigenProblem
 except ImportError:
-    from interpolation import Interpolation
-    from eigenproblem import EigenProblem
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from model.eigenproblem import EigenProblem
 
 
 class BaroclinicModes:

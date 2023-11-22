@@ -11,15 +11,26 @@ import scipy as sp
 from argparse import ArgumentParser
 from functools import partial
 
-from model.ncread import ncRead
-from model.eos import Eos
-from model.config import Config
-from model.baroclinicmodes import BaroclinicModes
-from model.interpolation import Interpolation
-from model.bvfreq import BVfreq
-from model.ncwrite import ncWrite
-from model.filter import Filter
-from model.utils import Utils
+try:
+    from .readers.ncread import ncRead
+    from .model.eos import Eos
+    from .readers.config import Config
+    from .model.baroclinicmodes import BaroclinicModes
+    from .tools.interpolation import Interpolation
+    from .model.bvfreq import BVfreq
+    from .writers.ncwrite import ncWrite
+    from .tools.filter import Filter
+    from .tools.utils import Utils
+except ImportError:
+    from readers.ncread import ncRead
+    from model.eos import Eos
+    from readers.config import Config
+    from model.baroclinicmodes import BaroclinicModes
+    from tools.interpolation import Interpolation
+    from model.bvfreq import BVfreq
+    from writers.ncwrite import ncWrite
+    from tools.filter import Filter
+    from tools.utils import Utils
 
 
 def main():
@@ -35,7 +46,7 @@ def main():
     args, unknown = parser.parse_known_args(sys.argv)
     # load config
     config = Config(args.config)
-    
+
     # SET LOGGING
     log_path = os.path.join(config.output.path, "qgbaroclinic.log")
     removed = False
@@ -44,6 +55,7 @@ def main():
         removed = True
     os.makedirs(os.path.dirname(log_path), exist_ok=True)
     log_level = logging.INFO
+    logging.captureWarnings(True)
     logging.basicConfig(
         filename=log_path,
         level=log_level,
@@ -53,7 +65,7 @@ def main():
     if removed:
         logging.info(f"Removed old log file at {log_path}")
 
-    # STORE VARIABLES FROM NetCDF OCE FILE
+    # STORE VARIABLES FROM NETCDF OCE FILE
     logging.info("Reading OCE data ...")
     oce_path = config.input.oce.path
     read_oce = ncRead(oce_path)
@@ -84,7 +96,6 @@ def main():
         decode_vars=config.input.oce.decode_vars_with_xarray,
         **oce_domain,
     )
-    # STORE POT. TEMPERATURE AND SALINITY VARIABLES.
     temperature = oce_dataset[oce_vars["temperature"]]
     salinity = oce_dataset[oce_vars["salinity"]]
     depth = oce_dataset[oce_coords["depth"]]
@@ -93,7 +104,7 @@ def main():
     oce_dataset.close()
     logging.info(f"Input Data have shape: {salinity.shape}")
 
-    # STORE SEA FLOOR DEPTH FROM NetCDF BATHYMETRY FILE
+    # STORE SEA FLOOR DEPTH FROM NETCDF BATHYMETRY FILE
     if config.input.bathy.set_bottomdepth is False:
         logging.info("Reading bathymetry ...")
         inbathy_path = config.input.bathy.path
@@ -163,45 +174,23 @@ def main():
     bv_freq = np.sqrt(bv_freq_sqrd)
 
     # FILTERING BRUNT-VAISALA FREQUENCY PROFILE WITH A LOW-PASS FILTER.
-    filter = config.bvfilter.filter
-    # If filtering should be depth-dependent.
-    depth_dependent_filter = True
-    # Filtering the whole profile in the same way.
-    if not depth_dependent_filter:
-        if filter:
-            logging.info("Applying low-pass filter to Brunt-Vaisala frequency ...")
-            filter_order = config.bvfilter.order
-            cutoff_wavelength = config.bvfilter.cutoff_wavelength
-            bv_freq_filtered = Filter.lowpass(
-                bv_freq, grid_step, cutoff_wavelength, filter_order
+    if config.bvfilter.filter:
+        cutoff_wavelength = config.bvfilter.cutoff_wavelength
+        cutoff_depths = config.bvfilter.cutoff_depths
+        try:
+            assert len(cutoff_depths) == len(cutoff_wavelength)
+        except AssertionError:
+            raise ValueError(
+                "Filter cutoff in not correctly set: cutoff depths and wavelengths are not the same number."
             )
-        else:
-            bv_freq_filtered = bv_freq
-    # Filtering differently above/below 100 m .
-    elif depth_dependent_filter:
-        bv_freq_above_pycnocline = bv_freq[:100]
-        bv_freq_below_pycnocline = bv_freq[100:]
-        if filter:
-            logging.info("Applying low-pass filter to Brunt-Vaisala frequency ...")
-            filter_order = config.bvfilter.order
-            cutoff_wavelength = config.bvfilter.cutoff_wavelength
-            bv_freq_filtered_above_pycnocline = Filter.lowpass(
-                bv_freq_above_pycnocline,
-                grid_step,
-                cutoff_wavelength=10,
-                order=filter_order,
-            )
-            bv_freq_filtered_below_pycnocline = Filter.lowpass(
-                bv_freq_below_pycnocline,
-                grid_step,
-                cutoff_wavelength=cutoff_wavelength,
-                order=filter_order,
-            )
-            bv_freq_filtered = np.concatenate(
-                (bv_freq_filtered_above_pycnocline, bv_freq_filtered_below_pycnocline)
-            )
-        else:
-            bv_freq_filtered = bv_freq
+        cutoff_levels = Utils.find_nearvals(interface_depth, *cutoff_depths)
+        filter = Filter(
+            bv_freq, grid_step=grid_step, type="lowpass", order=config.bvfilter.order
+        )
+        cutoff_dict = dict(zip(cutoff_levels, cutoff_wavelength))
+        bv_freq_filtered = filter.apply_filter(cutoff_dict)
+    else:
+        bv_freq_filtered = bv_freq
 
     # BAROCLINIC MODES & ROSSBY RADIUS
     logging.info("Computing baroclinic modes and Rossby radii ...")
@@ -216,7 +205,6 @@ def main():
         warnings.warn(
             "The domain area is close to the equator: ! Rossby radii computation might be inaccurate !"
         )
-
     # Compute baroclinic Rossby radius and vert. struct. function Phi(z).
     # From config file, specify if structure of vertical velocity should be computed instead of Phi.
     baroclinicmodes = BaroclinicModes(
@@ -267,7 +255,7 @@ def main():
         radii_dataset, density_dataset, bvfreq_dataset, vert_struct_func_dataset
     )
 
-    # Results with WKB approximation (see Chelton, 1997)
+    # RESULTS WITH WKB APPROXIMATION (see Chelton, 1997)
     m = np.arange(N_motion_modes)
     coriolis_param = np.abs(baroclinicmodes.coriolis_param(mean_lat))
     lambda_m = (coriolis_param * m * np.pi) ** (-1) * sp.integrate.trapezoid(
@@ -282,16 +270,13 @@ if __name__ == "__main__":
     # Get starting time
     start_time = time.time()
 
-    # SET LOGGING
-    logging.captureWarnings(True)
-
     # RUN MAIN()
     try:
         main()
     except Exception as e:
         # Log any unhandled exceptions
         logging.error(f"An exception occurred: {e}")
-    
+
     # Get ending time
     end_time = time.time()
     # Print elapsed time

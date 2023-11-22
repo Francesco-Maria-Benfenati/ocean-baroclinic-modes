@@ -5,7 +5,7 @@ from numpy.typing import NDArray
 
 try:
     from ...src.model.baroclinicmodes import BaroclinicModes
-    from ...src.model.interpolation import Interpolation
+    from ...src.tools.interpolation import Interpolation
 except ImportError:
     import sys, os
 
@@ -13,10 +13,10 @@ except ImportError:
         os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     )
     from src.model.baroclinicmodes import BaroclinicModes
-    from src.model.interpolation import Interpolation
+    from src.tools.interpolation import Interpolation
 
 
-class TestUtils:
+class TestMetrics:
     """
     This Class contains utils for testings.
     """
@@ -31,7 +31,7 @@ class TestUtils:
         """
         Computing eigenvalues/eigenvectors.
         """
-        
+
         if depth is not None:
             interpolation = Interpolation(depth, bvfreq_sqrd / (coriolis_param**2))
             z_0 = depth[0] - grid_step / 2
@@ -50,7 +50,7 @@ class TestUtils:
         Compare eigenvalues with reference values and return error.
         """
 
-        rel_error = Utils.rel_error(self.eigenvals, ref_eigenvals)
+        rel_error = TestMetrics.rel_error(self.eigenvals, ref_eigenvals)
         return rel_error
 
     def compare_structfunc(self, ref_structfunc: NDArray) -> NDArray:
@@ -58,7 +58,7 @@ class TestUtils:
         Compare structure funcs with reference ones and return error.
         """
 
-        rel_error = Utils.rel_error(self.eigenvals, ref_structfunc)
+        rel_error = TestMetrics.rel_error(self.eigenvals, ref_structfunc)
         return rel_error
 
     @staticmethod
@@ -125,7 +125,7 @@ class TestUtils:
         Plot error profile.
         """
 
-        error = Utils.error_eigenvecs(self.structfunc, ref_struct_func)
+        error = TestMetrics.error_eigenvecs(self.structfunc, ref_struct_func)
 
         fig, ax = plt.subplots(figsize=(7, 8))
         ax.plot(np.nan, 0)

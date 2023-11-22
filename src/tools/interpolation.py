@@ -26,6 +26,7 @@ class Interpolation:
         start: float,
         stop: float,
         step: float,
+        return_depth = True,
     ) -> tuple[NDArray]:
         """
         Apply interpolaiton to fields.
@@ -39,7 +40,10 @@ class Interpolation:
         interp_fields = ()
         for field in self.fields:
             (interp_field, interp_depth) = self.vert_interp(field, start, stop, step)
-            interp_fields += ((interp_field, interp_depth))
+            if return_depth:
+                interp_fields += ((interp_field, interp_depth))
+            else:
+                interp_fields += (interp_field, )
         return interp_fields
 
     def vert_interp(

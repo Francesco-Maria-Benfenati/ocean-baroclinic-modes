@@ -2,16 +2,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 try:
-    from ...src.model.baroclinicmodes import BaroclinicModes
-    from ...src.model.interpolation import Interpolation
+    from ..src.model.baroclinicmodes import BaroclinicModes
+    from ..src.tools.interpolation import Interpolation
 except ImportError:
     import sys, os
 
-    sys.path.append(
-        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    )
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from src.model.baroclinicmodes import BaroclinicModes
-    from src.model.interpolation import Interpolation
+    from src.tools.interpolation import Interpolation
 
 
 """
@@ -126,11 +124,15 @@ if __name__ == "__main__":
     coriolis_param = 1e-04
     # Interpolate Brunt-Vaisala freq at depth levels
     interpolation = Interpolation(-depth_kundu, N_carnation_kundu, N_db7_kundu)
-    N_carnation, N_db7 = interpolation.apply_interpolation(0, mean_depth + 1, dz)
+    N_carnation, N_db7 = interpolation.apply_interpolation(
+        0, mean_depth + 1, dz, return_depth=False
+    )
     # interpolate at interfaces staggered grid
     z_0 = np.abs(depth_kundu[0]) - dz / 2
     z_N = mean_depth + dz
-    interp_N_carn, interp_N_db7 = interpolation.apply_interpolation(z_0, z_N, dz)
+    interp_N_carn, interp_N_db7 = interpolation.apply_interpolation(
+        z_0, z_N, dz, return_depth=False
+    )
     # Compute Eigenvals/eigenvecs
     s_param_carn = (interp_N_carn**2) / (coriolis_param**2)
     s_param_db7 = (interp_N_db7**2) / (coriolis_param**2)

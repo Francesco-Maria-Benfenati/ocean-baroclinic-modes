@@ -1,10 +1,15 @@
-import os
+import sys, os
 import logging
 import xarray as xr
 from xarray import Dataset, Variable
 import numpy as np
 import pandas as pd
-from numpy.typing import NDArray
+
+try:
+    from ..src.tools.utils import Utils
+except ImportError:
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from tools.utils import Utils
 
 
 class ncRead:
@@ -152,7 +157,7 @@ class ncRead:
             if domain[key] == []:
                 continue
             try:
-                [id_min, id_max] = self.find_nearvals(coords[key].values, *domain[key])
+                [id_min, id_max] = Utils.find_nearvals(coords[key].values, *domain[key])
             except ValueError:
                 raise ValueError(
                     "Please, provide both or none domain extremants in config file. Only one is not accepted."
@@ -161,13 +166,6 @@ class ncRead:
             new_domain[key] = np.arange(id_min, id_max + 1)
         cropped_dataset = dataset.isel(new_domain, missing_dims="warn")
         return cropped_dataset
-
-    def find_nearvals(self, array: NDArray, *vals: float or np.datetime64) -> list[int]:
-        """
-        Find array indeces corresponding to min and max values of a range.
-        """
-        ids = [np.argmin(np.abs((array - val))) for val in vals]
-        return ids
 
     def decode_vars(self, dataset: Dataset) -> Dataset:
         for var in dataset.var():
@@ -199,7 +197,7 @@ if __name__ == "__main__":
     print(temp[0, 0:3, 0, 0].values)
     temp = temp.isel({"longitude": [0, 1, 2]})
     print(temp[0, :, 0, 0].values)
-    near_ids = read.find_nearvals(np.arange(1, 11), 2.3, 4.5, 6.9)
+    near_ids = Utils.find_nearvals(np.arange(1, 11), 2.3, 4.5, 6.9)
     assert near_ids == [1, 3, 6]
     dataset = xr.open_dataset("./data/test_case/dataset_azores/azores_Jan2021.nc")
     print("Whole dataset: ", dataset.dims)
