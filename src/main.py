@@ -6,12 +6,10 @@ import sys, os
 import time
 import logging
 import warnings
-import traceback
 import numpy as np
 import scipy as sp
 from argparse import ArgumentParser
 from functools import partial
-from xarray import Dataset
 
 from model.ncread import ncRead
 from model.eos import Eos
@@ -21,25 +19,12 @@ from model.interpolation import Interpolation
 from model.bvfreq import BVfreq
 from model.ncwrite import ncWrite
 from model.filter import Filter
+from model.utils import Utils
 
-
-# Preprocessing for Climatologies with different number of observations.
-def drop_dims_from_dataset(dataset: Dataset, drop_dims: list[str]) -> Dataset:
-    """
-    Drop dimensions from datasets which would give troubles due to incompatible sizes.
-    """
-    return dataset.drop_dims(drop_dims=drop_dims)
-
-
-def andor(a: bool, b: bool) -> bool:
-    """
-    And/Or logical statement.
-    """
-    return a and b | a or b
 
 def main():
     """
-    main function.
+    Software main function.
     """
 
     # READ CONFIG FILE
@@ -95,7 +80,7 @@ def main():
         dims=oce_dims,
         vars=oce_vars,
         coords=oce_coords,
-        preprocess=partial(drop_dims_from_dataset, drop_dims=drop_dims),
+        preprocess=partial(Utils.drop_dims_from_dataset, drop_dims=drop_dims),
         decode_vars=config.input.oce.decode_vars_with_xarray,
         **oce_domain,
     )
@@ -227,7 +212,7 @@ def main():
     equator_threshold = 2.0
     lower_condition = -equator_threshold < np.min(latitude.values) < equator_threshold
     upper_condition = -equator_threshold < np.max(latitude.values) < equator_threshold
-    if andor(lower_condition, upper_condition):
+    if Utils.andor(lower_condition, upper_condition):
         warnings.warn(
             "The domain area is close to the equator: ! Rossby radii computation might be inaccurate !"
         )
