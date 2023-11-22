@@ -1,7 +1,5 @@
 ﻿# [ocean QG baroclinic modes](https://github.com/Francesco-Maria-Benfenati/qgbaroclinic)
 
-This project is for computing the Quasi-Geostrophic (QG) *baroclinic vertical structure function* and the *baroclinic Rossby radius* for  each mode of motion, in an ocean region of interest to the user.
-
 ## Table of contents
 1. [Baroclinic Modes: theoretical background](https://github.com/Francesco-Maria-Benfenati/ocean-baroclinic-modes-1.0/blob/main/doc/theoretical_background.md)
 2. [Numerical Method Implemented](https://github.com/Francesco-Maria-Benfenati/ocean-baroclinic-modes-1.0/blob/main/doc/numerical_method.md)
