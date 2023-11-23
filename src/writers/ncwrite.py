@@ -11,7 +11,7 @@ class ncWrite:
     This Class is for writing baroclinic modes on NetCDF output file.
     """
 
-    def __init__(self, outpath: str, filename: str = None) -> None:
+    def __init__(self, outpath: str, filename: str = None, logfile=True) -> None:
         """
         Class constructor, given the output path (which may not include the filename).
         """
@@ -27,12 +27,37 @@ class ncWrite:
             outfolder = outpath
         # Set output path
         self.path = os.path.join(outfolder, filename)
+        log_filename = filename[:-3] + ".log"
+        if logfile:
+            self.logpath = os.path.join(outfolder, log_filename)
+            self.set_logging()
         # Remove old files if having the same name
         if os.path.exists(self.path):
             os.remove(self.path)
-            logging.info(f"Existing file {self.path} removed")
+            logging.info(f"Removed old output file at {self.path}")
         # Create folder if does not exist
         os.makedirs(outfolder, exist_ok=True)
+
+    def set_logging(self):
+        """
+        Set logging: log info may be found within the log file.
+        """
+        log_path = self.logpath
+        removed = False
+        if os.path.exists(log_path):
+            os.remove(log_path)
+            removed = True
+        os.makedirs(os.path.dirname(log_path), exist_ok=True)
+        log_level = logging.INFO
+        logging.captureWarnings(True)
+        logging.basicConfig(
+            filename=log_path,
+            level=log_level,
+            format="%(asctime)s %(levelname)s %(name)s %(message)s",
+            datefmt="%m/%d/%Y %I:%M:%S %p",
+        )
+        if removed:
+            logging.info(f"Removed old log file at {log_path}")
 
     def create_dataset(
         self, dims: list[str], coords: dict[NDArray], **fields: dict[NDArray]
@@ -82,7 +107,7 @@ if __name__ == "__main__":
     print("Output dataset with different coords (2D): ", dataset)
     # Save new dataset in addition
     ncwrite.save(dataset2)
-    # # Check the file is deleted if new object is created
+    # Check the file is deleted if new object is created
     outpath = os.path.join(outpath, filename)
     new_ncwrite = ncWrite(outpath)
     assert not os.path.exists("./ncwrite/output.nc")

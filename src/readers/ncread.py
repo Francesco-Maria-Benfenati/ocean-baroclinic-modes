@@ -168,6 +168,9 @@ class ncRead:
         return cropped_dataset
 
     def decode_vars(self, dataset: Dataset) -> Dataset:
+        """
+        Decode variables "by hand" if having troubles with xarray decoding.
+        """
         for var in dataset.var():
             if dataset[var].dtype == "int16":
                 scale_factor = dataset[var].scale_factor

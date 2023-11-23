@@ -47,23 +47,10 @@ def main():
     # load config
     config = Config(args.config)
 
-    # SET LOGGING
-    log_path = os.path.join(config.output.path, "qgbaroclinic.log")
-    removed = False
-    if os.path.exists(log_path):
-        os.remove(log_path)
-        removed = True
-    os.makedirs(os.path.dirname(log_path), exist_ok=True)
-    log_level = logging.INFO
-    logging.captureWarnings(True)
-    logging.basicConfig(
-        filename=log_path,
-        level=log_level,
-        format="%(asctime)s %(levelname)s %(name)s %(message)s",
-        datefmt="%m/%d/%Y %I:%M:%S %p",
+    # SET OUTPUT FILE (& LOGGING)
+    ncwrite = ncWrite(
+        config.output.folder_path, filename=config.output.filename, logfile=True
     )
-    if removed:
-        logging.info(f"Removed old log file at {log_path}")
 
     # STORE VARIABLES FROM NETCDF OCE FILE
     logging.info("Reading OCE data ...")
@@ -158,11 +145,21 @@ def main():
     interface_depth = interp_depth[:-1] + grid_step / 2
     # New equispatial depth levels.
     depth_levels = interp_depth[1:-1]
+    # Save output Density dataset
+    logging.info("Saving density dataset to .nc file ...")
+    density_dataset = ncwrite.create_dataset(
+        dims="depth",
+        coords={"depth": depth_levels},
+        density=interp_dens[1:-1],
+    )
+    ncwrite.save(density_dataset)
 
     # COMPUTE BRUNT-VAISALA FREQUENCY SQUARED
+    logging.info("Computing Brunt-Vaisala frequency ...")
     bv_freq_sqrd = BVfreq.compute_bvfreq_sqrd(interp_depth, interp_dens)
 
     # RE-INTERPOLATING BRUNT-VAISALA FREQUENCY SQUARED FOR REMOVING NaNs and < 0 values.
+    logging.info("Post-processing Brunt-Vaisala frequency ...")
     bv_freq_sqrd[np.where(bv_freq_sqrd < 0)] = np.nan
     if np.isnan(bv_freq_sqrd[0]):
         bv_freq_sqrd[0] = 0.0
@@ -174,9 +171,10 @@ def main():
     bv_freq = np.sqrt(bv_freq_sqrd)
 
     # FILTERING BRUNT-VAISALA FREQUENCY PROFILE WITH A LOW-PASS FILTER.
-    if config.bvfilter.filter:
-        cutoff_wavelength = config.bvfilter.cutoff_wavelength
-        cutoff_depths = config.bvfilter.cutoff_depths
+    if config.filter.filter:
+        logging.info("Filtering Brunt-Vaisala frequency ...")
+        cutoff_wavelength = config.filter.cutoff_wavelength
+        cutoff_depths = config.filter.cutoff_depths
         try:
             assert len(cutoff_depths) == len(cutoff_wavelength)
         except AssertionError:
@@ -185,12 +183,21 @@ def main():
             )
         cutoff_levels = Utils.find_nearvals(interface_depth, *cutoff_depths)
         filter = Filter(
-            bv_freq, grid_step=grid_step, type="lowpass", order=config.bvfilter.order
+            bv_freq, grid_step=grid_step, type="lowpass", order=config.filter.order
         )
         cutoff_dict = dict(zip(cutoff_levels, cutoff_wavelength))
         bv_freq_filtered = filter.apply_filter(cutoff_dict)
     else:
+        logging.info("Brunt-Vaisala frequency has not been filtered...")
         bv_freq_filtered = bv_freq
+    # Save Brunt-Vaisala freq. dataset
+    logging.info("Saving Brunt-vaisala freq dataset to .nc file ...")
+    bvfreq_dataset = ncwrite.create_dataset(
+        dims="depth_interface",
+        coords={"depth_interface": interface_depth},
+        bvfreq=bv_freq_filtered,
+    )
+    ncwrite.save(bvfreq_dataset)
 
     # BAROCLINIC MODES & ROSSBY RADIUS
     logging.info("Computing baroclinic modes and Rossby radii ...")
@@ -218,25 +225,11 @@ def main():
     logging.info(f"Rossby radii [km]: {rossby_rad/1000}")
 
     # WRITE RESULTS ON OUTPUT FILE
-    logging.info("Writing output file ...")
-    ncwrite = ncWrite(config.output.path, filename=config.output.filename)
-    dims = ["mode"]
+    logging.info("Saving Baroclinic Modes dataset to .nc file ...")
     modes_of_motion = np.arange(0, config.output.n_modes)
     # Rossby radii dataset
     radii_dataset = ncwrite.create_dataset(
         dims="mode", coords={"mode": modes_of_motion}, rossbyrad=rossby_rad
-    )
-    # Density dataset
-    density_dataset = ncwrite.create_dataset(
-        dims="depth",
-        coords={"depth": depth_levels},
-        density=interp_dens[1:-1],
-    )
-    # Brunt-Vaisala freq. dataset
-    bvfreq_dataset = ncwrite.create_dataset(
-        dims="depth_interface",
-        coords={"depth_interface": interface_depth},
-        bvfreq=bv_freq_filtered,
     )
     # Vertical structure function dataset
     if config.output.vertvel_method:
@@ -251,9 +244,7 @@ def main():
             coords={"mode": modes_of_motion, "depth": depth_levels},
             structfunc=baroclinicmodes.structfunc,
         )
-    ncwrite.save(
-        radii_dataset, density_dataset, bvfreq_dataset, vert_struct_func_dataset
-    )
+    ncwrite.save(radii_dataset, vert_struct_func_dataset)
 
     # RESULTS WITH WKB APPROXIMATION (see Chelton, 1997)
     m = np.arange(N_motion_modes)
