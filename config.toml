@@ -12,15 +12,14 @@
         # Name of dimensions [time, longitude, latitude, depth] in Netcdf file.
         dims = {time = "time", lon = "lon", lat = "lat", depth = "depth"} 
         # Dimensions to be dropped out of the dataset (only if needed, otherwise leave it empty).
-        drop_dims = ["observations"]
-        # drop_dims = []
-        # Decode variables directly with xarray. If set to "false", variables are decoded accessing externally the NetCDF file attributes.
-        # This might be useful for memory issues due to xarray decoding procedure.
+        drop_dims = ["observations"] # drop_dims = []
+        # Decode variables directly with xarray. 
+        # If set to "false", variables are decoded accessing externally the NetCDF file attributes.
+        # This might be useful for issues due to xarray decoding procedure.
         decode_vars_with_xarray = true
     [input.bathy]
         # Set region depth [in meters] (set to false if not used, otherwise set the value you desire).
-        set_bottomdepth = false
-        # set_bottomdepth = 3500
+        set_bottomdepth = false # set_bottomdepth = 3500
         # Path to bathymetry NetCDF file
         path = "./data/bathymetry/GEBCO_2023.nc" 
         # Name of Sea Floor depth and other variables in Netcdf file.
@@ -32,8 +31,7 @@
 # REGION DOMAIN.
 [domain]
     # Domain extremants: time min, max (format compatible with numpy.datetime64)
-    # time = [1900-01-01T00:00:00, 2018-01-01T00:00:00]
-    time = []
+    time = [] # time = [1900-01-01T00:00:00, 2018-01-01T00:00:00]
     # Domain extremants: longitude min, max [° E]
     lon = [-45.3, -45.3]
     # Domain extremants: latitude min, max [° N]

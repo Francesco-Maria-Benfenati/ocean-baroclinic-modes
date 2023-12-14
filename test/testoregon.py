@@ -2,14 +2,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 try:
-    from ..src.model.baroclinicmodes import BaroclinicModes
-    from ..src.tools.interpolation import Interpolation
+    from ..qgbaroclinic.model.baroclinicmodes import BaroclinicModes
+    from ..qgbaroclinic.tools.interpolation import Interpolation
 except ImportError:
     import sys, os
 
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from src.model.baroclinicmodes import BaroclinicModes
-    from src.tools.interpolation import Interpolation
+    from qgbaroclinic.model.baroclinicmodes import BaroclinicModes
+    from qgbaroclinic.tools.interpolation import Interpolation
 
 
 """
