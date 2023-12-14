@@ -10,7 +10,7 @@
 
 # Get Started!
 
-1. For using the software, clone the repository [qgbaroclinic](git@github.com:Francesco-Maria-Benfenati/qgbaroclinic.git)  and use pip to install the required packages.
+1. Clone the repository [qgbaroclinic](git@github.com:Francesco-Maria-Benfenati/qgbaroclinic.git)  and use pip to install the required packages.
 
 	```
 	git clone git@github.com:Francesco-Maria-Benfenati/qgbaroclinic.git
