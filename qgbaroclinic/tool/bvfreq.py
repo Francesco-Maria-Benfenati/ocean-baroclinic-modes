@@ -3,9 +3,9 @@ import scipy as sp
 from numpy.typing import NDArray
 
 try:
-    from ..tools.interpolation import Interpolation
+    from .interpolation import Interpolation
 except ImportError:
-    from tools.interpolation import Interpolation
+    from tool.interpolation import Interpolation
 
 
 class BVfreq:

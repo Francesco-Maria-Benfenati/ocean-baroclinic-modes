@@ -2,14 +2,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 try:
-    from ..qgbaroclinic.model.baroclinicmodes import BaroclinicModes
-    from ..qgbaroclinic.tools.interpolation import Interpolation
+    from ..qgbaroclinic.solve.verticalstructureequation import VerticalStructureEquation
+    from ..qgbaroclinic.tool.interpolation import Interpolation
 except ImportError:
     import sys, os
 
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from qgbaroclinic.model.baroclinicmodes import BaroclinicModes
-    from qgbaroclinic.tools.interpolation import Interpolation
+    from qgbaroclinic.solve.verticalstructureequation import VerticalStructureEquation
+    from qgbaroclinic.tool.interpolation import Interpolation
 
 
 """
@@ -136,10 +136,10 @@ if __name__ == "__main__":
     # Compute Eigenvals/eigenvecs
     s_param_carn = (interp_N_carn**2) / (coriolis_param**2)
     s_param_db7 = (interp_N_db7**2) / (coriolis_param**2)
-    eigenvals_carn, structfunc_carn = BaroclinicModes.compute_baroclinicmodes(
+    eigenvals_carn, structfunc_carn = VerticalStructureEquation.compute_baroclinicmodes(
         s_param_carn, dz
     )
-    eigenvals_db7, structfunc_db7 = BaroclinicModes.compute_baroclinicmodes(
+    eigenvals_db7, structfunc_db7 = VerticalStructureEquation.compute_baroclinicmodes(
         s_param_db7, dz
     )
     print(f"Eigenvalues at Carnation [km^-1]: {np.sqrt(eigenvals_carn)*1000}")

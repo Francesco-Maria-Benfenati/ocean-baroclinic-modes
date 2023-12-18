@@ -199,7 +199,7 @@ class EigenProblem:
 
 
 if __name__ == "__main__":
-    from baroclinicmodes import BaroclinicModes
+    from qgbaroclinic.solve.verticalstructureequation import VerticalStructureEquation
 
     test_plot = False
 
@@ -248,9 +248,9 @@ if __name__ == "__main__":
         L = 100
         expected_eigenvals = (np.arange(4) * np.pi / L) ** 2
         dx = L / n
-        lhs_tridiag = BaroclinicModes.tridiag_matrix_standardprob(np.ones(n), dx)
-        lhs_general = BaroclinicModes.lhs_matrix_generalizedprob(n, dx)
-        rhs_general = BaroclinicModes.rhs_matrix_generalizedprob(np.ones(n))
+        lhs_tridiag = VerticalStructureEquation.tridiag_matrix_standardprob(np.ones(n), dx)
+        lhs_general = VerticalStructureEquation.lhs_matrix_generalizedprob(n, dx)
+        rhs_general = VerticalStructureEquation.rhs_matrix_generalizedprob(np.ones(n))
         eigenprob_tridiag = EigenProblem(lhs_tridiag, n_modes=4)
         eigenprob_general = EigenProblem(lhs_general, rhs_general, n_modes=4)
         out_eigenvals_tridiag = eigenprob_tridiag.eigenvals
@@ -283,10 +283,10 @@ if __name__ == "__main__":
         x = np.linspace(0, L, N)
         dx = abs(x[1] - x[0])
         # Problem matrices
-        lhs_matrix = BaroclinicModes.lhs_matrix_generalizedprob(N + 2, dx)
-        rhs_matrix = BaroclinicModes.rhs_matrix_generalizedprob(np.ones(N + 2))
+        lhs_matrix = VerticalStructureEquation.lhs_matrix_generalizedprob(N + 2, dx)
+        rhs_matrix = VerticalStructureEquation.rhs_matrix_generalizedprob(np.ones(N + 2))
         eigenprob_general = EigenProblem(lhs_matrix, rhs_matrix, grid_step=None)
-        eigenprob_general.eigenvecs = BaroclinicModes.normalize_eigenfunc(
+        eigenprob_general.eigenvecs = VerticalStructureEquation.normalize_eigenfunc(
             eigenprob_general.eigenvecs, dx
         )
         for n in range(1, 4):
@@ -294,8 +294,8 @@ if __name__ == "__main__":
             if eigenprob_general.eigenvecs[0, n] < 0:
                 eigenprob_general.eigenvecs[:, n] *= -1
             eigenvals = n * np.pi / L
-            # Theoretical solution (normalized using BaroclinicModes method)
-            theor_sol = BaroclinicModes.normalize_eigenfunc(np.sin(eigenvals * x), dx)
+            # Theoretical solution (normalized using VerticalStructureEquation method)
+            theor_sol = VerticalStructureEquation.normalize_eigenfunc(np.sin(eigenvals * x), dx)
             # Numerical solution
             w_0 = 0
             w_n = 0
@@ -303,7 +303,7 @@ if __name__ == "__main__":
             f_val = -(eigenvals**2)
             f = np.full(N, f_val)
             num_sol = EigenProblem.numerov_method(dx, f, dw_0, w_0, w_n)
-            num_sol = BaroclinicModes.normalize_eigenfunc(num_sol, dx)
+            num_sol = VerticalStructureEquation.normalize_eigenfunc(num_sol, dx)
             assert np.allclose(num_sol, theor_sol)
             error = np.nanmean(num_sol - theor_sol)
             print(f"Mean absolute error associated to Numerov's method is: {error}")

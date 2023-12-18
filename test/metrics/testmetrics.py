@@ -4,16 +4,16 @@ import matplotlib.pyplot as plt
 from numpy.typing import NDArray
 
 try:
-    from ...qgbaroclinic.model.baroclinicmodes import BaroclinicModes
-    from ...qgbaroclinic.tools.interpolation import Interpolation
+    from ...qgbaroclinic.solve.verticalstructureequation import VerticalStructureEquation
+    from ...qgbaroclinic.tool.interpolation import Interpolation
 except ImportError:
     import sys, os
 
     sys.path.append(
         os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     )
-    from qgbaroclinic.model.baroclinicmodes import BaroclinicModes
-    from qgbaroclinic.tools.interpolation import Interpolation
+    from qgbaroclinic.solve.verticalstructureequation import VerticalStructureEquation
+    from qgbaroclinic.tool.interpolation import Interpolation
 
 
 class TestMetrics:
@@ -40,7 +40,7 @@ class TestMetrics:
         else:
             s_param = bvfreq_sqrd / (coriolis_param**2)
         print("According to numpy, input values have precision:", s_param.dtype)
-        self.eigenvals, self.structfunc = BaroclinicModes.compute_baroclinicmodes(
+        self.eigenvals, self.structfunc = VerticalStructureEquation.compute_baroclinicmodes(
             s_param, grid_step
         )
         print("After using scipy, output values have precision:", self.eigenvals.dtype)
