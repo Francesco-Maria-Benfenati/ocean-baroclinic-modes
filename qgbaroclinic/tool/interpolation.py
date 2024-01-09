@@ -38,16 +38,17 @@ class Interpolation:
 
         interp_fields = ()
         for field in self.fields:
-            (interp_field, interp_depth) = self.vert_interp(field, start, stop, step)
+            (interp_field, interp_depth) = Interpolation.vert_interp(field, self.depth, start, stop, step)
             if return_depth:
                 interp_fields += (interp_field, interp_depth)
             else:
                 interp_fields += (interp_field,)
         return interp_fields
 
+    @staticmethod
     def vert_interp(
-        self,
         field: NDArray,
+        depth: NDArray,
         start: float,
         stop: float,
         step: float,
@@ -67,7 +68,7 @@ class Interpolation:
         # Interpolate (distinguish between 3d and 1d fields)
         # 3D array
         if field.ndim == 3:
-            depth = self.depth
+            depth = depth
             x = np.arange(field.shape[0])
             y = np.arange(field.shape[1])
             interp = RegularGridInterpolator(
@@ -82,7 +83,7 @@ class Interpolation:
         # 1D array
         else:
             # Remove NaN values
-            depth = np.delete(self.depth, np.where(np.isnan(field)))
+            depth = np.delete(depth, np.where(np.isnan(field)))
             field = np.delete(field, np.where(np.isnan(field)), axis=-1)
             # Interpolate
             interp = RegularGridInterpolator(
@@ -190,8 +191,8 @@ if __name__ == "__main__":
     h1 = 1000
     h2 = 1000.1
     h3 = 1000.9
-    bulk, bottom1 = interpolation.vert_interp(field, 0, h1, step=1)
-    bulk, bottom2 = interpolation.vert_interp(field, 0, h2, step=1)
-    bulk, bottom3 = interpolation.vert_interp(field, 0, h3, step=1)
+    bulk, bottom1 = Interpolation.vert_interp(field, z, 0, h1, step=1)
+    bulk, bottom2 = Interpolation.vert_interp(field, z, 0, h2, step=1)
+    bulk, bottom3 = Interpolation.vert_interp(field, z, 0, h3, step=1)
     assert bottom1[-1] == 1000.0
     assert bottom2[-1] == bottom3[-1] == 1001.0
