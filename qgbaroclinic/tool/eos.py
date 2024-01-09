@@ -3,53 +3,30 @@ from numba import jit
 from numpy.typing import NDArray
 
 
-class Eos:
+class EoS:
     """
-    This class is for computing density through the Equation of State.
-
-    NOTE: EoS is computed exploiting POTENTIAL temperature (not "in situ")
+    This class is for computing the Seawater Equation of State and related variables.
     """
-
-    def __init__(self, sal: float, pot_temp: float, depth: float) -> None:
-        """
-        Class constructor, computes density and set it as attribute.
-
-        Args:
-            sal (float): salinity [PSU]
-            pot_temp (float): potential temperature [°C]
-            depth (float): depth coordinate [m]
-        """
-
-        self.sal = sal
-        self.temp = pot_temp
-        self.depth = depth
-        # Convert pressure to depth
-        press = Eos.depth2press(depth)
-        # Convert pressure from dbars to bars
-        press_bars = press / 10
-        self.density = Eos.compute_density(self.sal, self.temp, press_bars)
 
     @staticmethod
-    def compute_density(sal: float, temp: float, press: float) -> float:
+    def compute_density(sal: float, pot_temp: float, ref_press: float = 0) -> float:
         """
         Compute density from salinity and potential temperature.
 
-        NOTE: pressure is expressed in BARS, not dbars!!!
+        NOTE: pressure is expressed in dbar.
 
         Arguments
         ---------
-        press : <numpy.ndarray>
-            pressure [bars] !!!
-        temp : <numpy.ndarray>
+        pot_temp : <numpy.ndarray>
             sea water potential temperature [°C]
         sal : <numpy.ndarray>
             sea water salinity [PSU]
-        NOTE: the three arguments must have same dimensions!
+        ref_press : <numpy.ndarray>
+            reference pressure in [dbars]. Default to 0
 
-        Raises
+        Raise
         ------
-        ValueError
-            if input arrays have not same lengths
+        ValueError if pot_temp and sal has different shapes
 
         Returns
         -------
@@ -66,17 +43,14 @@ class Eos:
         in powers of sal, temp and p.
         This is based on the Jackett and McDougall (1995) equation of state
         for calculating the in situ density basing on potential temperature
-        and salinity. The polinomial coefficient may be found within
+        and salinity. The polinomial coefficients may be found within
         Jackett's paper (Table A1).
-
-        For reference material, see the UNESCO implementatio of Fortran
-        function SVAN (Fofonoff and Millero, 1983), which may be found within
-        'Algorithms for computation of fundamental properties of seawater'
-        (UNESCO, 1983. Section 3, pp. 15-24).
-        The following function is a later modification of the one found in
-        NEMO by D. J. Lea, Dec 2006.
+        NOTE: the pressure should be converted to BAR in order to use Jackett and
+              McDougall's coefficients.
         """
 
+        # Pressure conversion from [dbar] to [bar]
+        ref_press /= 10
         # ==================================================================
         # Compute reference density at atmospheric pressure
         #
@@ -86,7 +60,7 @@ class Eos:
         # of seawater' (Millero and Poisson, 1981).
         # ==================================================================
 
-        rho = Eos.__compute_rho(sal, temp)
+        rho = EoS.__compute_rho(sal, pot_temp)
 
         # ==================================================================
         # Compute coefficients in the bulk modulus of seawater expression
@@ -103,10 +77,10 @@ class Eos:
         # ==================================================================
 
         # Bulk modulus of seawater at atmospheric pressure.
-        K_0 = Eos.__compute_K_0(sal, temp)
+        K_0 = EoS.__compute_K_0(sal, pot_temp)
         # Compression term coefficients.
-        A = Eos.__compute_A(sal, temp)
-        B = Eos.__compute_B(sal, temp)
+        A = EoS.__compute_A(sal, pot_temp)
+        B = EoS.__compute_B(sal, pot_temp)
 
         # ==================================================================
         # Compute IN SITU DENSITY IN TERMS OF DEPTH. The above
@@ -117,7 +91,7 @@ class Eos:
         #                       = rho/[1 - press/(K_0 + (A*press + B*press^2))]
         # ==================================================================
 
-        density = rho / (1.0 - press / (K_0 + press * (A + press * B)))
+        density = rho / (1.0 - ref_press / (K_0 + ref_press * (A + ref_press * B)))
 
         # Return density array.
         return density
@@ -130,21 +104,22 @@ class Eos:
         Compute potential temperature, from UNESCO (1983).
 
         :params sal, temp, press, ref_press : local salinity, local temperature, local pressure, reference pressure
+        NOTE: pressure is expressed in [dbar]
         """
 
         H = ref_press - press
-        XK = H * Eos.__adiabtempgrad(sal, temp, press)
+        XK = H * EoS.__adiabtempgrad(sal, temp, press)
         temp = temp + 0.5 * XK
         Q = XK
         press = press + 0.5 * H
-        XK = H * Eos.__adiabtempgrad(sal, temp, press)
+        XK = H * EoS.__adiabtempgrad(sal, temp, press)
         temp = temp + 0.29289322 * (XK - Q)
         Q = 0.58578644 * XK + 0.121320344 * Q
-        XK = H * Eos.__adiabtempgrad(sal, temp, press)
+        XK = H * EoS.__adiabtempgrad(sal, temp, press)
         temp = temp + 1.707106781 * (XK - Q)
         Q = 3.414213562 * XK - 4.121320344 * Q
         press = press + 0.5 * H
-        XK = H * Eos.__adiabtempgrad(sal, temp, press)
+        XK = H * EoS.__adiabtempgrad(sal, temp, press)
         THETA = temp + (XK - 2.0 * Q) / 6.0
         return THETA
 
@@ -178,7 +153,7 @@ class Eos:
     @jit(nopython=True, fastmath=True, cache=True)
     def __compute_rho(sal: float, temp: float) -> float:
         """
-        Compute reference density at atmospheric pressure
+        Compute reference density at atmospheric pressure (where pot_temp = insitu_temp)
 
         rho = rho(sal, temp, 0) = rho_0 + A*sal + B*sal^3/2 + C*sal^2 .
 
@@ -229,7 +204,8 @@ class Eos:
         K_0 = Kw_0 + a*sal + b*sal^3/2
 
         Notation follows 'A new high pressure equation of state for
-        seawater' (Millero et al, 1980).
+        seawater' (Millero et al, 1980), using coefficients from
+        Jackett and McDougall (1995, Table A1).
 
         Arguments
         ---------
@@ -270,7 +246,8 @@ class Eos:
         A = Aw + c*sal + d*sal^3/2
 
         Notation follows 'A new high pressure equation of state for
-        seawater' (Millero et al, 1980).
+        seawater' (Millero et al, 1980), using coefficients from
+        Jackett and McDougall (1995, Table A1).
 
         Arguments
         ---------
@@ -306,7 +283,8 @@ class Eos:
         B = Bw + e*sal
 
         Notation follows 'A new high pressure equation of state for
-        seawater' (Millero et al, 1980).
+        seawater' (Millero et al, 1980), using coefficients from
+        Jackett and McDougall (1995, Table A1).
 
         Arguments
         ---------
@@ -368,47 +346,31 @@ if __name__ == "__main__":
     out_rho = []
     for sal in ref_sal:
         for temp in ref_temp:
-            out_rho.append(Eos._Eos__compute_rho(sal, temp))
+            out_rho.append(EoS._EoS__compute_rho(sal, temp))
     error = 1e-06  # kg/m^3
     assert np.allclose(ref_rho, out_rho, atol=error)
 
     # Test adiabatic lapse rate and potential temperature.
     # From UNESCO documentation.
-    assert np.isclose(Eos._Eos__adiabtempgrad(40, 40, 10000), 3.255976e-4)
-    assert np.isclose(Eos.potential_temperature(40, 40, 10000), 36.89073)
+    assert np.isclose(EoS._EoS__adiabtempgrad(40, 40, 10000), 3.255976e-4)
+    assert np.isclose(EoS.potential_temperature(40, 40, 10000), 36.89073)
 
     # Test Compute density from Jackett and Mcdougall (1995).
-    assert np.isclose(Eos.compute_density(35.5, 3.0, 300), 1041.83267)
+    assert np.isclose(EoS.compute_density(35.5, 3.0, 3000), 1041.83267)
     # Test conversion from pressure to depth.
     # From UNESCO documentation.
-    assert np.isclose(Eos.press2depth(10000, 30), 9712.653)
+    assert np.isclose(EoS.press2depth(10000, 30), 9712.653)
 
-    # Check if it works for 3D array and 1D depth
-    test_sal = np.ones([3, 10, 2, 15]) * 24262
+    # Check if it works for 4D array
+    test_sal = np.random.rand(3, 10, 2, 15) * 35.5
+    print(f"input salinity has dims {test_sal.shape}")
     test_temp = np.ones_like(test_sal) * 25
-    test_depth = np.ones_like(test_sal) * 10
-    test_3d = Eos.compute_density(test_sal, test_temp, test_depth)
-    print("Testing 4D sal, temp and 1D depth ...")
+    test_4d = EoS.compute_density(test_sal, test_temp)
+    print(f"4D density as shape {test_4d.shape}")
     try:
-        Eos.compute_density(test_sal, test_temp, test_depth[:, 0, 0, 0])
+        EoS.compute_density(test_sal, test_temp[:,:,0,:])
     except ValueError:
-        print("Does not work along axis 0")
-    try:
-        Eos.compute_density(test_sal, test_temp, test_depth[0, :, 0, 0])
-    except ValueError:
-        print("Does not work along axis 1")
-    try:
-        Eos.compute_density(test_sal, test_temp, test_depth[0, 0, :, 0])
-    except ValueError:
-        print("Does not work along axis 2, if dimensions are 4")
-    try:
-        Eos.compute_density(
-            test_sal[:, 0, :, :], test_temp[:, 0, :, :], test_depth[0, 0, 0, :]
-        )
-        print("Works along axis 2, if dimensions are 3")
-    except ValueError:
-        assert False
-    test_1d = Eos.compute_density(test_sal, test_temp, test_depth[0, 0, 0, :])
-    assert np.array_equal(test_3d, test_1d)
-    print("Works along axis 3, if dimensions are 4")
-    print("Only works along LAST array axis.")
+        print("Not working if temp and sal has different shape")
+    EoS.compute_density(test_sal[0], test_temp[0, 0, :, :])
+    EoS.compute_density(test_sal, test_temp[0, :, :])
+    print("Working if the first dimension is missing from one of the two arrays")
