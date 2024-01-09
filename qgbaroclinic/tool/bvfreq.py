@@ -5,7 +5,7 @@ from numpy.typing import NDArray
 try:
     from .interpolation import Interpolation
 except ImportError:
-    from tool.interpolation import Interpolation
+    from interpolation import Interpolation
 
 
 class BVfreq:
@@ -58,7 +58,6 @@ class BVfreq:
         g = 9.806  # (m/s^2)
         # Defining value of reference density rho_0.
         rho_0 = 1025.0  # (kg/m^3)
-        # rho = density[..., :-1]
         # Compute Brunt-Vaisala frequency
         dz = depth[..., 1:] - depth[..., :-1]
         density_diff = density[..., 1:] - density[..., :-1]
@@ -66,7 +65,7 @@ class BVfreq:
         return bvfreq_sqrd
 
     @staticmethod
-    def rm_negvals(bv_freq_sqrd: NDArray) -> NDArray:
+    def rm_negvals(bv_freq_sqrd: NDArray, grid_step: float = 1) -> NDArray:
         """
         Remove negative values and re-interpolate the profile.
         """
@@ -74,10 +73,10 @@ class BVfreq:
         # Remove possible negative values
         new_arr = np.copy(bv_freq_sqrd)
         new_arr[np.where(new_arr < 0)] = np.nan
-        arr_len = bv_freq_sqrd.shape[0]
+        arr_len = bv_freq_sqrd.shape[-1]
         depth = np.arange(0, arr_len)
         interpolation = Interpolation(depth, new_arr)
-        (interp_arr,) = interpolation.apply_interpolation(0, arr_len, 1)
+        (interp_arr,) = interpolation.apply_interpolation(0, depth[-1], grid_step, return_depth=False)
         return interp_arr
 
 
