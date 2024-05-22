@@ -49,33 +49,44 @@ class EigenProblem:
                 self.eigenvecs = eigenvecs
         else:
             # solve eigenproblem for tridiagonal matrix
-            self.eigenvals, self.eigenvecs = self.tridiag_eigensolver()
+            self.eigenvals, self.eigenvecs = self.tridiag_eigensolver(self.lhs_matrix, self.n_modes)
 
-    def tridiag_eigensolver(self) -> tuple[NDArray]:
+    @staticmethod
+    def tridiag_eigensolver(
+        lhs_matrix: NDArray, n_modes: int, eigvals_only: bool = False
+    ) -> tuple[NDArray]:
         """
         Compute as many eigenvalues as n_modes, for a tridiagonal matrix.
 
         Exploits scipy algorithm.
         """
 
-        tridiagmatrix = self.lhs_matrix
-        n_modes = self.n_modes
+        tridiagmatrix = lhs_matrix
         # extract diagonal and subdiagonal
         d = np.diagonal(tridiagmatrix, offset=0).copy()
         e = np.diagonal(tridiagmatrix, offset=1).copy()
         # Compute eigenvalues using scipy
-        eigenvalues, eigenvectors = sp.linalg.eigh_tridiagonal(
+        eigenprob_result = sp.linalg.eigh_tridiagonal(
             d,
             e,
             lapack_driver="auto",
+            select="a",
             select_range=(0,),
+            eigvals_only=eigvals_only,
         )
+        if not eigvals_only:
+            eigenvalues, eigenvectors = eigenprob_result
+        else:
+            eigenvalues, eigenvectors = eigenprob_result, None
         # Take real part of eigenvalues and sort them in ascending order.
         eigenvalues = np.real(eigenvalues)
         sort_index = np.argsort(eigenvalues)
-        eigenvals = eigenvalues[sort_index]
-        eigenvecs = eigenvectors[:, sort_index]
-        return eigenvals[:n_modes], eigenvecs[:, :n_modes]
+        eigenvals = eigenvalues[sort_index][:n_modes]
+        if not eigvals_only:
+            eigenvecs = eigenvectors[:, sort_index][:, :n_modes]
+        else:
+            eigenvecs = None
+        return eigenvals, eigenvecs
 
     def eigenvals_generalizedprob(self) -> NDArray:
         """
@@ -199,7 +210,7 @@ class EigenProblem:
 
 
 if __name__ == "__main__":
-    from qgbaroclinic.solve.verticalstructureequation import VerticalStructureEquation
+    from verticalstructureequation import VerticalStructureEquation
 
     test_plot = False
 
@@ -248,7 +259,9 @@ if __name__ == "__main__":
         L = 100
         expected_eigenvals = (np.arange(4) * np.pi / L) ** 2
         dx = L / n
-        lhs_tridiag = VerticalStructureEquation.tridiag_matrix_standardprob(np.ones(n), dx)
+        lhs_tridiag = VerticalStructureEquation.tridiag_matrix_standardprob(
+            np.ones(n), dx
+        )
         lhs_general = VerticalStructureEquation.lhs_matrix_generalizedprob(n, dx)
         rhs_general = VerticalStructureEquation.rhs_matrix_generalizedprob(np.ones(n))
         eigenprob_tridiag = EigenProblem(lhs_tridiag, n_modes=4)
@@ -284,7 +297,9 @@ if __name__ == "__main__":
         dx = abs(x[1] - x[0])
         # Problem matrices
         lhs_matrix = VerticalStructureEquation.lhs_matrix_generalizedprob(N + 2, dx)
-        rhs_matrix = VerticalStructureEquation.rhs_matrix_generalizedprob(np.ones(N + 2))
+        rhs_matrix = VerticalStructureEquation.rhs_matrix_generalizedprob(
+            np.ones(N + 2)
+        )
         eigenprob_general = EigenProblem(lhs_matrix, rhs_matrix, grid_step=None)
         eigenprob_general.eigenvecs = VerticalStructureEquation.normalize_eigenfunc(
             eigenprob_general.eigenvecs, dx
@@ -295,7 +310,9 @@ if __name__ == "__main__":
                 eigenprob_general.eigenvecs[:, n] *= -1
             eigenvals = n * np.pi / L
             # Theoretical solution (normalized using VerticalStructureEquation method)
-            theor_sol = VerticalStructureEquation.normalize_eigenfunc(np.sin(eigenvals * x), dx)
+            theor_sol = VerticalStructureEquation.normalize_eigenfunc(
+                np.sin(eigenvals * x), dx
+            )
             # Numerical solution
             w_0 = 0
             w_n = 0
@@ -337,3 +354,16 @@ if __name__ == "__main__":
     test_stationary_wave()
     test_stationary_wave_inapipe()
     print("Tests SUCCEDED.")
+
+    # Compute eigenvalues using scipy "eigh_tridiagonal" with eivals_only = True
+    eigvals_only = True
+    eigenprob_result = sp.linalg.eigh_tridiagonal(
+        np.ones(10),
+        np.ones(9),
+        eigvals_only=eigvals_only,
+    )
+    if not eigvals_only:
+        eigenvalues, eigenvectors = eigenprob_result
+    else:
+        eigenvalues, eigenvectors = eigenprob_result, None
+    print(eigenvalues, eigenvectors)

@@ -67,7 +67,7 @@ class BVfreq:
     @staticmethod
     def rm_negvals(bv_freq_sqrd: NDArray, grid_step: float = 1) -> NDArray:
         """
-        Remove negative values and re-interpolate the profile.
+        Remove negative values and re-interpolate the profile (considering starting equally spaced grid).
         """
 
         # Remove possible negative values
@@ -76,7 +76,9 @@ class BVfreq:
         arr_len = bv_freq_sqrd.shape[-1]
         depth = np.arange(0, arr_len)
         interpolation = Interpolation(depth, new_arr)
-        (interp_arr,) = interpolation.apply_interpolation(0, depth[-1], grid_step, return_depth=False)
+        (interp_arr,) = interpolation.apply_interpolation(
+            start=0, stop=depth[-1], step=grid_step, return_depth=False
+        )
         return interp_arr
 
 
@@ -155,5 +157,14 @@ if __name__ == "__main__":
     test_arr = np.array([np.nan, np.nan, -1, 2, np.nan, 4, -5, 6])
     processed_arr = BVfreq.rm_negvals(test_arr)
     assert np.allclose(processed_arr, np.arange(-1, 7))
-    print("OK post-processing for removing NaN and NEG values.")
-    print("test array: ", test_arr)
+    print("1D array: OK post-processing for removing NaN and NEG values.")
+    print("original array: ", test_arr.shape, test_arr)
+    print("new array: ", processed_arr.shape, processed_arr)
+
+    test_arr = np.array([test_arr, test_arr])
+    test_arr = test_arr.reshape(2, 1, 8)
+    print("test array 3d", test_arr.shape, test_arr)
+    processed_arr = BVfreq.rm_negvals(test_arr)
+    assert np.allclose(processed_arr, np.array([np.arange(-1, 7), np.arange(-1, 7)]))
+    print("3D array: OK post-processing for removing NaN and NEG values.")
+    print("new array: ", processed_arr.shape, processed_arr)

@@ -1,4 +1,4 @@
-import os
+import os, sys
 import logging
 import xarray as xr
 from xarray import DataArray, Dataset
@@ -52,6 +52,7 @@ class ncWrite:
         logging.captureWarnings(True)
         logging.basicConfig(
             filename=log_path,
+            # stream=sys.stdout,
             level=log_level,
             format="%(asctime)s %(levelname)s %(name)s %(message)s",
             datefmt="%m/%d/%Y %I:%M:%S %p",

@@ -23,7 +23,7 @@
         # Path to bathymetry NetCDF file
         path = "./data/bathymetry/GEBCO_2023.nc" 
         # Name of Sea Floor depth and other variables in Netcdf file.
-        vars = {bottomdepth = "elevation"}
+        vars = {seafloor_depth = "elevation"}
         # Name of coords in Netcdf file.
         coords = {lon = "lon", lat = "lat"} 
         # Name of dimensions [longitude, latitude] in Netcdf file.
@@ -33,9 +33,9 @@
     # Domain extremants: time min, max (format compatible with numpy.datetime64)
     time = [] # time = [1900-01-01T00:00:00, 2018-01-01T00:00:00]
     # Domain extremants: longitude min, max [° E]
-    lon = [-45.3, -45.3]
+    lon = [-30,-34]
     # Domain extremants: latitude min, max [° N]
-    lat = [29.9, 29.9]
+    lat = [34.5,50.2]
     # Domain extremants: depth min, max [m]
     depth = []
 # OUTPUT FILE.
@@ -55,6 +55,6 @@
     # List of CUTOFF WAVELENGTH (in meters). Can be more than one, for depth-dependent filtering.
     cutoff_wavelength = [10.0, 100.0]
     # List of cutoff depths: i.e. depth (in meters) from which the above cutoff should be applied up to the bottom. 
-    cutoff_depths = [0.0, 100.0]
+    cutoff_depth = [0.0, 100.0]
     # Filter order.
     order = 3

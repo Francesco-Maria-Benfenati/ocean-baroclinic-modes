@@ -1,18 +1,19 @@
 import sys, os
 import numpy as np
 import scipy as sp
+from tqdm import tqdm
 from numpy.typing import NDArray
 
 try:
     from .eigenproblem import EigenProblem
 except ImportError:
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from qgbaroclinic.solve.eigenproblem import EigenProblem
+    from eigenproblem import EigenProblem
 
 
 class VerticalStructureEquation:
     """
-    This class is for solving the Vertical Structure Equation.
+    This class is for solving the Vertical Structure Equation and
+    computing the ocean QG Baroclinic Modes of motion and baroclinic rossby radii.
     """
 
     def __init__(
@@ -35,7 +36,10 @@ class VerticalStructureEquation:
             s_param = bvfreq**2
         else:
             s_param = VerticalStructureEquation.compute_problem_sparam(bvfreq, mean_lat)
-        self.eigenvals, self.structfunc = VerticalStructureEquation.compute_baroclinicmodes(
+        (
+            self.eigenvals,
+            self.vert_structfunc,
+        ) = VerticalStructureEquation.compute_baroclinicmodes(
             s_param,
             grid_step,
             n_modes,
@@ -48,7 +52,10 @@ class VerticalStructureEquation:
     def multiprofiles(
         bvfreq: NDArray,
         mean_lat: NDArray,
-        grid_step: float = None,
+        bottom_depth: NDArray,
+        grid_step: float = 1,
+        n_modes: int = 4,
+        rossbyrad_only: bool = False,
     ) -> tuple[NDArray]:
         """
         Apply computing baroclinic modes to array of vertical profiles.
@@ -58,28 +65,63 @@ class VerticalStructureEquation:
 
         s_param = VerticalStructureEquation.compute_problem_sparam(bvfreq, mean_lat)
         flatten_array = s_param.reshape(-1, s_param.shape[-1])
-        rossbyrad = []
-        structfunc = []
-        for profile in flatten_array:
-            eigenvals, struct_func = VerticalStructureEquation.compute_baroclinicmodes(
-                profile, grid_step
-            )
-            rossby_rad = VerticalStructureEquation.compute_rossby_rad(eigenvals)
-            rossbyrad.append(rossby_rad)
-            structfunc.append(struct_func)
-        rossbyrad = np.array(rossbyrad)
-        structfunc = np.array(structfunc)
-        n_modes = rossby_rad.shape[-1]
-        levels = structfunc.shape[1]
-        rossbyrad = rossbyrad.reshape(bvfreq.shape[:-1] + (n_modes,))
-        structfunc = structfunc.reshape(
-            bvfreq.shape[:-1]
-            + (
-                levels,
+        flatten_bathy_array = bottom_depth.reshape(-1)
+        eigenvals_list = []
+        vert_structfunc_list = []
+        for i in tqdm(range(flatten_array.shape[0])):
+            bottom = int(flatten_bathy_array[i])
+            profile = flatten_array[i, : bottom + 1]
+            try:
+                if rossbyrad_only:
+                    tridiagmatrix = (
+                        VerticalStructureEquation.tridiag_matrix_standardprob(
+                            profile, dz=grid_step
+                        )
+                    )
+                    eigenvalues, vert_structfunc = EigenProblem.tridiag_eigensolver(
+                        tridiagmatrix, n_modes, eigvals_only=rossbyrad_only
+                    )
+                else:
+                    (
+                        eigenvalues,
+                        vert_structfunc,
+                    ) = VerticalStructureEquation.compute_baroclinicmodes(
+                        profile, grid_step, n_modes=n_modes
+                    )
+                    if bottom + 1 != flatten_array[i].shape[-1]:
+                        print(vert_structfunc.shape)
+                        vert_structfunc = np.append(
+                            vert_structfunc,
+                            np.nan
+                            * np.ones(
+                                ((flatten_array.shape[-1] - (bottom + 1),) + (n_modes,))
+                            ),
+                            axis=0,
+                        )
+                        print(vert_structfunc.shape)
+
+            except ValueError:
+                eigenvalues = np.full(n_modes, np.nan)
+                vert_structfunc = np.full_like(s_param.shape + (n_modes,), np.nan)
+            # Append eigenvals, vert_structfunc
+            eigenvals_list.append(eigenvalues)
+            vert_structfunc_list.append(vert_structfunc)
+        # Compute rossby radii array and reshape
+        eigenvals_array = np.array(eigenvals_list)
+        rossby_rad = VerticalStructureEquation.compute_rossby_rad(eigenvals_array)
+        vert_structfunc = np.array(vert_structfunc_list)
+        # Reshape
+        rossby_rad = rossby_rad.reshape(s_param.shape[:-1] + (n_modes,))
+        if rossbyrad_only:
+            vert_structfunc = vert_structfunc.reshape(s_param.shape[:-1])
+        else:
+            vert_structfunc_shape = s_param.shape[:-1] + (
+                s_param.shape[-1] - 1,
                 n_modes,
             )
-        )
-        return rossbyrad, structfunc
+            vert_structfunc = vert_structfunc.reshape(vert_structfunc_shape)
+        # Return rossby radii array and list of vert_struct_func
+        return rossby_rad, vert_structfunc
 
     @staticmethod
     def compute_baroclinicmodes(
@@ -110,7 +152,9 @@ class VerticalStructureEquation:
             dz = grid_step
         # COMPUTE MATRIX & SOLVE EIGEN PROBLEM
         if vertvel_method:  # generalized case
-            lhs_matrix = VerticalStructureEquation.lhs_matrix_generalizedprob(n_levels, dz)
+            lhs_matrix = VerticalStructureEquation.lhs_matrix_generalizedprob(
+                n_levels, dz
+            )
             rhs_matrix = VerticalStructureEquation.rhs_matrix_generalizedprob(s_param)
             eigenprob = EigenProblem(
                 lhs_matrix, rhs_matrix, grid_step=dz, n_modes=n_modes
@@ -125,15 +169,17 @@ class VerticalStructureEquation:
             eigenprob = EigenProblem(matrix, n_modes=n_modes)
         # Return eigenvalues and vertical structure function
         eigenvalues = eigenprob.eigenvals
-        vert_structurefunc = eigenprob.eigenvecs
+        vert_structfunc = eigenprob.eigenvecs
         if not vertvel_method:
             # Check sign
-            vert_structurefunc = VerticalStructureEquation.check_sign_eigenvectors(vert_structurefunc)
+            vert_structfunc = VerticalStructureEquation.check_sign_eigenvectors(
+                vert_structfunc
+            )
         # Normalization of vertical structure function
-        normalized_vert_structurefunc = VerticalStructureEquation.normalize_eigenfunc(
-            vert_structurefunc, dz
+        normalized_vert_structfunc = VerticalStructureEquation.normalize_eigenfunc(
+            vert_structfunc, dz
         )
-        return eigenvalues, normalized_vert_structurefunc
+        return eigenvalues, normalized_vert_structfunc
 
     @staticmethod
     def normalize_eigenfunc(eigenfunc: NDArray, dz: float) -> NDArray:
@@ -158,26 +204,26 @@ class VerticalStructureEquation:
         return eigenvectors
 
     @staticmethod
-    def from_w_to_structfunc(
+    def from_w_to_vertstructfunc(
         eigenvectors: NDArray, s_param: NDArray, dz: float
     ) -> NDArray:
         """
-        Compute structure function from eigenvectors (if using modal structure for vertical velocity method).
+        Compute vertical structure function from eigenvectors (if using modal structure for vertical velocity method).
         """
 
         n_modes = eigenvectors.shape[1]
         # Define integration constant phi_0 = phi(z = 0) = 1 as BC.
         phi_barotropic = 1
         phi_0 = np.ones(n_modes) * phi_barotropic
-        struct_func = np.empty_like(eigenvectors)
+        vert_structfunc = np.empty_like(eigenvectors)
         for i in range(n_modes):
             # Obtain Phi integrating eigenvectors * S.
             integral_argument = s_param * eigenvectors[:, i]
-            for j in range(struct_func.shape[0]):
-                struct_func[j, i] = (
+            for j in range(vert_structfunc.shape[0]):
+                vert_structfunc[j, i] = (
                     sp.integrate.trapezoid(integral_argument[:j], dx=dz) + phi_0[i]
                 )
-        return struct_func
+        return vert_structfunc
 
     @staticmethod
     def compute_problem_sparam(bvfreq: NDArray, mean_lat: float) -> NDArray:
@@ -377,9 +423,10 @@ if __name__ == "__main__":
     )
     print(eigval - expected_eigenvals, (1 / 2000))
     # Test modal structure for vertical velocity method
-    eigvals_generalized_case, struct_func = VerticalStructureEquation.compute_baroclinicmodes(
-        N2_const, vertvel_method=True
-    )
+    (
+        eigvals_generalized_case,
+        vert_structfunc,
+    ) = VerticalStructureEquation.compute_baroclinicmodes(N2_const, vertvel_method=True)
     print("On the other hand, solving generalized leads to relative error:")
     print((eigvals_generalized_case - expected_eigenvals) / expected_eigenvals)
 
@@ -390,16 +437,37 @@ if __name__ == "__main__":
     print("Tridiagonal matrix is of type:\n", new_tridiag)
 
     # Test 3D array
-    N_const_3d = np.ones([15, 20, 50])
+    bottom_depth = 100  # [m]
+    N_const_3d = np.ones([15, 20, bottom_depth + 1])
     N_const_3d[3, 5] *= 2
-    N_const_1d = np.ones(50)
+    N_const_1d = np.ones(bottom_depth + 1) * 2
     mean_lat_1d = 1
     mean_lat_3d = np.ones_like(N_const_3d)
-    rossbyrad_1d, structfunc_1d = VerticalStructureEquation.multiprofiles(N_const_1d, mean_lat_1d)
-    rossbyrad_3d, structfunc_3d = VerticalStructureEquation.multiprofiles(N_const_3d, mean_lat_3d)
-    print(
-        rossbyrad_1d.shape, rossbyrad_3d.shape, structfunc_1d.shape, structfunc_3d.shape
+    bottom_depth_1d = np.full_like(N_const_1d, bottom_depth)
+    bottom_depth_3d = np.full_like(N_const_3d[:, :, 0], bottom_depth)
+    bottom_depth_3d[10, 15] /= 2
+    rossbyrad_1d, vert_structfunc_1d = VerticalStructureEquation.multiprofiles(
+        N_const_1d,
+        mean_lat_1d,
+        bottom_depth_1d,
+        rossbyrad_only=False,
     )
-    assert np.array_equal(structfunc_3d[3, 5], structfunc_1d)
-    assert np.array_equal(rossbyrad_3d[3, 5], rossbyrad_1d * 2)
-    assert np.array_equal(rossbyrad_3d[12, 17], rossbyrad_1d)
+    rossbyrad_3d, vert_structfunc_3d = VerticalStructureEquation.multiprofiles(
+        N_const_3d,
+        mean_lat_3d,
+        bottom_depth_3d,
+        rossbyrad_only=False,
+    )
+    print(
+        rossbyrad_1d.shape,
+        rossbyrad_3d.shape,
+        vert_structfunc_1d.shape,
+        vert_structfunc_3d.shape,
+        vert_structfunc_3d[10, 15],
+    )
+
+    assert np.isnan(vert_structfunc_3d[10, 15, int(bottom_depth / 2) :]).all()
+    assert np.array_equal(vert_structfunc_3d[3, 5], vert_structfunc_1d)
+    assert np.array_equal(vert_structfunc_3d[12, 17], vert_structfunc_1d)
+    assert np.array_equal(rossbyrad_3d[3, 5], rossbyrad_1d)
+    assert np.array_equal(rossbyrad_3d[4, 8], rossbyrad_1d / 2)

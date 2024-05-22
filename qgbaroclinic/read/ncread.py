@@ -46,7 +46,7 @@ class ncRead:
                 self.path,
                 concat_dim=None,
                 combine="by_coords",
-                parallel=False,
+                parallel=True,
                 preprocess=preprocess,
                 engine="h5netcdf",
                 cache=True,
@@ -56,7 +56,7 @@ class ncRead:
                 # mask_and_scale = False,
             )
         except (ValueError, OSError):
-            engine = "scipy" # "netcdf4"
+            engine = "scipy"  # "netcdf4"
             dataset = xr.open_mfdataset(
                 self.path,
                 concat_dim=None,
@@ -99,7 +99,7 @@ class ncRead:
             dataset = self.decode_vars(dataset)
         return dataset
 
-    def variables(self, *names: tuple[str]) -> tuple[Variable]:
+    def variables(self, *names: tuple[str], **domain: dict[list]) -> tuple[Variable]:
         """
         Extract variable(s) from NetCDF file, given the name(s).
         """
@@ -109,14 +109,25 @@ class ncRead:
                 concat_dim=None,
                 combine="by_coords",
                 parallel=True,
-                engine="h5netcdf",
+                engine="netcdf4", #"h5netcdf",
                 cache=True,
                 lock=False,
                 decode_times=True,
                 decode_cf=True,
             )
-        except (ValueError, OSError):
-            dataset = xr.open_dataset(self.path)
+        except Exception:
+            dataset = xr.open_mfdataset(
+                    self.path,
+                    concat_dim=None,
+                    combine="by_coords",
+                    parallel=True,
+                    engine="scipy",
+                    cache=True,
+                    lock=False,
+                    decode_times=True,
+                    decode_cf=True,
+                )
+        dataset = self.crop_dataset(dataset, **domain)
         variables = ()
         for name in names:
             var = dataset.variables[name]
@@ -138,6 +149,7 @@ class ncRead:
         """
         transposed_vars = ()
         dims = kdims.values()
+        print(*dims)
         for var in vars:
             transposed_vars += (var.transpose(*dims, ..., missing_dims="ignore"),)
         return transposed_vars
@@ -160,7 +172,7 @@ class ncRead:
                 [id_min, id_max] = Utils.find_nearvals(coords[key].values, *domain[key])
             except ValueError:
                 raise ValueError(
-                    "Please, provide both or none domain extremants in config file. Only one is not accepted."
+                    "Please, provide both or none domain extremants. Only one is not accepted."
                 )
             [id_min, id_max] = np.sort([id_min, id_max])
             new_domain[key] = np.arange(id_min, id_max + 1)
@@ -185,10 +197,14 @@ class ncRead:
 if __name__ == "__main__":
     read = ncRead("./data/test_case/dataset_azores/azores_Jan2021.nc")
     temp, sal = read.variables("thetao", "so")
+    vars = read.variables("thetao", "so")
+    print(temp.shape)
+    print(type(temp))
+    temp, sal = read.variables("thetao", "so", depth=[0, 62.5])
     dims = {"time": "time", "lon": "longitude", "lat": "latitude", "depth": "depth"}
-    print(temp)
+    print(temp.shape)
     # Transpose many fields using **kwargs dims
-    temp, sal = read.transpose(temp, sal, lat="latitude", depht="depth")
+    temp, sal = read.transpose(temp, sal, lat="latitude", depth="deptho")
     print(temp.dims)
     # Transpose many fields using **dict dims
     temp, sal = read.transpose(temp, sal, **dims)

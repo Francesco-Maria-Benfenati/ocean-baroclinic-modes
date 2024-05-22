@@ -1,5 +1,4 @@
 import numpy as np
-from numba import jit
 from numpy.typing import NDArray
 
 
@@ -124,7 +123,6 @@ class EoS:
         return THETA
 
     @staticmethod
-    @jit(nopython=True, fastmath=True, cache=True)
     def press2depth(press: float, latitude: float) -> float:
         """
         Conversion from pressure (dbars) to depth (m), as in UNESCO, 1983.
@@ -141,7 +139,6 @@ class EoS:
         return DEPTH
 
     @staticmethod
-    @jit(nopython=True, fastmath=True, cache=True)
     def depth2press(depth: float) -> float:
         """
         Conversion from depth (m) to pressure (dbars).
@@ -150,7 +147,6 @@ class EoS:
         return depth
 
     @staticmethod
-    @jit(nopython=True, fastmath=True, cache=True)
     def __compute_rho(sal: float, temp: float) -> float:
         """
         Compute reference density at atmospheric pressure (where pot_temp = insitu_temp)
@@ -196,7 +192,6 @@ class EoS:
         return rho
 
     @staticmethod
-    @jit(nopython=True, fastmath=True, cache=True)
     def __compute_K_0(sal: float, temp: float) -> float:
         """
         Compute bulk modulus of seawater at atmospheric pressure term
@@ -238,7 +233,6 @@ class EoS:
         return K_0
 
     @staticmethod
-    @jit(nopython=True, fastmath=True, cache=True)
     def __compute_A(sal: float, temp: float) -> float:
         """
         Compute compression term coefficient A in bulk modulus of seawater
@@ -275,7 +269,6 @@ class EoS:
         return A
 
     @staticmethod
-    @jit(nopython=True, fastmath=True, cache=True)
     def __compute_B(sal: float, temp: float) -> float:
         """
         Compute compression term coefficient A in bulk modulus of seawater
@@ -307,7 +300,6 @@ class EoS:
         return B
 
     @staticmethod
-    @jit(nopython=True, fastmath=True, cache=True)
     def __adiabtempgrad(sal: float, temp: float, press: float) -> float:
         """
         Compute adiabatic lapse rate (adiabatic temperature gradient), from UNESCO (1983).

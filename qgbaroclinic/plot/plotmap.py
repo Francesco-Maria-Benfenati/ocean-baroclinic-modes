@@ -20,7 +20,7 @@ def read_from_netcdf_output(path: str):
     return rossbyrad, lon, lat
 
 def read_from_chelton_dat():
-    df = pd.read_csv("./data/rossrad_chelton.dat", delimiter="\s+", header=None, usecols=[0,1,3], names = ["lat", "lon", "rossrad"], dtype = np.float64)
+    df = pd.read_csv("./data/rossrad_chelton.dat", delimiter=r"\s+", header=None, usecols=[0,1,3], names = ["lat", "lon", "rossrad"], dtype = np.float64)
     lon = df["lon"]
     lat = df["lat"]
     rossrad = df["rossrad"]
@@ -93,18 +93,25 @@ def make_plot(rossby_rad: NDArray, lon: NDArray, lat: NDArray, name: str):
 
 if __name__ == "__main__":
 
+    out_path = "./output/baroclinic_modes_reanalysis.nc"
+    rossbyrad_out, lon_out, lat_out = read_from_netcdf_output(out_path)
+    rossbyrad_out = rossbyrad_out.transpose("lat", "lon", "mode")
+    make_plot(rossbyrad_out[:,:,0], lon_out, lat_out, "north_atlantic_reanalysis")
+    # ##################################################################
     # out_path = "./output/summer/baroclinic_modes_north_atlantic_summer.nc"
     # rossbyrad_out, lon_out, lat_out = read_from_netcdf_output(out_path)
     # rossbyrad_out = rossbyrad_out.transpose("lat", "lon", "mode")
-    # make_plot(rossbyrad_out[:,:,0], lon_out, lat_out, "north_america_summer")
+    # make_plot(rossbyrad_out[:,:,0], lon_out, lat_out, "north_atlantic_summer")
     # out_path = "./output/winter/baroclinic_modes_north_atlantic_winter.nc"
     # rossbyrad_out, lon_out, lat_out = read_from_netcdf_output(out_path)
     # rossbyrad_out = rossbyrad_out.transpose("lat", "lon", "mode")
-    # make_plot(rossbyrad_out[:,:,0], lon_out, lat_out, "north_america_winter")
+    # make_plot(rossbyrad_out[:,:,0], lon_out, lat_out, "north_atlantic_winter")
+    # ##################################################################
     # out_path = "./output/annual/baroclinic_modes_north_atlantic_annual.nc"
     # rossbyrad_out, lon_out, lat_out = read_from_netcdf_output(out_path)
     # rossbyrad_out = rossbyrad_out.transpose("lat", "lon", "mode")
-    # make_plot(rossbyrad_out[:,:,0], lon_out, lat_out, "north_america_annual")
+    # make_plot(rossbyrad_out[:,:,0], lon_out, lat_out, "north_atlantic_annual")
+    # ##################################################################
     # chelton_path = "./data/rossrad.dat"
     # rossbyrad_chelton, lon_chelton, lat_chelton = read_from_chelton_dat()
     # make_plot(rossbyrad_chelton, lon_chelton, lat_chelton, "north_atlantic_chelton_test")

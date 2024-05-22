@@ -11,6 +11,7 @@ import scipy as sp
 from scipy.interpolate import RegularGridInterpolator
 from functools import partial
 from plumbum import cli, colors
+from tqdm import tqdm
 
 try:
     from .read.ncread import ncRead
@@ -111,7 +112,9 @@ class Exe(cli.Application):
         self.salinity = salinity
         self.depth = oce_dataset[oce_coords["depth"]]
         self.latitude = oce_dataset[oce_coords["lat"]]
+        print("latitude", self.latitude.shape)
         self.longitude = oce_dataset[oce_coords["lon"]]
+        print("longitude", self.longitude.shape)
         self.oce_domain = oce_domain
         self.oce_dims = oce_dims
         # close datasets
@@ -156,8 +159,8 @@ class Exe(cli.Application):
         X, Y = np.meshgrid(self.longitude, self.latitude, indexing="ij")
         interp_bathy = interp((X, Y))
         print("Bathymetry after interpolation", interp_bathy.shape)
-        max_bottom_depth = np.max(np.abs(interp_bathy))
-        print("max bottom depth", max_bottom_depth)
+        max_bottom_depth = np.nanmax(np.abs(interp_bathy))
+        print("initial bottom depth", max_bottom_depth)
         self.max_bottom_depth = max_bottom_depth
         self.bottom_depth = np.abs(interp_bathy)
         bathy_dataset.close()
@@ -173,8 +176,6 @@ class Exe(cli.Application):
         ref_pressure = 0  # reference pressure [dbar]
         salinity = self.salinity
         temperature = self.temperature.values
-        # temperature[np.where(np.isnan(temperature.all()))] = -99999
-        print("computing pot density")
         if config.input.oce.insitu_temperature is True:
             pot_temperature = Eos.potential_temperature(
                 salinity.values,
@@ -206,7 +207,7 @@ class Exe(cli.Application):
         config = self.config
         logging.info("Computing Brunt-Vaisala frequency ...")
         bv_freq_sqrd = BVfreq.compute_bvfreq_sqrd(self.interp_depth, self.interp_dens)
-        print("bv_freq", bv_freq_sqrd.shape)
+        print("bv_freq sqrd", bv_freq_sqrd.shape)
 
         grid_step = self.grid_step
         max_bottom_depth = self.max_bottom_depth
@@ -215,13 +216,26 @@ class Exe(cli.Application):
         grid_step = self.grid_step
         bv_freq_sqrd[np.where(bv_freq_sqrd < 0)] = np.nan
         bv_freq_sqrd[:, :, 0] = 0.0
-        bv_freq_sqrd[:, :, -1] = 0.0
-        interpolate_bvfreqsqrd = Interpolation(self.interface_depth, bv_freq_sqrd)
-        bv_freq_sqrd, interfaces = interpolate_bvfreqsqrd.apply_interpolation(
-            0, max_bottom_depth + 2*grid_step, grid_step
-        )
-        bv_freq = np.sqrt(bv_freq_sqrd)
-        print(bv_freq)
+        flatten_array = bv_freq_sqrd.reshape(-1, bv_freq_sqrd.shape[-1])
+        print(flatten_array.shape)
+        interface_depth = self.interface_depth
+        bv_freq = []
+        for i in tqdm(range(flatten_array.shape[0])):
+            try:
+                interpolate_bvfreqsqrd = Interpolation(
+                    interface_depth, flatten_array[i]
+                )
+                (interp_profile, interp_depth) = interpolate_bvfreqsqrd.apply_interpolation(
+                    0, max_bottom_depth + grid_step, grid_step, return_depth=True
+                )
+                bv_freq.append(np.sqrt(interp_profile))
+            except IndexError:
+                nan_array = np.ones(flatten_array.shape[1]) * np.nan
+                bv_freq.append(nan_array)
+        bv_freq = np.array(bv_freq)
+        bv_freq = bv_freq.reshape(bv_freq_sqrd.shape[:-1] + (interp_depth.shape[0],))
+        print(bv_freq.shape)
+
         # FILTERING BRUNT-VAISALA FREQUENCY PROFILE WITH A LOW-PASS FILTER.
         if config.filter.filter:
             logging.info("Filtering Brunt-Vaisala frequency ...")
@@ -240,7 +254,7 @@ class Exe(cli.Application):
         else:
             logging.info("Brunt-Vaisala frequency has not been filtered...")
             self.bv_freq_filtered = bv_freq
-        print("bv freq filtered", self.bv_freq_filtered.shape)
+        print("bv freq filtered", self.bv_freq_filtered.shape, bv_freq)
 
     def compute_baroclinicmodes(self):
         """
@@ -253,14 +267,16 @@ class Exe(cli.Application):
         bv_freq_filtered = self.bv_freq_filtered
         x = np.ones_like(bv_freq_filtered[:, 0, 0])
         z = np.ones_like(bv_freq_filtered[0, 0, :])
-        X, latitude, Z = np.meshgrid(
-            x, self.latitude, z, indexing="ij"
-        )
+        X, latitude, Z = np.meshgrid(x, self.latitude, z, indexing="ij")
         print("latitude", latitude.shape)
         # Compute baroclinic Rossby radius and vert. struct. function Phi(z).
         # From config file, specify if structure of vertical velocity should be computed instead of Phi.
         rossby_rad_array = VerticalStructureEquation.multiprofiles(
-            bv_freq_filtered, latitude, self.bottom_depth, self.grid_step, n_modes=N_motion_modes
+            bv_freq_filtered,
+            latitude,
+            self.bottom_depth,
+            self.grid_step,
+            n_modes=N_motion_modes,
         )
         rossby_rad_array = (
             rossby_rad_array[:, :, 1:] / 1000
@@ -270,8 +286,8 @@ class Exe(cli.Application):
         # WRITE RESULTS ON OUTPUT FILE
         logging.info("Saving Baroclinic Modes dataset to .nc file ...")
         modes_of_motion = np.arange(0, 1)
-        lat = self.latitude
-        lon = self.longitude
+        lat = self.latitude.values
+        lon = self.longitude.values
         # Rossby radii dataset
         ncwrite = self.ncwrite
         radii_dataset = ncwrite.create_dataset(

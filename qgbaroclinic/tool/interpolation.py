@@ -1,6 +1,6 @@
 import numpy as np
 from numpy.typing import NDArray
-from scipy.interpolate import RegularGridInterpolator
+from scipy.interpolate import RegularGridInterpolator, LinearNDInterpolator, interpn
 
 
 class Interpolation:
@@ -36,56 +36,44 @@ class Interpolation:
             step (float): grid step
         """
 
+        # Create new equally spaced depth array (interpolation depth levels).
+        interp_depth_levels = np.arange(start, stop + step, step)
+        # Interpolate field(s)
         interp_fields = ()
         for field in self.fields:
-            (interp_field, interp_depth) = Interpolation.vert_interp(field, self.depth, start, stop, step)
-            if return_depth:
-                interp_fields += (interp_field, interp_depth)
+            if field.ndim == 1:
+                interp_field = Interpolation.vert_interp(
+                    field, self.depth, interp_depth_levels
+                )
             else:
-                interp_fields += (interp_field,)
+                interp_field = Interpolation.vert_interp_nd(
+                    field, self.depth, interp_depth_levels
+                )
+            interp_fields += (interp_field,)
+        if return_depth:
+            interp_fields += (interp_depth_levels,)
         return interp_fields
 
     @staticmethod
     def vert_interp(
         field: NDArray,
         depth: NDArray,
-        start: float,
-        stop: float,
-        step: float,
+        interp_depth_levels: NDArray,
     ) -> NDArray:
         """
         Interpolate on a new equally spaced depth grid.
 
         Args:
-            start (float): upper depth
-            stop (float): bottom depth
-            step (float): grid step
+            field : field to be interpolated
+            depth : original depth grid on which "field" is defined
+            interp_depth_levels : new grid on which "field" should be interpolated
         """
 
-        # Create new equally spaced depth array (interpolation depth levels).
-        interp_depth_levels = np.arange(start, stop + step, step)
-
-        # Interpolate (distinguish between 3d and 1d fields)
-        # 3D array
-        if field.ndim == 3:
-            depth = depth
-            x = np.arange(field.shape[0])
-            y = np.arange(field.shape[1])
-            interp = RegularGridInterpolator(
-                (x, y, depth),
-                field,
-                method="linear",
-                bounds_error=False,
-                fill_value=None,
-            )
-            X, Y, Z = np.meshgrid(x, y, interp_depth_levels, indexing="ij")
-            interp_profile = interp((X, Y, Z))
-        # 1D array
-        else:
-            # Remove NaN values
-            depth = np.delete(depth, np.where(np.isnan(field)))
-            field = np.delete(field, np.where(np.isnan(field)), axis=-1)
-            # Interpolate
+        # Remove NaN values
+        depth = np.delete(depth, np.where(np.isnan(field)))
+        field = np.delete(field, np.where(np.isnan(field)), axis=-1)
+        # Interpolate
+        try:
             interp = RegularGridInterpolator(
                 (depth,),
                 field,
@@ -94,8 +82,37 @@ class Interpolation:
                 fill_value=None,
             )
             interp_profile = interp(interp_depth_levels)
+        # Return nan array if the whole profile is NaN.
+        except IndexError:
+            interp_profile = interp_depth_levels * np.nan
         # Return interpolated profile and interpolation depth levels.
-        return interp_profile, interp_depth_levels
+        return interp_profile
+
+    @staticmethod
+    def vert_interp_nd(
+        field: NDArray, depth: NDArray, interp_depth_levels: NDArray
+    ) -> NDArray:
+        """
+        Apply "vert_interp" function to n-dim array.
+
+        Args:
+            field : field to be interpolated (n-dim)
+            depth : original depth grid on which "field" is defined (1D)
+            interp_depth_levels : new grid on which "field" should be interpolated (1D)
+        """
+
+        flattened_field = field.reshape(-1, field.shape[-1])
+        interp_field = []
+        for profile in flattened_field:
+            interp_profile = Interpolation.vert_interp(
+                profile, depth, interp_depth_levels
+            )
+            interp_field.append(interp_profile)
+        interp_field = np.reshape(
+            np.array(interp_field),
+            field.shape[:-1] + (interp_depth_levels.shape[0],),
+        )
+        return interp_field
 
 
 if __name__ == "__main__":
@@ -153,14 +170,8 @@ if __name__ == "__main__":
     print(interp_arr)
     assert np.allclose(interp_arr, correct_interpolation)
 
-    # Test with 2D bathymetry
-    bathy_2D = np.ones((12, 13)) * 1000
-    try:
-        (interp_with_2d_bathy,) = interp3d.apply_interpolation(0, bathy_2D, 1)
-    except ValueError:
-        print("not working with 2d bathymetry")
-
     # Test for 3D array with NaNs
+    arr3d = np.random.rand(12, 13, n_steps)
     arr3d[1, 1, 40:] = np.nan
     arr3d[1, 1, -3:] = 0.0
     arr3d[3, 4, 30:] = np.nan
@@ -168,31 +179,29 @@ if __name__ == "__main__":
     arr3d[7, 12, :] = np.nan
     print(arr3d[1, 1], arr3d[3, 4], arr3d[5, 8], arr3d[7, 12])
     interp3d_with_nans = Interpolation(z, arr3d)
-    (result_with_nans,) = interp3d_with_nans.apply_interpolation(
+    (result_with_nans_3d,) = interp3d_with_nans.apply_interpolation(
         0, H, 20, return_depth=False
     )
-    print(result_with_nans[1, 1], arr3d[1, 1])
-    assert np.isnan(result_with_nans[3, 4, 30:]).all()
-    assert np.isnan(result_with_nans[5, 8, 20:]).all()
-    assert np.isnan(result_with_nans[7, 12]).all()
+    print(arr3d[1, 1], result_with_nans_3d[1, 1])
+    assert not np.isnan(result_with_nans_3d[3, 4, 30:]).any()
+    assert not np.isnan(result_with_nans_3d[5, 8, 20:]).any()
+    assert np.isnan(result_with_nans_3d[7, 12]).any()
 
-    # Experiment with all Nan
-    nan_array = np.ones(100) * np.nan
-    interp_nan = Interpolation(np.arange(100), nan_array)
-    try:
-        (interp_nan_result,) = interp_nan.apply_interpolation(
-            0, 100, 1, return_depth=False
-        )
-    except IndexError:
-        pass
+    # Test with 2d array
+    interp2d_with_nans = Interpolation(z, arr3d[0, :, :])
+    (result_with_nans_2d,) = interp2d_with_nans.apply_interpolation(
+        0, H, 20, return_depth=False
+    )
+    assert np.array_equal(result_with_nans_2d, result_with_nans_3d[0, :, :])
 
     # Test with different bottom depths
     field = np.ones_like(z)
     h1 = 1000
     h2 = 1000.1
     h3 = 1000.9
-    bulk, bottom1 = Interpolation.vert_interp(field, z, 0, h1, step=1)
-    bulk, bottom2 = Interpolation.vert_interp(field, z, 0, h2, step=1)
-    bulk, bottom3 = Interpolation.vert_interp(field, z, 0, h3, step=1)
+    interpolation = Interpolation(z, field)
+    bulk, bottom1 = interpolation.apply_interpolation(0, h1, step=1)
+    bulk, bottom2 = interpolation.apply_interpolation(0, h2, step=1)
+    bulk, bottom3 = interpolation.apply_interpolation(0, h3, step=1)
     assert bottom1[-1] == 1000.0
     assert bottom2[-1] == bottom3[-1] == 1001.0

@@ -10,7 +10,12 @@ class Filter:
     """
 
     def __init__(
-        self, profile: NDArray, grid_step: float = 1.0, type: str = "lowpass", order=2
+        self,
+        profile: NDArray,
+        grid_step: float = 1.0,
+        type: str = "lowpass",
+        order=2,
+        axis=-1,
     ):
         """
         Set up filter configuration (grid step, type, order)
@@ -20,6 +25,7 @@ class Filter:
         self.grid_step = grid_step
         self.order = order
         self.profile = profile
+        self.axis = axis
 
     def apply_filter(self, cutoff_dict: dict[float] = None) -> NDArray:
         """
@@ -34,7 +40,7 @@ class Filter:
         for i in range(len(depth_levels)):
             cutoff_slice = cutoff_wavelegths[i]
             filtered_profile[depth_levels[i] :] = self.filter(
-                self.profile, self.grid_step, cutoff_slice, self.order
+                self.profile, self.grid_step, cutoff_slice, self.order, self.axis
             )[depth_levels[i] :]
         return filtered_profile
 
@@ -44,6 +50,7 @@ class Filter:
         grid_step: float = 1.0,
         cutoff_wavelength: float = 100.0,
         order: int = 2,
+        axis=-1,
     ):
         """
         Low Pass filter.
@@ -58,7 +65,7 @@ class Filter:
         b, a = sp.signal.butter(
             N=order, Wn=cutoff_frequency, btype="low", analog=False, fs=grid_step
         )
-        profile_filtered = sp.signal.filtfilt(b, a, profile)
+        profile_filtered = sp.signal.filtfilt(b, a, profile, axis=axis)
         return profile_filtered
 
 
@@ -68,6 +75,7 @@ if __name__ == "__main__":
     degrad = 2 * np.pi / 360
     x = np.linspace(0, 1000, 1000)
     wave = np.cos(x * degrad)
+    # wave[900:] = np.nan
     noise = np.random.rand(1000)
     wave_filtered = Filter.lowpass(wave + noise)
     filter = Filter(wave + noise)
