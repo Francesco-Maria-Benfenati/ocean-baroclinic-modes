@@ -74,6 +74,8 @@ class OceBaroclinicModes:
         )
         self.rossby_rad = rossby_rad
         self.vert_structfunc = vert_structfunc
+        n_depth_levels = vert_structfunc.shape[0]
+        self.depth = np.array([i * grid_step for i in range(n_depth_levels)])
 
     @staticmethod
     def potential_density(
@@ -114,7 +116,6 @@ class OceBaroclinicModes:
         """
 
         bv_freq_sqrd = BVfreq.compute_bvfreq_sqrd(depth_levels, interp_potdens)
-        print(bv_freq_sqrd)
         # RE-INTERPOLATING BRUNT-VAISALA FREQUENCY SQUARED FOR REMOVING NaNs and < 0 values.
         bv_freq_sqrd = BVfreq.rm_negvals(bv_freq_sqrd, grid_step=grid_step)
         bv_freq = np.sqrt(bv_freq_sqrd)
