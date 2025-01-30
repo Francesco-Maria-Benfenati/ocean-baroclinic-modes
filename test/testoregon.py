@@ -120,22 +120,20 @@ if __name__ == "__main__":
     # Problem parameters
     mean_depth = 100
     dz = 1  # grid step [m]
-    depth = -np.arange(0, mean_depth + 1, dz)
+    depth = -np.arange(0, mean_depth + dz, dz)
     coriolis_param = 1e-04
-    # Interpolate Brunt-Vaisala freq at depth levels
+    # Interpolate Brunt-Vaisala freq at interfaces (with 1m grid step).
+    # NOTE: depth_kundu already corresponds to interfaces,
+    # since z =0, z=100 are respectively the sea surface and sea bottom.
     interpolation = Interpolation(-depth_kundu, N_carnation_kundu, N_db7_kundu)
     N_carnation, N_db7 = interpolation.apply_interpolation(
-        0, mean_depth + 1, dz, return_depth=False
+        0, mean_depth, dz, return_depth=False
     )
-    # interpolate at interfaces staggered grid
-    z_0 = np.abs(depth_kundu[0]) - dz / 2
-    z_N = mean_depth + dz
-    interp_N_carn, interp_N_db7 = interpolation.apply_interpolation(
-        z_0, z_N, dz, return_depth=False
-    )
+    # Definition of levels, where the vertical structure function is defined.
+    levels = -np.arange(0.5, mean_depth, dz)
     # Compute Eigenvals/eigenvecs
-    s_param_carn = (interp_N_carn**2) / (coriolis_param**2)
-    s_param_db7 = (interp_N_db7**2) / (coriolis_param**2)
+    s_param_carn = (N_carnation**2) / (coriolis_param**2)
+    s_param_db7 = (N_db7**2) / (coriolis_param**2)
     eigenvals_carn, structfunc_carn = VerticalStructureEquation.compute_baroclinicmodes(
         s_param_carn, dz
     )
@@ -151,11 +149,11 @@ if __name__ == "__main__":
     fig, ax = plt.subplots(figsize=(7, 8))
     plt.rcParams["figure.figsize"] = [7.00, 8]
     plt.rcParams["figure.autolayout"] = True
-    im = plt.imread("test/kundu_BVfreq.png")
+    im = plt.imread("test/images/kundu_BVfreq.png")
     im = ax.imshow(im, extent=[0, 100, -100, 0])
     ax.grid(visible=True)
     ax.set_title(
-        "Vertical profiles of Brunt-Vaisala frequency,\n from Kundu, Allen, Smith (1975)",
+        "Vertical profiles of Brunt-Vaisala frequency\n from Kundu, Allen, Smith (1975, Fig.6)",
         pad=20,
         fontsize=16,
     )
@@ -165,14 +163,14 @@ if __name__ == "__main__":
     ax.plot(N_db7 / np.max(N_carnation) * 100, depth, "b--")
     ax.legend(
         [
-            "Carnation from Kundu (1975)",
-            "DB-7 from Kundu (1975)",
+            "Carnation from Kundu et al. (1975)",
+            "DB-7 from Kundu et al. (1975)",
             "Carnation replica",
             "DB-7 replica",
         ]
     )
-    ax.set_xlabel("N (cycles/s)", labelpad=15, fontsize=14)
-    ax.set_ylabel("DEPTH (meters)", fontsize=14)
+    ax.set_xlabel("BV freq. (cycles/s)", labelpad=15, fontsize=14)
+    ax.set_ylabel("depth (m)", fontsize=14)
     ax.xaxis.set_label_position("top")
     ax.xaxis.tick_top()
     ax.set_yticks(np.linspace(-100, 0, 11))
@@ -194,14 +192,14 @@ if __name__ == "__main__":
 
     # PLOT BAROCLINIC MODES CARNATION
     fig1, ax1 = plt.subplots(figsize=(7, 8))
-    im1 = plt.imread("test/kundu_modes.png")
+    im1 = plt.imread("test/images/kundu_modes.png")
     im1 = ax1.imshow(im1, extent=[-50, 50, -100, 0])
     ax1.grid(visible=True)
     ax1.plot(np.nan, 0, "k")
-    ax1.plot(structfunc_carn[:, :3] / 3 * 50, depth, "r")
-    ax1.plot(structfunc_carn[:, 3] / 3 * 50, depth, "r--")
+    ax1.plot(structfunc_carn[:, :3] / 3 * 50, levels, "r")
+    ax1.plot(structfunc_carn[:, 3] / 3 * 50, levels, "r--")
     ax1.set_xlabel(
-        "NORMALIZED MODE AMPLITUDE AT CARNATION,\n from Kundu, Allen, Smith (1975)",
+        "NORMALIZED MODE AMPLITUDE AT CARNATION\n from Kundu, Allen, Smith (1975, Fig.7)",
         labelpad=15,
         fontsize=14,
     )
@@ -215,14 +213,14 @@ if __name__ == "__main__":
     ax1.xaxis.set_tick_params(width=1, length=7)
     ax1.tick_params(axis="y", direction="in")
     ax1.tick_params(axis="x", direction="in")
-    ax1.set_ylabel("DEPTH (m)", fontsize=14)
+    ax1.set_ylabel("depth (m)", fontsize=14)
     ax1.set_xlim(-55, 55)
     ax1.set_ylim(-100, 0)
     ax1.xaxis.tick_top()
     ax1.xaxis.set_label_position("top")
     ax1.spines["left"].set_position("center")
     ax1.spines["right"].set_color("none")
-    ax1.legend(["Kundu (1975)", "numerical results REPLICA"])
+    ax1.legend(["Kundu et al. (1975)", "numerical results REPLICA"])
     plt.show()
     plt.close()
 
@@ -231,12 +229,12 @@ if __name__ == "__main__":
     ax2.grid(visible=True)
     ax2.plot(np.nan, 0, "r")
     ax2.plot(np.nan, 0, "b")
-    ax2.plot(structfunc_carn[:, :3] / 3 * 50, depth, "r")
-    ax2.plot(structfunc_db7[:, :3] / 3 * 50, depth, "b")
-    ax2.plot(structfunc_carn[:, 3] / 3 * 50, depth, "r--")
-    ax2.plot(structfunc_db7[:, 3] / 3 * 50, depth, "b--")
+    ax2.plot(structfunc_carn[:, :3] / 3 * 50, levels, "r")
+    ax2.plot(structfunc_db7[:, :3] / 3 * 50, levels, "b")
+    ax2.plot(structfunc_carn[:, 3] / 3 * 50, levels, "r--")
+    ax2.plot(structfunc_db7[:, 3] / 3 * 50, levels, "b--")
     ax2.set_xlabel(
-        "NORMALIZED MODE AMPLITUDE AT DB-7,\n from Kundu, Allen, Smith (1975)",
+        "NORMALIZED MODE AMPLITUDE\n CARNATION vs DB-7",
         labelpad=15,
         fontsize=14,
     )
@@ -250,7 +248,7 @@ if __name__ == "__main__":
     ax2.xaxis.set_tick_params(width=1, length=7)
     ax2.tick_params(axis="y", direction="in")
     ax2.tick_params(axis="x", direction="in")
-    ax2.set_ylabel("DEPTH (m)", fontsize=14)
+    ax2.set_ylabel("depth (m)", fontsize=14)
     ax2.set_xlim(-55, 55)
     ax2.set_ylim(-100, 0)
     ax2.xaxis.tick_top()
@@ -282,6 +280,6 @@ if __name__ == "__main__":
         "2",
         bbox={"boxstyle": "circle", "facecolor": "None", "edgecolor": "black"},
     )
-    plt.figtext(0.29, 0.3, "Mode", fontweigth="bold")
+    plt.figtext(0.29, 0.3, "Mode")#, fontweigth="bold")
     plt.show()
     plt.close()
