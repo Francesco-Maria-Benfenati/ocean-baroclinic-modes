@@ -3,7 +3,7 @@ import scipy as sp
 from numpy.typing import NDArray
 
 try:
-    from .interpolation import Interpolation
+    from . import Interpolation
 except ImportError:
     from interpolation import Interpolation
 

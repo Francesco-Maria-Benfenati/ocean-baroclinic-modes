@@ -6,10 +6,10 @@ import numpy as np
 import pandas as pd
 
 try:
-    from ..src.tools.utils import Utils
+    from ..tool import Utils
 except ImportError:
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from tool.utils import Utils
+    from tool import Utils
 
 
 class ncRead:
@@ -195,7 +195,7 @@ class ncRead:
 
 
 if __name__ == "__main__":
-    read = ncRead("./data/test_case/dataset_azores/azores_Jan2021.nc")
+    read = ncRead("../../data/azores_Jan2021.nc")
     temp, sal = read.variables("thetao", "so")
     vars = read.variables("thetao", "so")
     print(temp.shape)
@@ -218,7 +218,7 @@ if __name__ == "__main__":
     print(temp[0, :, 0, 0].values)
     near_ids = Utils.find_nearvals(np.arange(1, 11), 2.3, 4.5, 6.9)
     assert near_ids == [1, 3, 6]
-    dataset = xr.open_dataset("./data/test_case/dataset_azores/azores_Jan2021.nc")
+    dataset = xr.open_dataset("../../data/azores_Jan2021.nc")
     print("Whole dataset: ", dataset.dims)
     cropped_dataset = read.crop_dataset(
         dataset,
@@ -256,7 +256,7 @@ if __name__ == "__main__":
     print(dataset["thetao"].dtype)
     dataset.close()
     # Read Copernicus dataset.
-    cmems = ncRead("./data/reanalysis")
+    cmems = ncRead("../../data/reanalysis")
     dataset = cmems.dataset(dims, vars, coords, longitude=[-33, -30], latitude=[40, 42])
     print(dataset["thetao"].dtype)
     print(dataset["thetao"].values[0, 0, 0, 0])

@@ -8,10 +8,10 @@ import pandas as pd
 from tqdm import tqdm
 
 try:
-    from ..read.ncread import ncRead
+    from ..read import ncRead
 except ImportError:
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from read.ncread import ncRead
+    from read import ncRead
 
 
 def read_from_netcdf_output(path: str):
@@ -19,8 +19,16 @@ def read_from_netcdf_output(path: str):
     rossbyrad, lon, lat = ncread.variables("rossbyrad", "lon", "lat")
     return rossbyrad, lon, lat
 
+
 def read_from_chelton_dat():
-    df = pd.read_csv("./data/rossrad_chelton.dat", delimiter=r"\s+", header=None, usecols=[0,1,3], names = ["lat", "lon", "rossrad"], dtype = np.float64)
+    df = pd.read_csv(
+        "./data/chelton_rossrad.dat",
+        delimiter=r"\s+",
+        header=None,
+        usecols=[0, 1, 3],
+        names=["lat", "lon", "rossrad"],
+        dtype=np.float64,
+    )
     lon = df["lon"]
     lat = df["lat"]
     rossrad = df["rossrad"]
@@ -86,7 +94,7 @@ def make_plot(rossby_rad: NDArray, lon: NDArray, lat: NDArray, name: str):
     cbar.ax.tick_params(labelsize=15)
     ax.set_title("First Baroclinic Rossby Radius", style="italic", size=16, pad=0.2)
     # Save the current figure to a file
-    #plt.show()
+    # plt.show()
     fig.savefig(name, bbox_inches="tight")
     plt.close()
 
@@ -96,7 +104,7 @@ if __name__ == "__main__":
     out_path = "./output/baroclinic_modes_reanalysis.nc"
     rossbyrad_out, lon_out, lat_out = read_from_netcdf_output(out_path)
     rossbyrad_out = rossbyrad_out.transpose("lat", "lon", "mode")
-    make_plot(rossbyrad_out[:,:,0], lon_out, lat_out, "north_atlantic_reanalysis")
+    make_plot(rossbyrad_out[:, :, 0], lon_out, lat_out, "north_atlantic_reanalysis")
     # ##################################################################
     # out_path = "./output/summer/baroclinic_modes_north_atlantic_summer.nc"
     # rossbyrad_out, lon_out, lat_out = read_from_netcdf_output(out_path)

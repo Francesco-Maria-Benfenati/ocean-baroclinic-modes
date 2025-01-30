@@ -83,7 +83,7 @@ if __name__ == "__main__":
     import numpy as np
     import sys
 
-    file = "./config.toml"
+    file = "../../config.toml"
     config = Config(file)
 
     print(config.config_file)
@@ -113,5 +113,5 @@ if __name__ == "__main__":
     print(config.input.oce.vars)
     print(config.input.oce.dims)
     # Datetime format
-    print(type(config.domain.datetime[0]), config.domain.datetime[:])
-    print(np.datetime64(config.domain.datetime[0]))
+    print(type(config.domain.time[0]), config.domain.time[:])
+    print(np.datetime64(config.domain.time[0]))

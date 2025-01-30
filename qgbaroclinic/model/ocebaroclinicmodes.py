@@ -1,25 +1,18 @@
 import sys, os
 import warnings
 import numpy as np
+import xarray as xr
 from numpy.typing import NDArray
 
 try:
-    from ..read.ncread import ncRead
-    from ..tool.eos import EoS
-    from ..solve.verticalstructureequation import VerticalStructureEquation
-    from ..tool.interpolation import Interpolation
-    from ..tool.bvfreq import BVfreq
-    from ..tool.filter import Filter
-    from ..tool.utils import Utils
+    from ..read import ncRead
+    from ..tool import Interpolation, EoS, BVfreq, Filter, Utils
+    from ..solve import VerticalStructureEquation
 except ImportError:
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from read.ncread import ncRead
-    from tool.eos import EoS
-    from solve.verticalstructureequation import VerticalStructureEquation
-    from tool.interpolation import Interpolation
-    from tool.bvfreq import BVfreq
-    from tool.filter import Filter
-    from tool.utils import Utils
+    from read import ncRead
+    from tool import Interpolation, EoS, BVfreq, Filter, Utils
+    from solve import VerticalStructureEquation
 
 
 class OceBaroclinicModes:
@@ -35,7 +28,11 @@ class OceBaroclinicModes:
 
     def read(
         self, file: str, *variables: tuple[str], **domain: dict[list[float]]
-    ) -> None:
+    ) -> tuple[xr.Variable]:
+        """
+        Read NetCDF file.
+        """
+
         read = ncRead(file)
         if domain == {}:
             domain = self.domain
@@ -130,6 +127,10 @@ class OceBaroclinicModes:
         order: int = 3,
         axis: int = -1,
     ) -> None:
+        """
+        Smooth BV frequency.
+        """
+
         cutoff_depths = cutoff.keys()
         cutoff_wavelengths = cutoff.values()
         # FILTERING BRUNT-VAISALA FREQUENCY PROFILE WITH A LOW-PASS FILTER.
@@ -182,15 +183,4 @@ class OceBaroclinicModes:
 
 
 if __name__ == "__main__":
-    bm = OceBaroclinicModes("test")
-    temp, sal = bm.read(
-        "./data/test_case/dataset_azores/azores_Jan2021.nc", "thetao", "so"
-    )
-    print(temp.shape)
-    temp, sal = bm.read(
-        "./data/test_case/dataset_azores/azores_Jan2021.nc",
-        "thetao",
-        "so",
-        depth=[0, 16],
-    )
-    print(temp.shape)
+    pass

@@ -24,7 +24,7 @@ class Utils:
         """
 
         return a and b | a or b
-    
+
     @staticmethod
     def find_nearvals(array: NDArray, *vals: float or np.datetime64) -> list[int]:
         """
@@ -33,8 +33,9 @@ class Utils:
         ids = [np.argmin(np.abs((array - val))) for val in vals]
         return ids
 
+
 if __name__ == "__main__":
     a = True
     b = False
-    assert Utils.andor(a,a) and Utils.andor(a,b) and Utils.andor(b,a)
-    assert not Utils.andor(b,b)
+    assert Utils.andor(a, a) and Utils.andor(a, b) and Utils.andor(b, a)
+    assert not Utils.andor(b, b)

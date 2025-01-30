@@ -49,7 +49,9 @@ class EigenProblem:
                 self.eigenvecs = eigenvecs
         else:
             # solve eigenproblem for tridiagonal matrix
-            self.eigenvals, self.eigenvecs = self.tridiag_eigensolver(self.lhs_matrix, self.n_modes)
+            self.eigenvals, self.eigenvecs = self.tridiag_eigensolver(
+                self.lhs_matrix, self.n_modes
+            )
 
     @staticmethod
     def tridiag_eigensolver(
@@ -198,9 +200,7 @@ class EigenProblem:
         # Define constant k
         k = (dz**2) / 12
         # First value computed from BCs and dw/dz|z=0 .
-        w[1] = (w[0] + dz * dw_0 + (1 / 3) * (dz**2) * f[0] * w[0]) / (
-            1 - k * 2 * f[1]
-        )
+        w[1] = (w[0] + dz * dw_0 + (1 / 3) * (dz**2) * f[0] * w[0]) / (1 - k * 2 * f[1])
         # Numerov's algorithm.
         for j in range(2, n - 1):
             w[j] = (1 / (1 - k * f[j])) * (
@@ -353,7 +353,6 @@ if __name__ == "__main__":
     test_harmonic_oscillator()
     test_stationary_wave()
     test_stationary_wave_inapipe()
-    print("Tests SUCCEDED.")
 
     # Compute eigenvalues using scipy "eigh_tridiagonal" with eivals_only = True
     eigvals_only = True
@@ -367,3 +366,4 @@ if __name__ == "__main__":
     else:
         eigenvalues, eigenvectors = eigenprob_result, None
     print(eigenvalues, eigenvectors)
+    print("Tests SUCCEDED.")

@@ -4,7 +4,9 @@ import matplotlib.pyplot as plt
 from numpy.typing import NDArray
 
 try:
-    from ...qgbaroclinic.solve.verticalstructureequation import VerticalStructureEquation
+    from ...qgbaroclinic.solve.verticalstructureequation import (
+        VerticalStructureEquation,
+    )
     from ...qgbaroclinic.tool.interpolation import Interpolation
 except ImportError:
     import sys, os
@@ -26,22 +28,15 @@ class TestMetrics:
         bvfreq_sqrd: NDArray,
         coriolis_param: float,
         grid_step: float,
-        depth: NDArray = None,
     ) -> None:
         """
         Computing eigenvalues/eigenvectors.
         """
 
-        if depth is not None:
-            interpolation = Interpolation(depth, bvfreq_sqrd / (coriolis_param**2))
-            z_0 = depth[0] - grid_step / 2
-            z_N = depth[-1] + grid_step
-            s_param = interpolation.apply_interpolation(z_0, z_N, grid_step)[0]
-        else:
-            s_param = bvfreq_sqrd / (coriolis_param**2)
+        s_param = bvfreq_sqrd / (coriolis_param**2)
         print("According to numpy, input values have precision:", s_param.dtype)
-        self.eigenvals, self.structfunc = VerticalStructureEquation.compute_baroclinicmodes(
-            s_param, grid_step
+        self.eigenvals, self.structfunc = (
+            VerticalStructureEquation.compute_baroclinicmodes(s_param, grid_step)
         )
         print("After using scipy, output values have precision:", self.eigenvals.dtype)
 
@@ -87,7 +82,7 @@ class TestMetrics:
         plt.show()
         plt.close()
 
-    def plot_struct_func(self, ref_struct_func: NDArray, depth: NDArray) -> None:
+    def plot_struct_func(self, ref_struct_func: NDArray, depth: NDArray, title: str = None) -> None:
         """
         Plot Structure Function compared to expected values.
         """
@@ -96,17 +91,21 @@ class TestMetrics:
         fig, ax = plt.subplots(figsize=(7, 8))
         ax.plot(np.nan, 0, "k--")
         ax.plot(struct_func[:, :4], depth)
-        ax.plot(struct_func[:, :4], depth, "k--")
+        ax.plot(ref_struct_func[:, :4], depth, "k--")
         ax.legend(
-            ["Analytical sol", "Mode 0", "Mode 1", "Mode 2", "Mode 3"],
+            ["Analytical sol.", "Mode 0", "Mode 1", "Mode 2", "Mode 3"],
             fontsize=12,
             loc="lower right",
         )
         ax.grid(True)
         ax.xaxis.set_label_position("top")
         ax.xaxis.tick_top()
+        if title is None:
+            title = ""
         ax.set_xlabel(
-            "Normalized Vertical Structure Function", fontsize=14, labelpad=20
+            f"Normalized Vertical Structure Function \n {title}",
+            fontsize=14,
+            labelpad=20,
         )
         ax.set_ylabel("depth (m)", fontsize=14)
         plt.show()
@@ -120,7 +119,9 @@ class TestMetrics:
 
         return np.abs(a - b) / ((np.abs(a) + np.abs(b)) / 2)
 
-    def plot_error(self, ref_struct_func: NDArray, depth: NDArray) -> None:
+    def plot_error(
+        self, ref_struct_func: NDArray, depth: NDArray, title: str = None
+    ) -> None:
         """
         Plot error profile.
         """
@@ -139,10 +140,14 @@ class TestMetrics:
         ax.xaxis.set_label_position("top")
         ax.xaxis.tick_top()
         ax.set_xlim(
-            -0.05,
+            -0.001,0.03
         )
+        if title is None:
+            title = ""
         ax.set_xlabel(
-            "Vertical Structure Function \n Relative Error", fontsize=14, labelpad=20
+            f"Vertical Structure Function - Relative Error \n {title}",
+            fontsize=14,
+            labelpad=20,
         )
         ax.set_ylabel("depth (m)", fontsize=14)
         plt.show()

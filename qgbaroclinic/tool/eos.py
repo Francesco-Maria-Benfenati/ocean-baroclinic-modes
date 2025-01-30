@@ -360,7 +360,7 @@ if __name__ == "__main__":
     test_4d = EoS.compute_density(test_sal, test_temp)
     print(f"4D density as shape {test_4d.shape}")
     try:
-        EoS.compute_density(test_sal, test_temp[:,:,0,:])
+        EoS.compute_density(test_sal, test_temp[:, :, 0, :])
     except ValueError:
         print("Not working if temp and sal has different shape")
     EoS.compute_density(test_sal[0], test_temp[0, 0, :, :])
