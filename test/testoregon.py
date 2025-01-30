@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import warnings
 
 try:
     from ..qgbaroclinic.solve.verticalstructureequation import VerticalStructureEquation
@@ -10,6 +11,8 @@ except ImportError:
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from qgbaroclinic.solve.verticalstructureequation import VerticalStructureEquation
     from qgbaroclinic.tool.interpolation import Interpolation
+
+warnings.simplefilter("ignore", RuntimeWarning)
 
 
 """
@@ -280,6 +283,8 @@ if __name__ == "__main__":
         "2",
         bbox={"boxstyle": "circle", "facecolor": "None", "edgecolor": "black"},
     )
-    plt.figtext(0.29, 0.3, "Mode")#, fontweigth="bold")
+    plt.figtext(0.29, 0.3, "Mode")
     plt.show()
     plt.close()
+
+    print("TEST CONCLUDED SUCCESSFULLY")
