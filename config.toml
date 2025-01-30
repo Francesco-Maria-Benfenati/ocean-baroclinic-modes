@@ -31,7 +31,7 @@
 # REGION DOMAIN.
 [domain]
     # Domain extremants: time min, max (format compatible with numpy.datetime64)
-    time = [] # time = [1900-01-01T00:00:00, 2018-01-01T00:00:00]
+    time = [1900-01-01T00:00:00, 2018-01-01T00:00:00]
     # Domain extremants: longitude min, max [° E]
     lon = [-30,-34]
     # Domain extremants: latitude min, max [° N]
