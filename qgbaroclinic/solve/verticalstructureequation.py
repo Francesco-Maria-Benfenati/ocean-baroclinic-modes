@@ -188,7 +188,7 @@ class VerticalStructureEquation:
         """
 
         H = dz * eigenfunc.shape[0]  # depth
-        norm = np.sqrt(sp.integrate.trapezoid(eigenfunc * eigenfunc, dx=dz, axis=0) / H)
+        norm = np.sqrt(sp.integrate.trapezoid(eigenfunc **2, dx=dz, axis=0) / H)
         normalized_eigenfuncs = eigenfunc / norm
         return normalized_eigenfuncs
 
