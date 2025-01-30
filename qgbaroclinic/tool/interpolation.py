@@ -1,6 +1,6 @@
 import numpy as np
 from numpy.typing import NDArray
-from scipy.interpolate import RegularGridInterpolator, LinearNDInterpolator, interpn
+from scipy.interpolate import RegularGridInterpolator
 
 
 class Interpolation:

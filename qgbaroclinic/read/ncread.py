@@ -6,10 +6,10 @@ import numpy as np
 import pandas as pd
 
 try:
-    from ..src.tools.utils import Utils
+    from ..tool import Utils
 except ImportError:
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from tool.utils import Utils
+    from tool import Utils
 
 
 class ncRead:

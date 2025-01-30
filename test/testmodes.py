@@ -6,9 +6,9 @@ from numpy.typing import NDArray
 warnings.simplefilter("ignore", RuntimeWarning)
 
 try:
-    from .metrics.testmetrics import TestMetrics
+    from .metrics import TestMetrics
 except ImportError:
-    from metrics.testmetrics import TestMetrics
+    from metrics import TestMetrics
 
 
 class TestModes(TestMetrics):

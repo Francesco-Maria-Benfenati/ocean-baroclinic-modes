@@ -5,7 +5,7 @@ from tqdm import tqdm
 from numpy.typing import NDArray
 
 try:
-    from .eigenproblem import EigenProblem
+    from . import EigenProblem
 except ImportError:
     from eigenproblem import EigenProblem
 
