@@ -28,6 +28,10 @@ class OceBaroclinicModes:
     def read(
         self, file: str, *variables: tuple[str], **domain: dict[list[float]]
     ) -> None:
+        """
+        Read NetCDF file.
+        """
+
         read = ncRead(file)
         if domain == {}:
             domain = self.domain
@@ -122,6 +126,10 @@ class OceBaroclinicModes:
         order: int = 3,
         axis: int = -1,
     ) -> None:
+        """
+        Smooth BV frequency.
+        """
+
         cutoff_depths = cutoff.keys()
         cutoff_wavelengths = cutoff.values()
         # FILTERING BRUNT-VAISALA FREQUENCY PROFILE WITH A LOW-PASS FILTER.
