@@ -1,6 +1,7 @@
 import sys, os
 import warnings
 import numpy as np
+import xarray as xr
 from numpy.typing import NDArray
 
 try:
@@ -27,7 +28,7 @@ class OceBaroclinicModes:
 
     def read(
         self, file: str, *variables: tuple[str], **domain: dict[list[float]]
-    ) -> None:
+    ) -> tuple[xr.Variable]:
         """
         Read NetCDF file.
         """
