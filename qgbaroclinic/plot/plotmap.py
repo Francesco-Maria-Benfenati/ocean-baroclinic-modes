@@ -22,7 +22,7 @@ def read_from_netcdf_output(path: str):
 
 def read_from_chelton_dat():
     df = pd.read_csv(
-        "./data/rossrad_chelton.dat",
+        "./data/chelton_rossrad.dat",
         delimiter=r"\s+",
         header=None,
         usecols=[0, 1, 3],
