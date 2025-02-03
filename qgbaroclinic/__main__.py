@@ -99,9 +99,13 @@ if __name__ == "__main__":
                     mean_seafloor_depth,
                 )
                 # Plotting results.
-                logging.info("Plotting results ...")
-                fig_out_path = os.path.join(config.output.folder_path, "output.png")
-                obm.plot(fig_out_path)
+                fig_name = config.output.fig_name
+                if fig_name:
+                    logging.info("Plotting results ...")
+                    fig_out_path = os.path.join(
+                        config.output.folder_path, fig_name + ".png"
+                    )
+                    obm.plot(fig_out_path)
             # Compute 2D MAP in a region.
             case "map":
                 pass

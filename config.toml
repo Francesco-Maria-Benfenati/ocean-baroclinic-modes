@@ -43,18 +43,10 @@
     # Path to folder where output files are saved to.
     folder_path = "./output" 
     # Name of the output file (with or without '.nc' suffix).
-    filename = "baroclinic_modes"
+    filename = "my_experiment"
     # Num. of modes of motion to be computed.
     n_modes = 4
     # Type of output: REGIONAL AVERAGE ("average")
     type = "average" # supported are: "average"
-# SMOOTHING BRUNT-VAISALA FREQUENCY PROFILE WITH A LOW-PASS FILTER.
-[filter]
-    # Set filter to true if it should be applied.
-    filter = true
-    # List of CUTOFF WAVELENGTH (in meters). Can be more than one, for depth-dependent filtering.
-    cutoff_wavelength = [10.0, 100.0]
-    # List of cutoff depths: i.e. depth (in meters) from which the above cutoff should be applied up to the bottom. 
-    cutoff_depth = [0.0, 100.0]
-    # Filter order.
-    order = 3
+    # Name of output figure.
+    fig_name = "my_eperiment" # = false if results should not be plotted

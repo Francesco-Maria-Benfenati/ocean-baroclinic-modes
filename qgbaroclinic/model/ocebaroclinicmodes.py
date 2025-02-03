@@ -147,18 +147,18 @@ class OceBaroclinicModes:
             -grid_step / 2, seafloor_depth, grid_step
         )
         # Compute Brunt-Vaisala Frequency at the interfaces.
-        bv_freq = OceBaroclinicModes._compute_bruntvaisala_freq(
+        bv_freq = OceBaroclinicModes.compute_bruntvaisala_freq(
             interp_potdens, depth_levels, grid_step
         )
         # Smoothing BV frequency using a low-pass filter.
-        bv_freq_smoothed = OceBaroclinicModes._smooth(
+        bv_freq_smoothed = OceBaroclinicModes.smooth(
             bv_freq,
             depth,
             cutoff={0.0: 10.0, 100.0: 100.0},
             grid_step=grid_step,
         )
         # Compute the Baroclinic Modes of motion.
-        rossby_rad, vert_structfunc = OceBaroclinicModes._compute_modes(
+        rossby_rad, vert_structfunc = OceBaroclinicModes.compute_modes(
             bv_freq_smoothed, latitude, grid_step, n_modes
         )
         # Store array of depth_levels
@@ -171,7 +171,7 @@ class OceBaroclinicModes:
         return rossby_rad, vert_structfunc
 
     @staticmethod
-    def _compute_bruntvaisala_freq(
+    def compute_bruntvaisala_freq(
         pot_density: NDArray, depth: NDArray, grid_step: float = 1
     ) -> NDArray:
         """
@@ -198,7 +198,7 @@ class OceBaroclinicModes:
         return bv_freq
 
     @staticmethod
-    def _smooth(
+    def smooth(
         profile: NDArray,
         depth: NDArray,
         cutoff: dict[float],
@@ -236,7 +236,7 @@ class OceBaroclinicModes:
         return profile_filtered
 
     @staticmethod
-    def _compute_modes(
+    def compute_modes(
         bv_freq: NDArray,
         latitude: float,
         grid_step: float = 1,
