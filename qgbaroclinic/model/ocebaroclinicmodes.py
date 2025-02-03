@@ -284,7 +284,7 @@ class OceBaroclinicModes:
         ax.plot(self.vert_structfunc, -self.depth)
         ax.legend(
             [
-                "Barotropic Mode",
+                "Barotropic Mode 0",
                 rf"Mode 1 : $R_1$ = {self.rossby_rad[1] / 1000:.1f} km",
                 rf"Mode 2 : $R_2$ = {self.rossby_rad[2] / 1000:.1f} km",
                 rf"Mode 3 : $R_3$ = {self.rossby_rad[3] / 1000:.1f} km",
@@ -292,7 +292,7 @@ class OceBaroclinicModes:
             fontsize=12,
             loc="lower right",
         )
-        ax.plot(self.depth * 0.0, -self.depth, "k--", linewidth=0.5)
+        ax.plot(self.depth * 0.0, -self.depth, "k--", linewidth=0.7)
         ax.grid(True)
         ax.xaxis.set_label_position("top")
         ax.xaxis.tick_top()

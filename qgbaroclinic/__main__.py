@@ -86,7 +86,7 @@ if __name__ == "__main__":
             case "average":
                 logging.info("Computing Baroclinic Modes for 'AVERAGE' output ...")
                 # Mean vaues.
-                logging.info("Averaging variables ins space and time ...")
+                logging.info("Averaging variables in space and time ...")
                 mean_potential_density = np.nanmean(potential_density, axis=(0, 1, 2))
                 mean_latitude = np.nanmean(oce_dict["latitude"], axis=-1)
                 mean_seafloor_depth = np.nanmean(np.abs(seafloor_depth), axis=(0, 1))
