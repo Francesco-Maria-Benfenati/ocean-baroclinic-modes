@@ -61,7 +61,11 @@ class ncWrite:
             logging.info(f"Removed old log file at {log_path}")
 
     def create_dataset(
-        self, dims: list[str], coords: dict[NDArray], **fields: dict[NDArray]
+        self,
+        dims: list[str],
+        coords: dict[NDArray],
+        attrs: dict[str, str],
+        **fields: dict[NDArray],
     ) -> Dataset:
         """
         Create output dataset, given coords and field(s).
@@ -71,6 +75,8 @@ class ncWrite:
         for name, val in fields.items():
             data_array = DataArray(data=val, dims=dims, coords=coords)
             data_arrays[name] = data_array
+            for name, val in attrs.items():
+                data_array.attrs[name] = val
 
         dataset = Dataset(data_vars=data_arrays)
         return dataset

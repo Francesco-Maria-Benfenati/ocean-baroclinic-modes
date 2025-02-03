@@ -56,12 +56,16 @@ def average_values(
     logging.info("Saving dataset to netcdf output file")
     modes_of_motion = np.arange(0, n_modes)
     rossrad_dataset = ncwrite.create_dataset(
-        dims="mode", coords={"mode": modes_of_motion}, rossrad=rossby_rad
+        dims="mode",
+        coords={"mode": modes_of_motion},
+        attrs={"name": "baroclinic rossby radius", "units": "meters"},
+        rossrad=rossby_rad,
     )
     # Vertical structure function dataset
     vert_struct_func_dataset = ncwrite.create_dataset(
         dims=["depth", "mode"],
         coords={"mode": modes_of_motion, "depth": obm.depth},
+        attrs={"name": "normalized vertical structure function", "units": "1"},
         vertstructfunc=vert_structfunc,
     )
     ncwrite.save(rossrad_dataset, vert_struct_func_dataset)

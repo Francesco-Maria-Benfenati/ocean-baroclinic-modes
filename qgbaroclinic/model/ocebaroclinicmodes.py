@@ -146,6 +146,7 @@ class OceBaroclinicModes:
         (interp_potdens, depth_levels) = interpolation.apply_interpolation(
             -grid_step / 2, seafloor_depth, grid_step
         )
+        self.depth = depth_levels[1:-1] # remove extrapolated layers
         # Compute Brunt-Vaisala Frequency at the interfaces.
         bv_freq = OceBaroclinicModes.compute_bruntvaisala_freq(
             interp_potdens, depth_levels, grid_step
@@ -161,10 +162,6 @@ class OceBaroclinicModes:
         rossby_rad, vert_structfunc = OceBaroclinicModes.compute_modes(
             bv_freq_smoothed, latitude, grid_step, n_modes
         )
-        # Store array of depth_levels
-        n_depth_levels = vert_structfunc.shape[0]
-        depth = np.array([i * grid_step for i in range(n_depth_levels)])
-        self.depth = depth
         # Store and return Rossby Radii and Vertical Structure Functions.
         self.rossby_rad = rossby_rad
         self.vert_structfunc = vert_structfunc
@@ -285,9 +282,7 @@ class OceBaroclinicModes:
         ax.plot(self.vert_structfunc, -self.depth)
         labels = ["Barotropic Mode 0"]
         for i in range(1, self.n_modes):
-            labels.append(
-                rf"Mode {i} : $R_{i}$ = {self.rossby_rad[i] / 1000:.1f} km"
-            )
+            labels.append(rf"Mode {i} : $R_{i}$ = {self.rossby_rad[i] / 1000:.1f} km")
         ax.legend(
             labels,
             fontsize=12,
