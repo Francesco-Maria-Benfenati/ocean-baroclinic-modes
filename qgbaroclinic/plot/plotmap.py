@@ -101,26 +101,10 @@ def make_plot(rossby_rad: NDArray, lon: NDArray, lat: NDArray, name: str):
 
 if __name__ == "__main__":
 
-    out_path = "./output/baroclinic_modes_reanalysis.nc"
+    out_path = "./output/baroclinic_modes_2d_test.nc"
     rossbyrad_out, lon_out, lat_out = read_from_netcdf_output(out_path)
     rossbyrad_out = rossbyrad_out.transpose("lat", "lon", "mode")
     make_plot(rossbyrad_out[:, :, 0], lon_out, lat_out, "north_atlantic_reanalysis")
-    # ##################################################################
-    # out_path = "./output/summer/baroclinic_modes_north_atlantic_summer.nc"
-    # rossbyrad_out, lon_out, lat_out = read_from_netcdf_output(out_path)
-    # rossbyrad_out = rossbyrad_out.transpose("lat", "lon", "mode")
-    # make_plot(rossbyrad_out[:,:,0], lon_out, lat_out, "north_atlantic_summer")
-    # out_path = "./output/winter/baroclinic_modes_north_atlantic_winter.nc"
-    # rossbyrad_out, lon_out, lat_out = read_from_netcdf_output(out_path)
-    # rossbyrad_out = rossbyrad_out.transpose("lat", "lon", "mode")
-    # make_plot(rossbyrad_out[:,:,0], lon_out, lat_out, "north_atlantic_winter")
-    # ##################################################################
-    # out_path = "./output/annual/baroclinic_modes_north_atlantic_annual.nc"
-    # rossbyrad_out, lon_out, lat_out = read_from_netcdf_output(out_path)
-    # rossbyrad_out = rossbyrad_out.transpose("lat", "lon", "mode")
-    # make_plot(rossbyrad_out[:,:,0], lon_out, lat_out, "north_atlantic_annual")
-    # ##################################################################
-    # chelton_path = "./data/rossrad.dat"
-    # rossbyrad_chelton, lon_chelton, lat_chelton = read_from_chelton_dat()
-    # make_plot(rossbyrad_chelton, lon_chelton, lat_chelton, "north_atlantic_chelton_test")
-    pass
+    chelton_path = "./data/rossrad.dat"
+    rossbyrad_chelton, lon_chelton, lat_chelton = read_from_chelton_dat()
+    make_plot(rossbyrad_chelton, lon_chelton, lat_chelton, "north_atlantic_chelton_test")
