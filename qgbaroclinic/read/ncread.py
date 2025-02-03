@@ -69,7 +69,7 @@ class ncRead:
                 decode_times=True,
                 # mask_and_scale = False,
             )
-        logging.info(f"Open NetCDF file(s) with {engine} engine.")
+        logging.info(f"Open NetCDF file(s) with {engine} engine")
         # Keep only variables we are interested in.
         dataset = dataset[list(vars.values())]
         # check that the dimensions are in the dataset

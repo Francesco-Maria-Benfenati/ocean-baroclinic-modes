@@ -168,6 +168,7 @@ class OceBaroclinicModes:
         # Store and return Rossby Radii and Vertical Structure Functions.
         self.rossby_rad = rossby_rad
         self.vert_structfunc = vert_structfunc
+        self.n_modes = n_modes
         return rossby_rad, vert_structfunc
 
     @staticmethod
@@ -282,13 +283,13 @@ class OceBaroclinicModes:
         # Create fig and plot profile.
         fig, ax = plt.subplots(figsize=(7, 8))
         ax.plot(self.vert_structfunc, -self.depth)
+        labels = ["Barotropic Mode 0"]
+        for i in range(1, self.n_modes):
+            labels.append(
+                rf"Mode {i} : $R_{i}$ = {self.rossby_rad[i] / 1000:.1f} km"
+            )
         ax.legend(
-            [
-                "Barotropic Mode 0",
-                rf"Mode 1 : $R_1$ = {self.rossby_rad[1] / 1000:.1f} km",
-                rf"Mode 2 : $R_2$ = {self.rossby_rad[2] / 1000:.1f} km",
-                rf"Mode 3 : $R_3$ = {self.rossby_rad[3] / 1000:.1f} km",
-            ],
+            labels,
             fontsize=12,
             loc="lower right",
         )

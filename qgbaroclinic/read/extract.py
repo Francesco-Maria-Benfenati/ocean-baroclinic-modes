@@ -26,7 +26,7 @@ def extract_oce_from_config(config: Config) -> dict[Union[NDArray, xr.Variable]]
         dict[Union[NDArray, xr.Variable]: dictionary of variables
     """
 
-    logging.info("Reading OCE data ...")
+    logging.info("Reading OCE data")
     oce_path = config.input.oce.path
     read_oce = ncRead(oce_path)
     # OCE dimensions, variables and coordinates.
@@ -90,7 +90,7 @@ def extract_bathy_from_config(
     oce_domain = {k: v for k, v in zip(oce_dims.values(), config.domain.values())}
     # Read bathy from netcdf
     if config.input.bathy.set_bottomdepth is False:
-        logging.info("Reading bathymetry dataset ...")
+        logging.info("Reading bathymetry dataset")
         inbathy_path = config.input.bathy.path
         read_bathy = ncRead(inbathy_path)
         bathy_dims = config.input.bathy.dims
@@ -123,7 +123,7 @@ def extract_bathy_from_config(
         bathy_dataset.close()
     # Read seafloor depth set by the user
     else:
-        logging.info("Sea Floor Depth set as in confi file ...")
+        logging.info("Sea Floor Depth set as in confi file")
         seafloor_depth = np.ones(
             [oce_longitude.shape[0], oce_latitude.shape[0]], dtype=np.float64
         )

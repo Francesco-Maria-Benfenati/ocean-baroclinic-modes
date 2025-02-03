@@ -45,7 +45,7 @@
     # Name of the output file (with or without '.nc' suffix).
     filename = "my_experiment"
     # Num. of modes of motion to be computed.
-    n_modes = 4
+    n_modes = 5
     # Type of output: REGIONAL AVERAGE ("average")
     type = "average" # supported are: "average"
     # Name of output figure.

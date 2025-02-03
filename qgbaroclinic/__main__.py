@@ -5,8 +5,9 @@
 import os
 import time
 import logging
-import numpy as np
 import warnings
+import numpy as np
+import xarray as xr
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
@@ -23,6 +24,53 @@ except ImportError:
     from model import OceBaroclinicModes
     from read import Config, extract_oce_from_config, extract_bathy_from_config
     from write import ncWrite
+
+
+def average_values(
+    obm: OceBaroclinicModes,
+    potential_density: xr.Variable,
+    seafloor_depth: xr.Variable,
+    ocean_dict: dict,
+    n_modes: int,
+) -> None:
+    """
+    Compute average values in a region.
+    """
+
+    logging.info("Computing Baroclinic Modes for 'AVERAGE' output")
+    # Mean vaues.
+    logging.info("Averaging variables in space and time")
+    mean_potential_density = np.nanmean(potential_density, axis=(0, 1, 2))
+    mean_latitude = np.nanmean(oce_dict["latitude"], axis=-1)
+    mean_seafloor_depth = np.nanmean(np.abs(seafloor_depth), axis=(0, 1))
+    # Run MODEL.
+    logging.info("Running Model")
+    rossby_rad, vert_structfunc = obm(
+        mean_potential_density,
+        ocean_dict["depth"].values,
+        mean_latitude,
+        mean_seafloor_depth,
+        n_modes=n_modes,
+    )
+    # Write results on output file.
+    logging.info("Saving dataset to netcdf output file")
+    modes_of_motion = np.arange(0, n_modes)
+    rossrad_dataset = ncwrite.create_dataset(
+        dims="mode", coords={"mode": modes_of_motion}, rossrad=rossby_rad
+    )
+    # Vertical structure function dataset
+    vert_struct_func_dataset = ncwrite.create_dataset(
+        dims=["depth", "mode"],
+        coords={"mode": modes_of_motion, "depth": obm.depth},
+        vertstructfunc=vert_structfunc,
+    )
+    ncwrite.save(rossrad_dataset, vert_struct_func_dataset)
+    # Plotting results.
+    fig_name = config.output.fig_name
+    if fig_name:
+        logging.info("Plotting results")
+        fig_out_path = os.path.join(config.output.folder_path, fig_name + ".png")
+        obm.plot(fig_out_path)
 
 
 if __name__ == "__main__":
@@ -64,7 +112,7 @@ if __name__ == "__main__":
             config.output.folder_path, filename=config.output.filename, logfile=True
         )
         logging.info(f"Using config file {config.config_file}")
-        logging.info(f"Using {n_cpus} CPUs for computing.")
+        logging.info(f"Using {n_cpus} CPUs for computing")
         # Extract OCEAN variables.
         oce_dict = extract_oce_from_config(config)
         # Extract SEAFLOOR DEPTH from BATHYMETRY.
@@ -74,7 +122,7 @@ if __name__ == "__main__":
         # Instance of OBM class.
         obm = OceBaroclinicModes()
         # Compute Potential Density from Pot./in-situ Temperature.
-        logging.info("Computing Potential Density ...")
+        logging.info("Computing Potential Density")
         potential_density = obm.potential_density(
             oce_dict["temperature"],
             oce_dict["salinity"],
@@ -84,28 +132,13 @@ if __name__ == "__main__":
         match config.output.type:
             # Compute AVERAGE values in a region.
             case "average":
-                logging.info("Computing Baroclinic Modes for 'AVERAGE' output ...")
-                # Mean vaues.
-                logging.info("Averaging variables in space and time ...")
-                mean_potential_density = np.nanmean(potential_density, axis=(0, 1, 2))
-                mean_latitude = np.nanmean(oce_dict["latitude"], axis=-1)
-                mean_seafloor_depth = np.nanmean(np.abs(seafloor_depth), axis=(0, 1))
-                # Run MODEL.
-                logging.info("Running Model ...")
-                rossby_rad, vert_structfunc = obm(
-                    mean_potential_density,
-                    oce_dict["depth"].values,
-                    mean_latitude,
-                    mean_seafloor_depth,
+                average_values(
+                    obm,
+                    potential_density,
+                    seafloor_depth,
+                    oce_dict,
+                    config.output.n_modes,
                 )
-                # Plotting results.
-                fig_name = config.output.fig_name
-                if fig_name:
-                    logging.info("Plotting results ...")
-                    fig_out_path = os.path.join(
-                        config.output.folder_path, fig_name + ".png"
-                    )
-                    obm.plot(fig_out_path)
             # Compute 2D MAP in a region.
             case "map":
                 pass
