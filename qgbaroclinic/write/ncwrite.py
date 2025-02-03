@@ -30,7 +30,7 @@ class ncWrite:
         log_filename = filename[:-3] + ".log"
         if logfile:
             self.logpath = os.path.join(outfolder, log_filename)
-            self.set_logging()
+            self.__set_logging()
         # Remove old files if having the same name
         if os.path.exists(self.path):
             os.remove(self.path)
@@ -38,7 +38,7 @@ class ncWrite:
         # Create folder if does not exist
         os.makedirs(outfolder, exist_ok=True)
 
-    def set_logging(self):
+    def __set_logging(self):
         """
         Set logging: log info may be found within the log file.
         """
