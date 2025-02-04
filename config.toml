@@ -2,7 +2,7 @@
 [input]
     [input.oce]
         # Path to ocean data NetCDF file(s)
-        path = "./data_v0/SDC_GLO_CLIM_TS_V2_1_1900_2017_025/" 
+        path = "./data/reanalysis/" # can be a single file or a folder
         # Name of Salinity, Temperature and other variables in Netcdf file.
         vars = {temperature = "Temperature", salinity = "Salinity"}
         # Set to "true" if provided temperature values are "in situ". Leave it to "false" if temperature is potential temperature.
@@ -21,7 +21,7 @@
         # Set region depth [in meters] (set to false if not used, otherwise set the value you desire).
         set_bottomdepth = false # set_bottomdepth = 3500
         # Path to bathymetry NetCDF file
-        path = "./data_v0/bathymetry/GEBCO_2023.nc" 
+        path = "./data/bathymetry/GEBCO_2023.nc" 
         # Name of Sea Floor depth and other variables in Netcdf file.
         vars = {seafloor_depth = "elevation"}
         # Name of coords in Netcdf file.
