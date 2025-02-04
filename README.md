@@ -1,4 +1,4 @@
-﻿# [Ocean QG baroclinic modes](https://github.com/Francesco-Maria-Benfenati/qgbaroclinic)
+﻿# [Ocean QG Baroclinic Modes](https://github.com/Francesco-Maria-Benfenati/qgbaroclinic)
 
 A python tool for solving the ocean QG baroclinic modes of motion. It allows to compute the baroclinic rossby radius and the (normalized) vertical structure function for each mode of motion.
 
