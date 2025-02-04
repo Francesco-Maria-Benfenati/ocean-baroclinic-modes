@@ -146,7 +146,8 @@ class OceBaroclinicModes:
         (interp_potdens, depth_levels) = interpolation.apply_interpolation(
             -grid_step / 2, seafloor_depth, grid_step
         )
-        self.depth = depth_levels[1:-1] # remove extrapolated layers
+        # remove extrapolated layers
+        self.depth = depth_levels[1:-1]
         # Compute Brunt-Vaisala Frequency at the interfaces.
         bv_freq = OceBaroclinicModes.compute_bruntvaisala_freq(
             interp_potdens, depth_levels, grid_step
@@ -159,9 +160,16 @@ class OceBaroclinicModes:
             grid_step=grid_step,
         )
         # Compute the Baroclinic Modes of motion.
-        rossby_rad, vert_structfunc = OceBaroclinicModes.compute_modes(
-            bv_freq_smoothed, latitude, grid_step, n_modes
-        )
+        try:
+            rossby_rad, vert_structfunc = OceBaroclinicModes.compute_modes(
+                bv_freq_smoothed, latitude, grid_step, n_modes
+            )
+        except ValueError:
+            raise UserWarning(
+                "The vertical profile of BV frequency contains too many missing values. "
+                + "These values could not be extrapolated.\n"
+                + "The problem can not be solved for such vertical profile."
+            )
         # Store and return Rossby Radii and Vertical Structure Functions.
         self.rossby_rad = rossby_rad
         self.vert_structfunc = vert_structfunc

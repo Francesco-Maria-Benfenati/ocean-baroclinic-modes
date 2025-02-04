@@ -314,6 +314,6 @@ def compute_modes_at_point(
             n_modes=n_modes,
         )
     # Skip invalid land or missing points
-    except ValueError:
+    except (ValueError, UserWarning):
         return i, j, None, None
     return i, j, rossby_rad, vert_structfunc
