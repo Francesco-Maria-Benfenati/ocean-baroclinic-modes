@@ -125,7 +125,7 @@ class PlotMap:
         Plot Rossby Radius map from Chelton (1998) for comparison.
         """
         rossbyrad, lon, lat = self._read_from_chelton_dat()
-        self.make_plot(rossbyrad, lon, lat, "comparison_Chelton_1998", offset=1)
+        self.make_plot(rossbyrad, lon, lat, "comparison_Chelton_1998", offset=0.0)
 
     def _read_from_chelton_dat(self) -> tuple[NDArray]:
         """
@@ -134,8 +134,12 @@ class PlotMap:
         lon_range = self.lon_range
         lat_range = self.lat_range
         lon_range[lon_range < 0] = lon_range + 360.0
+        chelton_path = os.path.dirname(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        )
+        chelton_path = os.path.join(chelton_path, "data", "chelton_rossrad.dat")
         df = pd.read_csv(
-            "./data/chelton_rossrad.dat",
+            chelton_path,
             delimiter=r"\s+",
             header=None,
             usecols=[0, 1, 3],

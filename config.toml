@@ -33,9 +33,9 @@
     # Domain extremants: time min, max (format compatible with numpy.datetime64)
     time = [1900-01-01T00:00:00, 2018-01-01T00:00:00]
     # Domain extremants: longitude min, max [° E]
-    lon = [-30,-32]
+    lon = [-50,-30]
     # Domain extremants: latitude min, max [° N]
-    lat = [20,22]
+    lat = [20,40]
     # Domain extremants: depth min, max [m]
     depth = []
 # OUTPUT FILE.
