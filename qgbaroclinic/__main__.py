@@ -35,6 +35,16 @@ def average_values(
 ) -> None:
     """
     Compute average values in a region.
+
+    Args:
+        obm (OceBaroclinicModes): obm object
+        potential_density (xr.Variable):
+            potential density 4D array (time, lon, lat, depth)
+        seafloor_depth (xr.Variable):
+            sea floor depth 2D array (lon, lat)
+        ocean_dict (dict):
+            dictionary containing ocean variables and coordinates
+        n_modes (int): number of modes to be computed.
     """
 
     logging.info("Computing Baroclinic Modes for 'AVERAGE' output")
