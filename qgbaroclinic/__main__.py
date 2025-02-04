@@ -5,87 +5,32 @@
 import os
 import time
 import logging
-import warnings
 import numpy as np
-import xarray as xr
-
-warnings.filterwarnings("ignore", category=RuntimeWarning)
-
 
 from argparse import ArgumentParser
-from concurrent.futures import ProcessPoolExecutor
-from functools import partial
+
+from plot.plotmap import *
 
 try:
     from .model import OceBaroclinicModes
-    from .read import Config, extract_oce_from_config, extract_bathy_from_config
+    from .read import Config
     from .write import ncWrite
+    from .core import (
+        extract_oce_from_config,
+        extract_bathy_from_config,
+        region_average,
+        region_map,
+    )
 except ImportError:
     from model import OceBaroclinicModes
-    from read import Config, extract_oce_from_config, extract_bathy_from_config
+    from read import Config
     from write import ncWrite
-
-
-def average_values(
-    obm: OceBaroclinicModes,
-    potential_density: xr.Variable,
-    seafloor_depth: xr.Variable,
-    ocean_dict: dict,
-    n_modes: int,
-) -> None:
-    """
-    Compute average values in a region.
-
-    Args:
-        obm (OceBaroclinicModes): obm object
-        potential_density (xr.Variable):
-            potential density 4D array (time, lon, lat, depth)
-        seafloor_depth (xr.Variable):
-            sea floor depth 2D array (lon, lat)
-        ocean_dict (dict):
-            dictionary containing ocean variables and coordinates
-        n_modes (int): number of modes to be computed.
-    """
-
-    logging.info("Computing Baroclinic Modes for 'AVERAGE' output")
-    # Mean vaues.
-    logging.info("Averaging variables in space and time")
-    mean_potential_density = np.nanmean(potential_density, axis=(0, 1, 2))
-    mean_latitude = np.nanmean(oce_dict["latitude"], axis=-1)
-    mean_seafloor_depth = np.nanmean(np.abs(seafloor_depth), axis=(0, 1))
-    # Run MODEL.
-    logging.info("Running Model")
-    rossby_rad, vert_structfunc = obm(
-        mean_potential_density,
-        ocean_dict["depth"].values,
-        mean_latitude,
-        mean_seafloor_depth,
-        n_modes=n_modes,
+    from core import (
+        extract_oce_from_config,
+        extract_bathy_from_config,
+        region_average,
+        region_map,
     )
-    # Write results on output file.
-    logging.info("Saving dataset to netcdf output file")
-    modes_of_motion = np.arange(0, n_modes)
-    rossrad_dataset = ncwrite.create_dataset(
-        dims="mode",
-        coords={"mode": modes_of_motion},
-        attrs={"name": "baroclinic rossby radius", "units": "meters"},
-        rossrad=rossby_rad,
-    )
-    # Vertical structure function dataset
-    vert_struct_func_dataset = ncwrite.create_dataset(
-        dims=["depth", "mode"],
-        coords={"mode": modes_of_motion, "depth": obm.depth},
-        attrs={"name": "normalized vertical structure function", "units": "1"},
-        vertstructfunc=vert_structfunc,
-    )
-    ncwrite.save(rossrad_dataset, vert_struct_func_dataset)
-    # Plotting results.
-    fig_name = config.output.fig_name
-    if fig_name:
-        logging.info("Plotting results")
-        fig_out_path = os.path.join(config.output.folder_path, fig_name + ".png")
-        obm.plot(fig_out_path)
-
 
 if __name__ == "__main__":
     # Config file as argument.
@@ -128,38 +73,71 @@ if __name__ == "__main__":
         logging.info(f"Using config file {config.config_file}")
         logging.info(f"Using {n_cpus} CPUs for computing")
         # Extract OCEAN variables.
-        oce_dict = extract_oce_from_config(config)
+        ocean_dict = extract_oce_from_config(config)
         # Extract SEAFLOOR DEPTH from BATHYMETRY.
         seafloor_depth = extract_bathy_from_config(
-            config, oce_dict["longitude"], oce_dict["latitude"]
+            config, ocean_dict["longitude"], ocean_dict["latitude"]
         )
         # Instance of OBM class.
         obm = OceBaroclinicModes()
         # Compute Potential Density from Pot./in-situ Temperature.
         logging.info("Computing Potential Density")
         potential_density = obm.potential_density(
-            oce_dict["temperature"],
-            oce_dict["salinity"],
-            oce_dict["depth"],
+            ocean_dict["temperature"],
+            ocean_dict["salinity"],
+            ocean_dict["depth"],
             insitu_temperature=config.input.oce.insitu_temperature,
         )
         match config.output.type:
             # Compute AVERAGE values in a region.
             case "average":
-                average_values(
+                region_average(
                     obm,
+                    ncwrite,
                     potential_density,
                     seafloor_depth,
-                    oce_dict,
+                    ocean_dict,
                     config.output.n_modes,
                 )
             # Compute 2D MAP in a region.
             case "map":
                 pass
+                region_map(
+                    obm,
+                    ncwrite,
+                    potential_density,
+                    seafloor_depth,
+                    ocean_dict,
+                    config.output.n_modes,
+                    n_cpus,
+                )
             case _:
                 raise ValueError(
                     f"Output type '{config.output.type}' is not supported."
                 )
+        # PLOTTING RESULTS
+        fig_name = config.output.fig_name
+        if fig_name:
+            logging.info("Plotting results")
+            match config.output.type:
+                case "average":
+                    fig_out_path = os.path.join(ncwrite.outfolder, fig_name + ".png")
+                    obm.plot(fig_out_path)
+                case "map":
+                    pm = PlotMap(
+                        config.domain.lon, config.domain.lat, ncwrite.outfolder
+                    )
+                    rossbyrad_out, lon_out, lat_out = pm.rossrad_from_netcdf_output(
+                        ncwrite.path
+                    )
+                    rossbyrad_out = rossbyrad_out.transpose("lat", "lon", "mode")
+                    pm.make_plot(
+                        rossbyrad_out[:, :, 1] / 1000.0,  # Conversion to [km]
+                        lon_out,
+                        lat_out,
+                        config.output.fig_name,
+                        offset=1,
+                    )
     except Exception as e:
         # Log any unhandled exceptions
         logging.exception(f"An exception occurred: {e}")

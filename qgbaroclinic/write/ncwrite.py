@@ -37,6 +37,7 @@ class ncWrite:
             logging.info(f"Removed old output file at {self.path}")
         # Create folder if does not exist
         os.makedirs(outfolder, exist_ok=True)
+        self.outfolder = outfolder
 
     def __set_logging(self):
         """

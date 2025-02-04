@@ -2,7 +2,7 @@
 [input]
     [input.oce]
         # Path to ocean data NetCDF file(s)
-        path = "./data/SDC_GLO_CLIM_TS_V2_1_1900_2017_025/" 
+        path = "./data_v0/SDC_GLO_CLIM_TS_V2_1_1900_2017_025/" 
         # Name of Salinity, Temperature and other variables in Netcdf file.
         vars = {temperature = "Temperature", salinity = "Salinity"}
         # Set to "true" if provided temperature values are "in situ". Leave it to "false" if temperature is potential temperature.
@@ -21,7 +21,7 @@
         # Set region depth [in meters] (set to false if not used, otherwise set the value you desire).
         set_bottomdepth = false # set_bottomdepth = 3500
         # Path to bathymetry NetCDF file
-        path = "./data/bathymetry/GEBCO_2023.nc" 
+        path = "./data_v0/bathymetry/GEBCO_2023.nc" 
         # Name of Sea Floor depth and other variables in Netcdf file.
         vars = {seafloor_depth = "elevation"}
         # Name of coords in Netcdf file.
@@ -33,20 +33,20 @@
     # Domain extremants: time min, max (format compatible with numpy.datetime64)
     time = [1900-01-01T00:00:00, 2018-01-01T00:00:00]
     # Domain extremants: longitude min, max [° E]
-    lon = [-30,-34]
+    lon = [-30,-32]
     # Domain extremants: latitude min, max [° N]
-    lat = [34.5,50.2]
+    lat = [20,22]
     # Domain extremants: depth min, max [m]
     depth = []
 # OUTPUT FILE.
 [output]
     # Path to folder where output files are saved to.
-    folder_path = "./output" 
+    folder_path = "./output/" 
     # Name of the output file (with or without '.nc' suffix).
     filename = "my_experiment"
     # Num. of modes of motion to be computed.
     n_modes = 5
-    # Type of output: REGIONAL AVERAGE ("average")
-    type = "average" # supported are: "average"
+    # Type of output: REGIONAL AVERAGE ("average") or 2D MAP ("map")
+    type = "map" # supported are: "average", "map"
     # Name of output figure.
-    fig_name = "my_eperiment" # = false if results should not be plotted
+    fig_name = "my_figure" # = false if results should not be plotted
